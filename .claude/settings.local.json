@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx tsc --noEmit)",
+      "Bash(node --input-type=module --eval \":*)",
+      "Bash(python3 -c \"import sys,json; lines=[json.loads\\(l\\) for l in sys.stdin if l.strip\\(\\)]; [print\\(m.get\\(''role'',''''\\),'':'',str\\(m.get\\(''content'',''''\\)\\)[:500]\\) for m in lines[-10:] if isinstance\\(m.get\\(''content''\\), str\\)]\")",
+      "Bash(python3 -c \":*)",
+      "Bash(lsof -ti :5173)",
+      "Bash(xargs kill -9)",
+      "Bash(lsof -ti:5173)",
+      "Bash(python3 -c \"import sys,json; data=sys.stdin.read\\(\\); text=json.loads\\(data.strip\\(\\)\\)[0][''text'']; print\\(text\\)\")",
+      "Bash(npx create-next-app@latest ERP-Next --typescript --app --src-dir --no-tailwind --import-alias \"@/*\" --yes)",
+      "Bash(npx create-next-app@latest erp-next --typescript --app --src-dir --no-tailwind --import-alias \"@/*\" --yes)",
+      "Bash(npm install next-auth@beta @auth/prisma-adapter prisma @prisma/client bcryptjs lucide-react recharts date-fns uuid react-barcode)",
+      "Bash(npm install -D @types/bcryptjs @types/uuid)",
+      "Bash(npx prisma init --datasource-provider sqlite)",
+      "Bash(node -e \"const p=require\\(''./package.json''\\); console.log\\(''next:'', p.dependencies.next, ''prisma:'', p.devDependencies?.prisma || p.dependencies?.prisma, ''next-auth:'', p.dependencies[''next-auth'']\\)\")",
+      "Bash(npx prisma migrate dev --name init)"
+    ]
+  }
+}

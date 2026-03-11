@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/eduardapantaleao/ERP/src/app/settings/page.tsx"],"sourcesContent":["\"use client\";\n\nexport default function Page() {\n  return <div>Select a setting to manage.</div>;\n}"],"names":[],"mappings":";;;;;AAAA;;AAEe,SAAS;IACtB,qBAAO,8OAAC;kBAAI;;;;;;AACd"}}]
+}

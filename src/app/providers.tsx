@@ -1,0 +1,26 @@
+"use client";
+
+import { LocationProvider } from '../context/LocationContext';
+import { SettingsProvider } from '../context/SettingsContext';
+import { ToastProvider } from '../context/ToastContext';
+import { ProductProvider } from '../context/ProductContext';
+import { InventoryProvider } from '../context/InventoryContext';
+import { OrderProvider } from '../context/OrderContext';
+
+export function Providers({ children }: { children: React.ReactNode }) {
+    return (
+        <LocationProvider>
+            <SettingsProvider>
+                <ToastProvider>
+                    <ProductProvider>
+                        <InventoryProvider>
+                            <OrderProvider>
+                                {children}
+                            </OrderProvider>
+                        </InventoryProvider>
+                    </ProductProvider>
+                </ToastProvider>
+            </SettingsProvider>
+        </LocationProvider>
+    );
+}

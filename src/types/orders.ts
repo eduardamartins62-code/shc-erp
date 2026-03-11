@@ -1,0 +1,52 @@
+
+
+export type OrderStatus = 'New' | 'Allocated' | 'Picking' | 'Packed' | 'Shipped' | 'Cancelled' | 'Returned';
+export type PaymentStatus = 'Paid' | 'Unpaid' | 'Refunded';
+
+export interface OrderItem {
+    id: string;
+    orderId: string;
+    sku: string;
+    quantity: number;
+    price: number;
+    allocatedWarehouseId?: string;
+    allocatedLotNumber?: string;
+    pickStatus: 'Pending' | 'Picked';
+}
+
+export interface OrderHistoryEvent {
+    id: string;
+    orderId: string;
+    timestamp: string;
+    action: string;
+    performedBy: string;
+    notes?: string;
+}
+
+export interface Order {
+    id: string; // e.g., ORD-2024-001
+    channel: 'Amazon' | 'Walmart' | 'Shopify' | 'eBay' | 'TikTok Shop' | 'B2B' | 'ShipStation';
+    customerName: string;
+    customerEmail: string;
+    shippingAddress: string;
+    orderDate: string;
+    fulfillmentStatus: OrderStatus;
+    paymentStatus: PaymentStatus;
+    items: OrderItem[];
+    timeline: OrderHistoryEvent[];
+    subtotal: number;
+    tax: number;
+    fees: number;
+    total: number;
+    margin: number;
+    notes?: string;
+}
+
+export interface B2BOrderFormData {
+    customerName: string;
+    customerEmail: string;
+    shippingAddress: string;
+    items: { sku: string; quantity: number; price: number }[];
+    notes?: string;
+    performedBy: string;
+}

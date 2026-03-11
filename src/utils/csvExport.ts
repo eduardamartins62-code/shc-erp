@@ -1,0 +1,155 @@
+import type { Product } from '../types/products';
+import type { InventoryItem } from '../types';
+import type { Order } from '../types/orders';
+
+// Helper to reliably enclose strings with commas in quotes
+const escapeCSVField = (field: any): string => {
+    if (field === null || field === undefined) return '';
+    const stringField = String(field);
+    if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+        return `"${stringField.replace(/"/g, '""')}"`;
+    }
+    return stringField;
+};
+
+// Generic trigger download function
+const triggerDownload = (csvContent: string, filename: string) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary anchor element to trigger the download
+    const anchor = document.createElement('a');
+    anchor.setAttribute('href', url);
+    anchor.setAttribute('download', filename);
+    anchor.style.visibility = 'hidden';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+};
+
+export const exportProductsToCSV = (products: Product[], filename: string = 'products_export.csv') => {
+    const headers = [
+        'ID', 'SKU', 'Type', 'Name', 'UPC', 'Brand', 'Category', 'Subcategory',
+        'Weight', 'Length', 'Width', 'Height', 'Cost of Goods', 'MAP Price', 'MSRP Price',
+        'Status', 'Reorder Point', 'Preferred Supplier', 'Created At'
+    ];
+
+    const rows = products.map(p => [
+        p.id,
+        p.sku,
+        p.type,
+        p.name,
+        p.upc || '',
+        p.brand || '',
+        p.category || '',
+        p.subcategory || '',
+        p.weight || '',
+        p.length || '',
+        p.width || '',
+        p.height || '',
+        p.costOfGoods || '',
+        p.mapPrice || '',
+        p.msrpPrice || '',
+        p.status,
+        p.reorderPoint || '',
+        p.preferredSupplier || '',
+        new Date(p.createdAt).toLocaleDateString()
+    ]);
+
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(escapeCSVField).join(','))
+    ].join('\n');
+
+    triggerDownload(csvContent, filename);
+};
+
+export const exportInventoryToCSV = (inventory: InventoryItem[], filename: string = 'inventory_export.csv') => {
+    const headers = [
+        'SKU (ID)', 'Warehouse ID', 'Quantity On Hand', 'Quantity Reserved', 'Quantity Available',
+        'Lot Number', 'Expiration Date', 'Lot Receive Cost', 'Last Updated'
+    ];
+
+    const rows = inventory.map(item => [
+        item.id,
+        item.warehouseId,
+        item.quantityOnHand,
+        item.quantityReserved,
+        item.quantityOnHand - item.quantityReserved, // calc available
+        item.lotNumber,
+        item.expirationDate ? new Date(item.expirationDate).toLocaleDateString() : '',
+        item.lotReceiveCost || '',
+        new Date(item.lastUpdated).toLocaleDateString()
+    ]);
+
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(escapeCSVField).join(','))
+    ].join('\n');
+
+    triggerDownload(csvContent, filename);
+};
+
+
+export const exportOrdersToCSV = (orders: Order[], filename: string = 'orders_export.csv') => {
+    const headers = [
+        'Order ID', 'Channel', 'Customer Name', 'Customer Email', 'Order Date',
+        'Fulfillment Status', 'Payment Status', 'Subtotal', 'Tax', 'Total', 'Margin', 'Item Count'
+    ];
+
+    const rows = orders.map(order => [
+        order.id,
+        order.channel,
+        order.customerName,
+        order.customerEmail,
+        new Date(order.orderDate).toLocaleDateString(),
+        order.fulfillmentStatus,
+        order.paymentStatus,
+        order.subtotal,
+        order.tax,
+        order.total,
+        order.margin,
+        order.items.reduce((sum, item) => sum + item.quantity, 0)
+    ]);
+
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(escapeCSVField).join(','))
+    ].join('\n');
+
+    triggerDownload(csvContent, filename);
+};
+
+import type { WarehouseLocation } from '../types/locations';
+
+export const exportLocationsToCSV = (locations: WarehouseLocation[], filename: string = 'locations_export.csv') => {
+    const headers = [
+        'ID', 'Warehouse ID', 'Warehouse Code', 'Location Code', 'Display Name', 'Type',
+        'Description', 'Aisle', 'Section', 'Shelf', 'Bin', 'Barcode Value', 'Is Active', 'Created At'
+    ];
+
+    const rows = locations.map(loc => [
+        loc.id,
+        loc.warehouseId,
+        loc.warehouseCode,
+        loc.locationCode,
+        loc.displayName || '',
+        loc.type,
+        loc.description || '',
+        loc.aisle || '',
+        loc.section || '',
+        loc.shelf || '',
+        loc.bin || '',
+        loc.barcodeValue,
+        loc.isActive ? 'Yes' : 'No',
+        new Date(loc.createdAt).toLocaleDateString()
+    ]);
+
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(escapeCSVField).join(','))
+    ].join('\n');
+
+    triggerDownload(csvContent, filename);
+};
