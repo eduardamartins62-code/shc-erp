@@ -162,7 +162,7 @@ export const shipstationApi = {
 
         // Map the real ShipStation data to our internal Order schema
         const mappedOrders: Order[] = ssOrders.map(ssOrder => {
-            // Requirement 5: Exact ShipStation Order Number
+            // User-facing ShipStation Order Number
             const orderId = ssOrder.orderNumber;
 
             // Map items gracefully checking if items array exists
@@ -184,7 +184,7 @@ export const shipstationApi = {
                 id: orderId,
                 channel: 'ShipStation',
                 storeName: ssOrder.advancedOptions?.source || 'ShipStation Store',
-                customerName: ssOrder.customerUsername || 'Unknown Customer',
+                customerName: ssOrder.advancedOptions?.source || 'ShipStation Store',
                 shipToName: ssOrder.shipTo?.name || 'Unknown Recipient',
                 customerEmail: ssOrder.customerEmail || 'no-email@shc.com',
                 shippingAddress: formatAddress(ssOrder.shipTo),

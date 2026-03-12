@@ -2,6 +2,12 @@
   "version": 4,
   "routes": {
     "/_global-error": {
+      "initialStatus": 500,
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/_global-error/layout,_N_T_/_global-error/page,_N_T_/_global-error"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -27,6 +33,11 @@
     },
     "/_not-found": {
       "initialStatus": 404,
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/_not-found/layout,_N_T_/_not-found/page,_N_T_/_not-found"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -51,6 +62,11 @@
       ]
     },
     "/data-management": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/data-management/layout,_N_T_/data-management/page,_N_T_/data-management"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -75,6 +91,11 @@
       ]
     },
     "/expiration": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/expiration/layout,_N_T_/expiration/page,_N_T_/expiration"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -99,6 +120,11 @@
       ]
     },
     "/locations": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/locations/layout,_N_T_/locations/page,_N_T_/locations"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -123,6 +149,11 @@
       ]
     },
     "/movements": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/movements/layout,_N_T_/movements/page,_N_T_/movements"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -147,6 +178,11 @@
       ]
     },
     "/orders": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/orders/layout,_N_T_/orders/page,_N_T_/orders"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -171,6 +207,11 @@
       ]
     },
     "/": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/page,_N_T_/,_N_T_/index"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -195,6 +236,11 @@
       ]
     },
     "/products/new": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/products/layout,_N_T_/products/new/layout,_N_T_/products/new/page,_N_T_/products/new"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -219,6 +265,11 @@
       ]
     },
     "/products": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/products/layout,_N_T_/products/page,_N_T_/products"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -243,6 +294,11 @@
       ]
     },
     "/receiving": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/receiving/layout,_N_T_/receiving/page,_N_T_/receiving"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -267,6 +323,11 @@
       ]
     },
     "/settings/channels": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/settings/layout,_N_T_/settings/channels/layout,_N_T_/settings/channels/page,_N_T_/settings/channels"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -291,6 +352,11 @@
       ]
     },
     "/settings/locations": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/settings/layout,_N_T_/settings/locations/layout,_N_T_/settings/locations/page,_N_T_/settings/locations"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -315,6 +381,11 @@
       ]
     },
     "/settings": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/settings/layout,_N_T_/settings/page,_N_T_/settings"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -339,6 +410,11 @@
       ]
     },
     "/settings/preferences": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/settings/layout,_N_T_/settings/preferences/layout,_N_T_/settings/preferences/page,_N_T_/settings/preferences"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -363,6 +439,11 @@
       ]
     },
     "/settings/users": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/settings/layout,_N_T_/settings/users/layout,_N_T_/settings/users/page,_N_T_/settings/users"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -387,6 +468,11 @@
       ]
     },
     "/settings/warehouses": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/settings/layout,_N_T_/settings/warehouses/layout,_N_T_/settings/warehouses/page,_N_T_/settings/warehouses"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -411,6 +497,11 @@
       ]
     },
     "/warehouses": {
+      "initialHeaders": {
+        "x-nextjs-stale-time": "300",
+        "x-nextjs-prerender": "1",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/warehouses/layout,_N_T_/warehouses/page,_N_T_/warehouses"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",

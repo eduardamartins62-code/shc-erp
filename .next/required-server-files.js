@@ -21,7 +21,7 @@ self.__SERVER_FILES_MANIFEST={
       "js"
     ],
     "poweredByHeader": true,
-    "compress": true,
+    "compress": false,
     "images": {
       "deviceSizes": [
         640,
@@ -209,6 +209,7 @@ self.__SERVER_FILES_MANIFEST={
       "turbopackFileSystemCacheForDev": true,
       "turbopackFileSystemCacheForBuild": false,
       "turbopackInferModuleSideEffects": false,
+      "trustHostHeader": true,
       "middlewarePrefetch": "flexible",
       "optimizePackageImports": [
         "lucide-react",
@@ -287,7 +288,6 @@ self.__SERVER_FILES_MANIFEST={
         "react-icons/vsc",
         "react-icons/wi"
       ],
-      "trustHostHeader": false,
       "isExperimentalCompile": false
     },
     "htmlLimitedBots": "[\\w-]+-Google|Google-[\\w-]+|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight",

@@ -58,6 +58,18 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
+      "page": "/api/shipstation/orders",
+      "regex": "^/api/shipstation/orders(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/shipstation/orders(?:/)?$"
+    },
+    {
+      "page": "/api/shipstation/validate",
+      "regex": "^/api/shipstation/validate(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/shipstation/validate(?:/)?$"
+    },
+    {
       "page": "/data-management",
       "regex": "^/data\\-management(?:/)?$",
       "routeKeys": {},

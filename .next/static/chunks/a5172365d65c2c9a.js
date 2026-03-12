@@ -1,1 +1,0 @@
-(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,79067,t=>{"use strict";var e=t.i(43476);t.i(83851);var i=t.i(10760);function n(){return(0,e.jsx)(i.ChannelsSection,{})}t.s(["default",()=>n])}]);

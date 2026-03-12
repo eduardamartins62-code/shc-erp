@@ -1,6 +1,8 @@
 {
   "/_global-error/page": "/_global-error",
   "/_not-found/page": "/_not-found",
+  "/api/shipstation/orders/route": "/api/shipstation/orders",
+  "/api/shipstation/validate/route": "/api/shipstation/validate",
   "/data-management/page": "/data-management",
   "/expiration/page": "/expiration",
   "/locations/page": "/locations",
