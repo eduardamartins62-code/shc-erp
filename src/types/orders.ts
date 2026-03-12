@@ -12,6 +12,8 @@ export interface OrderItem {
     allocatedWarehouseId?: string;
     allocatedLotNumber?: string;
     pickStatus: 'Pending' | 'Picked';
+    quantityReserved?: number;
+    mappingStatus?: 'Mapped' | 'Unmapped';
 }
 
 export interface OrderHistoryEvent {
@@ -26,12 +28,16 @@ export interface OrderHistoryEvent {
 export interface Order {
     id: string; // e.g., ORD-2024-001
     channel: 'Amazon' | 'Walmart' | 'Shopify' | 'eBay' | 'TikTok Shop' | 'B2B' | 'ShipStation';
+    storeName?: string;
     customerName: string;
+    shipToName?: string;
     customerEmail: string;
     shippingAddress: string;
     orderDate: string;
     fulfillmentStatus: OrderStatus;
     paymentStatus: PaymentStatus;
+    carrier?: string;
+    requestedService?: string;
     items: OrderItem[];
     timeline: OrderHistoryEvent[];
     subtotal: number;
@@ -40,6 +46,9 @@ export interface Order {
     total: number;
     margin: number;
     notes?: string;
+    canceledAt?: string;
+    canceledBy?: string;
+    cancellationReason?: string;
 }
 
 export interface B2BOrderFormData {

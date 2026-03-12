@@ -295,7 +295,7 @@ const warehouseStore: Warehouse[] = [
     }
 ];
 
-const channelStore: ChannelConfig[] = [
+const INITIAL_CHANNELS: ChannelConfig[] = [
     {
         id: uuidv4(),
         channel: 'Amazon',
@@ -333,6 +333,31 @@ const channelStore: ChannelConfig[] = [
     }
 ];
 
+// Initialize from LocalStorage or use defaults
+let channelStore: ChannelConfig[] = [];
+if (typeof window !== 'undefined') {
+    const savedChannels = localStorage.getItem('shc_channels');
+    if (savedChannels) {
+        try {
+            channelStore = JSON.parse(savedChannels);
+        } catch (e) {
+            console.error("Failed to parse channels from localStorage", e);
+            channelStore = [...INITIAL_CHANNELS];
+        }
+    } else {
+        channelStore = [...INITIAL_CHANNELS];
+        localStorage.setItem('shc_channels', JSON.stringify(channelStore));
+    }
+} else {
+    channelStore = [...INITIAL_CHANNELS];
+}
+
+const persistChannels = () => {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('shc_channels', JSON.stringify(channelStore));
+    }
+};
+
 const systemSettingsStore: SystemSettings = {
     defaultTimeZone: 'America/New_York',
     defaultCurrency: 'USD',
@@ -359,6 +384,40 @@ export const api = {
     getInventoryMovements: async (): Promise<InventoryMovement[]> => {
         await delay(200);
         return [...movementStore].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    },
+
+    reserveInventory: async (items: { sku: string, quantity: number }[], performedBy: string): Promise<void> => {
+        await delay(300);
+        for (const item of items) {
+            let remaining = item.quantity;
+            const availableLots = inventoryStore
+                .filter(inv => inv.id === item.sku && (inv.quantityOnHand - inv.quantityReserved) > 0)
+                .sort((a, b) => new Date(a.expirationDate || '9999-12-31').getTime() - new Date(b.expirationDate || '9999-12-31').getTime());
+
+            for (const lot of availableLots) {
+                if (remaining <= 0) break;
+                const available = lot.quantityOnHand - lot.quantityReserved;
+                const toReserve = Math.min(available, remaining);
+                lot.quantityReserved += toReserve;
+                remaining -= toReserve;
+            }
+        }
+    },
+
+    releaseInventory: async (items: { sku: string, quantity: number }[], performedBy: string): Promise<void> => {
+        await delay(300);
+        for (const item of items) {
+            let remaining = item.quantity;
+            const reservedLots = inventoryStore
+                .filter(inv => inv.id === item.sku && inv.quantityReserved > 0);
+
+            for (const lot of reservedLots) {
+                if (remaining <= 0) break;
+                const toRelease = Math.min(lot.quantityReserved, remaining);
+                lot.quantityReserved -= toRelease;
+                remaining -= toRelease;
+            }
+        }
     },
 
     getDailySnapshots: async (): Promise<DailySnapshot[]> => {
@@ -756,26 +815,29 @@ export const api = {
     addChannel: async (data: Omit<ChannelConfig, 'id'>): Promise<ChannelConfig> => {
         await delay(300);
         const newChannel: ChannelConfig = {
-            ...data,
-            id: uuidv4()
+            id: uuidv4(),
+            ...data
         };
         channelStore.push(newChannel);
+        persistChannels();
         return newChannel;
     },
-
-    updateChannel: async (id: string, data: Partial<ChannelConfig>): Promise<ChannelConfig> => {
+    updateChannel: async (id: string, updates: Partial<ChannelConfig>): Promise<ChannelConfig> => {
         await delay(300);
         const index = channelStore.findIndex(c => c.id === id);
         if (index === -1) throw new Error('Channel not found');
-        channelStore[index] = { ...channelStore[index], ...data };
+        channelStore[index] = { ...channelStore[index], ...updates };
+        persistChannels();
         return channelStore[index];
     },
-
     deleteChannel: async (id: string): Promise<void> => {
         await delay(300);
         const index = channelStore.findIndex(c => c.id === id);
         if (index === -1) throw new Error('Channel not found');
-        channelStore.splice(index, 1);
+        if (index > -1) {
+            channelStore.splice(index, 1);
+            persistChannels();
+        }
     },
 
     getSystemSettings: async (): Promise<SystemSettings> => {

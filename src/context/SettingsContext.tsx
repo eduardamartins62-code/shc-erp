@@ -52,12 +52,38 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             ]);
             setUsers(usersData);
             setWarehouses(warehousesData);
-            setChannels(channelsData);
             setSystemSettings(systemSettingsData);
+
+            // Fetch channels from localStorage if available, otherwise fallback to API default
+            if (typeof window !== 'undefined') {
+                const savedChannels = localStorage.getItem('shc_channels');
+                if (savedChannels) {
+                    try {
+                        setChannels(JSON.parse(savedChannels));
+                    } catch (e) {
+                        console.error("Failed to parse channels", e);
+                        setChannels(channelsData);
+                    }
+                } else {
+                    setChannels(channelsData);
+                    localStorage.setItem('shc_channels', JSON.stringify(channelsData));
+                }
+            } else {
+                setChannels(channelsData);
+            }
+
         } catch (err: any) {
             setError(err.message || "Failed to load settings data");
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Helper to persist to localStorage whenever channels change
+    const updateChannelsState = (newChannels: ChannelConfig[]) => {
+        setChannels(newChannels);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('shc_channels', JSON.stringify(newChannels));
         }
     };
 
@@ -149,8 +175,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         try {
             setLoading(true);
             setError(null);
-            await api.addChannel(data);
-            await refreshSettings();
+            const newChannel = await api.addChannel(data);
+            updateChannelsState([...channels, newChannel]);
         } catch (err: any) {
             setError(err.message || 'Failed to add channel');
             throw err;
@@ -163,8 +189,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         try {
             setLoading(true);
             setError(null);
-            await api.updateChannel(id, data);
-            await refreshSettings();
+            const updatedChannel = await api.updateChannel(id, data);
+            updateChannelsState(channels.map(c => c.id === id ? updatedChannel : c));
         } catch (err: any) {
             setError(err.message || 'Failed to update channel');
             throw err;
@@ -178,7 +204,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             setLoading(true);
             setError(null);
             await api.deleteChannel(id);
-            await refreshSettings();
+            updateChannelsState(channels.filter(c => c.id !== id));
         } catch (err: any) {
             setError(err.message || 'Failed to delete channel');
             throw err;

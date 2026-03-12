@@ -3210,22 +3210,25 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
         }
         setIsConnecting(true);
         setError(null);
-        // Simulate OAuth redirect or connection flow
+        // Simulate creation flow
         setTimeout(async ()=>{
             try {
-                const mockKey = `oauth-${platform.toLowerCase()}-key-${Date.now()}`;
-                const mockSecret = `oauth-${platform.toLowerCase()}-secret-${Date.now()}`;
+                // If the platform is ShipStation, we DO NOT generate mock keys anymore.
+                // It must run through the real auth flow from the channel list.
+                const isShipStation = platform === 'ShipStation';
+                const mockKey = isShipStation ? '' : `oauth-${platform.toLowerCase()}-key-${Date.now()}`;
+                const mockSecret = isShipStation ? '' : `oauth-${platform.toLowerCase()}-secret-${Date.now()}`;
                 await addChannel({
                     channel: platform,
                     storeName: storeName.trim(),
-                    isEnabled: true,
+                    isEnabled: !isShipStation,
                     apiKey: mockKey,
                     apiSecret: mockSecret,
                     defaultWarehouseId: defaultWarehouseId || undefined,
                     autoImportOrders: autoImport,
                     syncInventory: syncInventory,
                     syncTracking: syncTracking,
-                    notes: `Connected via Web UI`
+                    notes: isShipStation ? `Pending API Key Authorization` : `Connected via Web UI`
                 });
                 setIsConnecting(false);
                 onClose(); // Auto-close on success
@@ -3234,7 +3237,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                 setError(e.message || "Failed to establish secure connection.");
                 setIsConnecting(false);
             }
-        }, 1500);
+        }, 1000);
     };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         style: {
@@ -3283,7 +3286,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                             children: "Set Up Store Connection"
                         }, void 0, false, {
                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                            lineNumber: 84,
+                            lineNumber: 88,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0)),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -3304,18 +3307,18 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                 size: 20
                             }, void 0, false, {
                                 fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                lineNumber: 91,
+                                lineNumber: 95,
                                 columnNumber: 25
                             }, ("TURBOPACK compile-time value", void 0))
                         }, void 0, false, {
                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                            lineNumber: 85,
+                            lineNumber: 89,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0))
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                    lineNumber: 78,
+                    lineNumber: 82,
                     columnNumber: 17
                 }, ("TURBOPACK compile-time value", void 0)),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3335,7 +3338,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                             children: platform
                         }, void 0, false, {
                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                            lineNumber: 98,
+                            lineNumber: 102,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0)),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3352,7 +3355,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                            lineNumber: 100,
+                            lineNumber: 104,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0)),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3380,13 +3383,13 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                     children: "*"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                    lineNumber: 107,
+                                                    lineNumber: 111,
                                                     columnNumber: 44
                                                 }, ("TURBOPACK compile-time value", void 0))
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                            lineNumber: 106,
+                                            lineNumber: 110,
                                             columnNumber: 29
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -3407,7 +3410,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                            lineNumber: 109,
+                                            lineNumber: 113,
                                             columnNumber: 29
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3427,7 +3430,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                            lineNumber: 124,
+                                            lineNumber: 128,
                                             columnNumber: 33
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3439,13 +3442,13 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                             children: "Choose a unique name to identify this specific connection."
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                            lineNumber: 128,
+                                            lineNumber: 132,
                                             columnNumber: 29
                                         }, ("TURBOPACK compile-time value", void 0))
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                    lineNumber: 105,
+                                    lineNumber: 109,
                                     columnNumber: 25
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3460,7 +3463,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                             children: "Default Warehouse"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                            lineNumber: 134,
+                                            lineNumber: 138,
                                             columnNumber: 29
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -3481,7 +3484,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                     children: "-- Let system decide (Unassigned) --"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                    lineNumber: 146,
+                                                    lineNumber: 150,
                                                     columnNumber: 33
                                                 }, ("TURBOPACK compile-time value", void 0)),
                                                 warehouses?.map((w)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -3493,13 +3496,13 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                         ]
                                                     }, w.id, true, {
                                                         fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                        lineNumber: 148,
+                                                        lineNumber: 152,
                                                         columnNumber: 37
                                                     }, ("TURBOPACK compile-time value", void 0)))
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                            lineNumber: 137,
+                                            lineNumber: 141,
                                             columnNumber: 29
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3511,13 +3514,13 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                             children: "Orders imported from this store will be assigned to this warehouse by default."
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                            lineNumber: 151,
+                                            lineNumber: 155,
                                             columnNumber: 29
                                         }, ("TURBOPACK compile-time value", void 0))
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                    lineNumber: 133,
+                                    lineNumber: 137,
                                     columnNumber: 25
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3531,7 +3534,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                             children: "Initial Configuration Options"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                            lineNumber: 157,
+                                            lineNumber: 161,
                                             columnNumber: 29
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3564,7 +3567,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                             }
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                            lineNumber: 161,
+                                                            lineNumber: 165,
                                                             columnNumber: 37
                                                         }, ("TURBOPACK compile-time value", void 0)),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3577,7 +3580,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                                     children: "Auto-Import Orders"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                                    lineNumber: 168,
+                                                                    lineNumber: 172,
                                                                     columnNumber: 41
                                                                 }, ("TURBOPACK compile-time value", void 0)),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3588,19 +3591,19 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                                     children: "Immediately fetch unfulfilled orders"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                                    lineNumber: 169,
+                                                                    lineNumber: 173,
                                                                     columnNumber: 41
                                                                 }, ("TURBOPACK compile-time value", void 0))
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                            lineNumber: 167,
+                                                            lineNumber: 171,
                                                             columnNumber: 37
                                                         }, ("TURBOPACK compile-time value", void 0))
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                    lineNumber: 160,
+                                                    lineNumber: 164,
                                                     columnNumber: 33
                                                 }, ("TURBOPACK compile-time value", void 0)),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -3622,7 +3625,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                             }
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                            lineNumber: 174,
+                                                            lineNumber: 178,
                                                             columnNumber: 37
                                                         }, ("TURBOPACK compile-time value", void 0)),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3635,7 +3638,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                                     children: "Sync Inventory"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                                    lineNumber: 181,
+                                                                    lineNumber: 185,
                                                                     columnNumber: 41
                                                                 }, ("TURBOPACK compile-time value", void 0)),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3646,19 +3649,19 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                                     children: "Push stock levels continuously"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                                    lineNumber: 182,
+                                                                    lineNumber: 186,
                                                                     columnNumber: 41
                                                                 }, ("TURBOPACK compile-time value", void 0))
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                            lineNumber: 180,
+                                                            lineNumber: 184,
                                                             columnNumber: 37
                                                         }, ("TURBOPACK compile-time value", void 0))
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                    lineNumber: 173,
+                                                    lineNumber: 177,
                                                     columnNumber: 33
                                                 }, ("TURBOPACK compile-time value", void 0)),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -3680,7 +3683,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                             }
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                            lineNumber: 187,
+                                                            lineNumber: 191,
                                                             columnNumber: 37
                                                         }, ("TURBOPACK compile-time value", void 0)),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3693,7 +3696,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                                     children: "Sync Tracking Numbers"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                                    lineNumber: 194,
+                                                                    lineNumber: 198,
                                                                     columnNumber: 41
                                                                 }, ("TURBOPACK compile-time value", void 0)),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3707,43 +3710,43 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                                    lineNumber: 195,
+                                                                    lineNumber: 199,
                                                                     columnNumber: 41
                                                                 }, ("TURBOPACK compile-time value", void 0))
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                            lineNumber: 193,
+                                                            lineNumber: 197,
                                                             columnNumber: 37
                                                         }, ("TURBOPACK compile-time value", void 0))
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                    lineNumber: 186,
+                                                    lineNumber: 190,
                                                     columnNumber: 33
                                                 }, ("TURBOPACK compile-time value", void 0))
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                            lineNumber: 158,
+                                            lineNumber: 162,
                                             columnNumber: 29
                                         }, ("TURBOPACK compile-time value", void 0))
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                    lineNumber: 156,
+                                    lineNumber: 160,
                                     columnNumber: 25
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                            lineNumber: 104,
+                            lineNumber: 108,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0))
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                    lineNumber: 96,
+                    lineNumber: 100,
                     columnNumber: 17
                 }, ("TURBOPACK compile-time value", void 0)),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3770,7 +3773,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                             children: "Back"
                         }, void 0, false, {
                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                            lineNumber: 212,
+                            lineNumber: 216,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0)),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3788,7 +3791,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                     children: "Cancel"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                    lineNumber: 222,
+                                    lineNumber: 226,
                                     columnNumber: 25
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -3811,7 +3814,7 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                                lineNumber: 230,
+                                                lineNumber: 234,
                                                 columnNumber: 35
                                             }, ("TURBOPACK compile-time value", void 0)),
                                             " Connecting..."
@@ -3819,30 +3822,30 @@ const SetupStoreModal = ({ isOpen, onClose, platform })=>{
                                     }, void 0, true) : "Connect"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                                    lineNumber: 223,
+                                    lineNumber: 227,
                                     columnNumber: 25
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                            lineNumber: 221,
+                            lineNumber: 225,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0))
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-                    lineNumber: 206,
+                    lineNumber: 210,
                     columnNumber: 17
                 }, ("TURBOPACK compile-time value", void 0))
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-            lineNumber: 71,
+            lineNumber: 75,
             columnNumber: 13
         }, ("TURBOPACK compile-time value", void 0))
     }, void 0, false, {
         fileName: "[project]/src/components/integrations/SetupStoreModal.tsx",
-        lineNumber: 65,
+        lineNumber: 69,
         columnNumber: 9
     }, ("TURBOPACK compile-time value", void 0));
 };

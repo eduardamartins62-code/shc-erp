@@ -15,6 +15,8 @@ interface InventoryContextType {
     adjustStock: (data: AdjustmentFormData) => Promise<void>;
     transferStock: (data: TransferFormData) => Promise<void>;
     reverseMovement: (movementId: string) => Promise<void>;
+    reserveInventory: (items: { sku: string, quantity: number }[], performedBy: string) => Promise<void>;
+    releaseInventory: (items: { sku: string, quantity: number }[], performedBy: string) => Promise<void>;
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
@@ -108,6 +110,30 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
         }
     };
 
+    const reserveInventory = async (items: { sku: string, quantity: number }[], performedBy: string) => {
+        try {
+            setLoading(true);
+            await api.reserveInventory(items, performedBy);
+            await refreshInventory();
+        } catch (err: any) {
+            setError(err.message || 'Failed to reserve inventory');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const releaseInventory = async (items: { sku: string, quantity: number }[], performedBy: string) => {
+        try {
+            setLoading(true);
+            await api.releaseInventory(items, performedBy);
+            await refreshInventory();
+        } catch (err: any) {
+            setError(err.message || 'Failed to release inventory');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <InventoryContext.Provider
             value={{
@@ -121,7 +147,9 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
                 receiveStock,
                 adjustStock,
                 transferStock,
-                reverseMovement
+                reverseMovement,
+                reserveInventory,
+                releaseInventory
             }}
         >
             {children}

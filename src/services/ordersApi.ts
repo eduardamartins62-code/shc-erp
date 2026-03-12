@@ -316,5 +316,36 @@ export const ordersApi = {
 
         ordersStore[index] = order;
         return order;
+    },
+
+    cancelOrder: async (orderId: string, reason: string, performedBy: string): Promise<Order> => {
+        await delay(400);
+        const index = ordersStore.findIndex(o => o.id === orderId);
+        if (index === -1) throw new Error(`Order ${orderId} not found`);
+
+        const order = { ...ordersStore[index] };
+        if (order.fulfillmentStatus === 'Shipped') {
+            throw new Error('Cannot cancel an order that has already shipped');
+        }
+
+        order.fulfillmentStatus = 'Cancelled';
+        order.canceledAt = new Date().toISOString();
+        order.canceledBy = performedBy;
+        order.cancellationReason = reason;
+
+        order.timeline = [
+            ...order.timeline,
+            {
+                id: uuidv4(),
+                orderId,
+                timestamp: order.canceledAt,
+                action: 'Order Cancelled',
+                performedBy,
+                notes: `Reason: ${reason}`
+            }
+        ];
+
+        ordersStore[index] = order;
+        return order;
     }
 };

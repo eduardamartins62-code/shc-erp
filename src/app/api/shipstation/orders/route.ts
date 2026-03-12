@@ -13,6 +13,7 @@ export async function GET(request: Request) {
         }
 
         // Fetch orders from ShipStation
+        console.log(`[ShipStation] Fetching orders with orderStatus=awaiting_shipment...`);
         const response = await fetch('https://ssapi.shipstation.com/orders?orderStatus=awaiting_shipment', {
             method: 'GET',
             headers: {
@@ -22,10 +23,12 @@ export async function GET(request: Request) {
         });
 
         if (!response.ok) {
+            console.error(`[ShipStation] API Error: ${response.status} ${response.statusText}`);
             return NextResponse.json({ error: `ShipStation API Error: ${response.statusText}` }, { status: response.status });
         }
 
         const data = await response.json();
+        console.log(`[ShipStation] Successfully fetched orders. Total orders in response: ${data.orders?.length || 0}`);
         return NextResponse.json(data);
 
     } catch (error: any) {

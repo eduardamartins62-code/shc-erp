@@ -32,23 +32,27 @@ export const SetupStoreModal: React.FC<SetupStoreModalProps> = ({ isOpen, onClos
         setIsConnecting(true);
         setError(null);
 
-        // Simulate OAuth redirect or connection flow
+        // Simulate creation flow
         setTimeout(async () => {
             try {
-                const mockKey = `oauth-${platform.toLowerCase()}-key-${Date.now()}`;
-                const mockSecret = `oauth-${platform.toLowerCase()}-secret-${Date.now()}`;
+                // If the platform is ShipStation, we DO NOT generate mock keys anymore.
+                // It must run through the real auth flow from the channel list.
+                const isShipStation = platform === 'ShipStation';
+                
+                const mockKey = isShipStation ? '' : `oauth-${platform.toLowerCase()}-key-${Date.now()}`;
+                const mockSecret = isShipStation ? '' : `oauth-${platform.toLowerCase()}-secret-${Date.now()}`;
 
                 await addChannel({
                     channel: platform,
                     storeName: storeName.trim(),
-                    isEnabled: true,
+                    isEnabled: !isShipStation, // ShipStation starts disabled until keys are provided
                     apiKey: mockKey,
                     apiSecret: mockSecret,
                     defaultWarehouseId: defaultWarehouseId || undefined,
                     autoImportOrders: autoImport,
                     syncInventory: syncInventory,
                     syncTracking: syncTracking,
-                    notes: `Connected via Web UI`
+                    notes: isShipStation ? `Pending API Key Authorization` : `Connected via Web UI`
                 });
 
                 setIsConnecting(false);
@@ -58,7 +62,7 @@ export const SetupStoreModal: React.FC<SetupStoreModalProps> = ({ isOpen, onClos
                 setError(e.message || "Failed to establish secure connection.");
                 setIsConnecting(false);
             }
-        }, 1500);
+        }, 1000);
     };
 
     return (

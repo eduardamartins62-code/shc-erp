@@ -4,7 +4,7 @@ import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useOrders } from '../context/OrderContext';
 import StatusBadge from '../components/StatusBadge';
-import { ArrowLeft, Package, MapPin, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { SkuLink } from '../components/ui/SkuLink';
 import type { OrderItem } from '../types';
@@ -70,7 +70,16 @@ const OrderDetails: React.FC = () => {
     };
 
     const itemColumns: Column<OrderItem>[] = [
-        { key: 'sku', label: 'SKU', type: 'text', filterable: true, render: (val) => <SkuLink sku={val as string} /> },
+        { key: 'sku', label: 'SKU', type: 'text', filterable: true, render: (val, item) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <SkuLink sku={val as string} />
+                {item.mappingStatus === 'Unmapped' && (
+                    <span title="Unmapped SKU" style={{ display: 'flex' }}>
+                        <AlertTriangle size={14} color="var(--color-shc-red)" />
+                    </span>
+                )}
+            </div>
+        ) },
         { key: 'quantity', label: 'Qty', type: 'number-range', filterable: true, render: (val) => <span style={{ textAlign: 'right', display: 'block' }}>{val}</span> },
         {
             key: 'price',
@@ -140,6 +149,12 @@ const OrderDetails: React.FC = () => {
                     </h1>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', color: 'var(--color-text-muted)' }}>
                         <span>Channel: <strong>{order.channel}</strong></span>
+                        {order.storeName && (
+                            <>
+                                <span>•</span>
+                                <span>Store: <strong>{order.storeName}</strong></span>
+                            </>
+                        )}
                         <span>•</span>
                         <span>Date: {new Date(order.orderDate).toLocaleString()}</span>
                     </div>
@@ -154,48 +169,86 @@ const OrderDetails: React.FC = () => {
                 {/* Left Column: Flow & Items */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
+                    {/* Unmapped SKU Warning */}
+                    {order.items.some(i => i.mappingStatus === 'Unmapped') && (
+                        <div style={{
+                            backgroundColor: 'var(--color-bg-warning)',
+                            border: '1px solid var(--color-status-reserved)',
+                            color: '#92400e',
+                            padding: '1rem',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1rem'
+                        }}>
+                            <AlertTriangle size={24} style={{ flexShrink: 0 }} />
+                            <div>
+                                <h4 style={{ margin: '0 0 0.25rem 0', fontWeight: 600 }}>Unmapped SKUs Detected</h4>
+                                <p style={{ margin: 0, fontSize: '0.875rem' }}>Some items in this order do not match any known SKU in your inventory. Please create or map these SKUs before attempting to fulfill this order.</p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Action Panel */}
                     <div className="card" style={{ backgroundColor: '#fafafa' }}>
                         <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--color-primary-dark)' }}>Workflow Actions</h3>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            {order.fulfillmentStatus === 'New' && (
-                                <button className="btn-primary" onClick={handleAllocate}>
-                                    <MapPin size={16} /> Allocate Inventory
-                                </button>
-                            )}
-                            {order.fulfillmentStatus === 'Allocated' && (
-                                <button className="btn-primary" onClick={handlePick}>
-                                    <Package size={16} /> Start Picking
-                                </button>
-                            )}
-                            {order.fulfillmentStatus === 'Picking' && (
-                                <button className="btn-primary" onClick={handlePack}>
-                                    <CheckCircle size={16} /> Mark as Packed
-                                </button>
-                            )}
-                            {order.fulfillmentStatus === 'Packed' && (
-                                <button className="btn-primary" onClick={handleShip}>
-                                    Ship Order
-                                </button>
-                            )}
+                        
+                        {order.fulfillmentStatus === 'Cancelled' ? (
+                            <div style={{ backgroundColor: 'var(--color-bg-danger)', padding: '1rem', borderRadius: '6px', border: '1px solid var(--color-status-expired)', color: 'var(--color-shc-red)' }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <CheckCircle size={16} /> Order Cancelled
+                                </div>
+                                <div style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                                    <strong>Cancelled By:</strong> {order.canceledBy || 'System'}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                                    <strong>Date:</strong> {order.canceledAt ? new Date(order.canceledAt).toLocaleString() : 'Unknown'}
+                                </div>
+                                <div style={{ fontSize: '0.875rem' }}>
+                                    <strong>Reason:</strong> {order.cancellationReason || 'No reason provided'}
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                {order.fulfillmentStatus === 'New' && (
+                                    <button className="btn-primary" onClick={handleAllocate}>
+                                        <MapPin size={16} /> Allocate Inventory
+                                    </button>
+                                )}
+                                {order.fulfillmentStatus === 'Allocated' && (
+                                    <button className="btn-primary" onClick={handlePick}>
+                                        <Package size={16} /> Start Picking
+                                    </button>
+                                )}
+                                {order.fulfillmentStatus === 'Picking' && (
+                                    <button className="btn-primary" onClick={handlePack}>
+                                        <CheckCircle size={16} /> Mark as Packed
+                                    </button>
+                                )}
+                                {order.fulfillmentStatus === 'Packed' && (
+                                    <button className="btn-primary" onClick={handleShip}>
+                                        Ship Order
+                                    </button>
+                                )}
 
-                            {/* Generic actions available depending on status */}
-                            {['Allocated', 'Picking'].includes(order.fulfillmentStatus) && (
-                                <button className="btn-secondary">
-                                    Print Pick List
-                                </button>
-                            )}
-                            {['Packed', 'Shipped'].includes(order.fulfillmentStatus) && (
-                                <button className="btn-secondary" onClick={() => setShowPrintModal(true)}>
-                                    Print Packing Slip
-                                </button>
-                            )}
-                            {order.fulfillmentStatus !== 'Cancelled' && order.fulfillmentStatus !== 'Shipped' && (
-                                <button className="btn-secondary" style={{ color: 'var(--color-shc-red)', borderColor: 'var(--color-shc-red)' }} onClick={() => setShowCancelModal(true)}>
-                                    Cancel Order
-                                </button>
-                            )}
-                        </div>
+                                {/* Generic actions available depending on status */}
+                                {['Allocated', 'Picking'].includes(order.fulfillmentStatus) && (
+                                    <button className="btn-secondary">
+                                        Print Pick List
+                                    </button>
+                                )}
+                                {['Packed', 'Shipped'].includes(order.fulfillmentStatus) && (
+                                    <button className="btn-secondary" onClick={() => setShowPrintModal(true)}>
+                                        Print Packing Slip
+                                    </button>
+                                )}
+                                {order.fulfillmentStatus !== 'Shipped' && (
+                                    <button className="btn-secondary" style={{ color: 'var(--color-shc-red)', borderColor: 'var(--color-shc-red)' }} onClick={() => setShowCancelModal(true)}>
+                                        Cancel Order
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Order Items */}

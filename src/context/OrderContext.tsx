@@ -3,6 +3,7 @@ import type { Order, OrderStatus, B2BOrderFormData } from '../types';
 import { ordersApi } from '../services/ordersApi';
 import { useSettings } from './SettingsContext';
 import { shipstationApi } from '../services/shipstationApi';
+import { useInventory } from './InventoryContext';
 
 interface OrderContextProps {
     orders: Order[];
@@ -13,6 +14,7 @@ interface OrderContextProps {
     updateOrderStatus: (orderId: string, status: OrderStatus, performedBy: string, notes?: string) => Promise<void>;
     allocateOrderInventory: (orderId: string, performedBy: string) => Promise<void>;
     syncShipStationOrders: () => Promise<void>;
+    cancelOrder: (orderId: string, reason: string, performedBy: string) => Promise<void>;
 }
 
 const OrderContext = createContext<OrderContextProps | undefined>(undefined);
@@ -30,6 +32,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { channels } = useSettings();
+    const { reserveInventory, releaseInventory, inventory } = useInventory();
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -49,6 +52,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setError(null);
         try {
             await ordersApi.createB2BOrder(data);
+            await reserveInventory(data.items.map(i => ({ sku: i.sku, quantity: i.quantity })), data.performedBy);
             await fetchOrders(); // Refresh table
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create B2B order');
@@ -87,6 +91,24 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
     };
 
+    const cancelOrder = async (orderId: string, reason: string, performedBy: string) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const orderToCancel = orders.find(o => o.id === orderId);
+            await ordersApi.cancelOrder(orderId, reason, performedBy);
+            if (orderToCancel) {
+                await releaseInventory(orderToCancel.items.map(i => ({ sku: i.sku, quantity: i.quantity })), performedBy);
+            }
+            await fetchOrders();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to cancel order');
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const syncShipStationOrders = async () => {
         setLoading(true);
         setError(null);
@@ -101,12 +123,34 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
             const newOrders = await shipstationApi.fetchOrders(ssChannel.apiKey, ssChannel.apiSecret);
 
+            const existingIds = new Set(orders.map(o => o.id)); // Use current orders snapshot
+            const toAdd = newOrders.filter(o => !existingIds.has(o.id));
+
+            if (toAdd.length > 0) {
+                // Cross-reference with inventory to set mappingStatus
+                const existingSkus = new Set(inventory.map(inv => inv.id));
+                toAdd.forEach(order => {
+                    order.items.forEach(item => {
+                        item.mappingStatus = existingSkus.has(item.sku) ? 'Mapped' : 'Unmapped';
+                    });
+                });
+
+                // Reserve inventory for valid items automatically
+                const itemsToReserve = toAdd.flatMap(o => 
+                    o.items.filter(i => i.mappingStatus === 'Mapped').map(i => ({ sku: i.sku, quantity: i.quantity }))
+                );
+                
+                if (itemsToReserve.length > 0) {
+                    await reserveInventory(itemsToReserve, 'System API Sync');
+                }
+            }
+
             // In a real app we'd save these via the backend ordersApi.
             // For now, we simulate inserting them into our context/store.
             setOrders(prev => {
-                const existingIds = new Set(prev.map(o => o.id));
-                const toAdd = newOrders.filter(o => !existingIds.has(o.id));
-                return [...toAdd, ...prev];
+                const prevIds = new Set(prev.map(o => o.id));
+                const uniqueToAdd = toAdd.filter(o => !prevIds.has(o.id));
+                return [...uniqueToAdd, ...prev];
             });
 
         } catch (err) {
@@ -132,6 +176,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 updateOrderStatus,
                 allocateOrderInventory,
                 syncShipStationOrders,
+                cancelOrder,
             }}
         >
             {children}

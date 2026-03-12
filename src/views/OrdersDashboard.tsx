@@ -8,6 +8,20 @@ const OrdersDashboard: React.FC = () => {
     const { orders, loading, error, syncShipStationOrders } = useOrders();
     const [isB2BModalOpen, setIsB2BModalOpen] = useState(false);
     const [syncing, setSyncing] = useState(false);
+    const [activeTab, setActiveTab] = useState<'Pending' | 'Shipped' | 'Cancelled'>('Pending');
+
+    const pendingOrders = orders.filter(o => ['New', 'Allocated', 'Picking', 'Packed'].includes(o.fulfillmentStatus));
+    const shippedOrders = orders.filter(o => o.fulfillmentStatus === 'Shipped');
+    const cancelledOrders = orders.filter(o => o.fulfillmentStatus === 'Cancelled');
+
+    const getFilteredOrders = () => {
+        switch (activeTab) {
+            case 'Pending': return pendingOrders;
+            case 'Shipped': return shippedOrders;
+            case 'Cancelled': return cancelledOrders;
+            default: return pendingOrders;
+        }
+    };
 
     const totalOrders = orders.length;
     const newOrders = orders.filter(o => o.fulfillmentStatus === 'New').length;
@@ -83,10 +97,54 @@ const OrdersDashboard: React.FC = () => {
 
             {/* Main Table Layer */}
             <div className="card">
-                <h2 style={{ fontSize: '1.25rem', marginTop: 0, marginBottom: '1.5rem', color: 'var(--color-primary-dark)' }}>
-                    Recent Orders
-                </h2>
-                <OrderTable orders={orders} loading={loading} />
+                <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem', paddingBottom: '0.5rem' }}>
+                    <button
+                        onClick={() => setActiveTab('Pending')}
+                        style={{
+                            background: 'none', border: 'none', padding: '0.5rem 1rem', cursor: 'pointer',
+                            fontWeight: activeTab === 'Pending' ? 600 : 400,
+                            color: activeTab === 'Pending' ? 'var(--color-primary-dark)' : 'var(--color-text-muted)',
+                            borderBottom: activeTab === 'Pending' ? '2px solid var(--color-primary-dark)' : '2px solid transparent',
+                            marginBottom: '-9px',
+                            display: 'flex', alignItems: 'center', gap: '0.5rem'
+                        }}
+                    >
+                        Pending <span style={{ backgroundColor: '#e2e8f0', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', color: '#1e293b' }}>{pendingOrders.length}</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('Shipped')}
+                        style={{
+                            background: 'none', border: 'none', padding: '0.5rem 1rem', cursor: 'pointer',
+                            fontWeight: activeTab === 'Shipped' ? 600 : 400,
+                            color: activeTab === 'Shipped' ? 'var(--color-primary-dark)' : 'var(--color-text-muted)',
+                            borderBottom: activeTab === 'Shipped' ? '2px solid var(--color-primary-dark)' : '2px solid transparent',
+                            marginBottom: '-9px',
+                            display: 'flex', alignItems: 'center', gap: '0.5rem'
+                        }}
+                    >
+                        Shipped <span style={{ backgroundColor: '#e2e8f0', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', color: '#1e293b' }}>{shippedOrders.length}</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('Cancelled')}
+                        style={{
+                            background: 'none', border: 'none', padding: '0.5rem 1rem', cursor: 'pointer',
+                            fontWeight: activeTab === 'Cancelled' ? 600 : 400,
+                            color: activeTab === 'Cancelled' ? 'var(--color-shc-red)' : 'var(--color-text-muted)',
+                            borderBottom: activeTab === 'Cancelled' ? '2px solid var(--color-shc-red)' : '2px solid transparent',
+                            marginBottom: '-9px',
+                            display: 'flex', alignItems: 'center', gap: '0.5rem'
+                        }}
+                    >
+                        Cancelled <span style={{ backgroundColor: '#fef2f2', color: '#b91c1c', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem' }}>{cancelledOrders.length}</span>
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--color-primary-dark)' }}>
+                        {activeTab} Orders
+                    </h2>
+                </div>
+                <OrderTable orders={getFilteredOrders()} loading={loading} />
             </div>
 
             {isB2BModalOpen && (

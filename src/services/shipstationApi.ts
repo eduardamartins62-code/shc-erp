@@ -29,6 +29,12 @@ interface ShipStationOrderResponse {
     taxAmount: number;
     shippingAmount: number;
     customerNotes: string | null;
+    carrierCode?: string;
+    requestedShippingService?: string;
+    advancedOptions?: {
+        source?: string;
+        storeId?: number;
+    };
 }
 
 const mockShipStationResponse: ShipStationOrderResponse[] = [
@@ -156,7 +162,8 @@ export const shipstationApi = {
 
         // Map the real ShipStation data to our internal Order schema
         const mappedOrders: Order[] = ssOrders.map(ssOrder => {
-            const orderId = `ORD-SS-${ssOrder.orderId}`;
+            // Requirement 5: Exact ShipStation Order Number
+            const orderId = ssOrder.orderNumber;
 
             // Map items gracefully checking if items array exists
             const mappedItems: OrderItem[] = (ssOrder.items || []).map((item: any) => ({
@@ -166,6 +173,7 @@ export const shipstationApi = {
                 quantity: item.quantity,
                 price: item.unitPrice,
                 pickStatus: 'Pending',
+                mappingStatus: 'Mapped', // Will be determined by inventory check later
             }));
 
             // Subtotal
@@ -175,13 +183,17 @@ export const shipstationApi = {
             return {
                 id: orderId,
                 channel: 'ShipStation',
+                storeName: ssOrder.advancedOptions?.source || 'ShipStation Store',
                 customerName: ssOrder.customerUsername || 'Unknown Customer',
+                shipToName: ssOrder.shipTo?.name || 'Unknown Recipient',
                 customerEmail: ssOrder.customerEmail || 'no-email@shc.com',
                 shippingAddress: formatAddress(ssOrder.shipTo),
                 orderDate: ssOrder.orderDate,
                 // Map SS status to our internal
                 fulfillmentStatus: 'New',
                 paymentStatus: 'Paid',
+                carrier: ssOrder.carrierCode,
+                requestedService: ssOrder.requestedShippingService,
                 items: mappedItems,
                 timeline: [
                     {

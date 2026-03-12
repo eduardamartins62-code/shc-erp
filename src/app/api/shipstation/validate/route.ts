@@ -10,6 +10,8 @@ export async function POST(request: Request) {
         }
 
         const base64Credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
+        
+        console.log(`[ShipStation Auth] Attempting validation with Key ending in ...${apiKey.slice(-4)}`);
 
         // We use the tags or stores endpoint just to validate credentials are correct
         const response = await fetch('https://ssapi.shipstation.com/stores', {
@@ -19,6 +21,8 @@ export async function POST(request: Request) {
                 'Content-Type': 'application/json'
             }
         });
+        
+        console.log(`[ShipStation Auth] Response Status: ${response.status} ${response.statusText}`);
 
         if (!response.ok) {
             if (response.status === 401) {

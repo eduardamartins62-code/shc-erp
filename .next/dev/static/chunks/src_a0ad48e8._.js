@@ -1192,7 +1192,7 @@ var _s = __turbopack_context__.k.signature();
 ;
 const CancelOrderModal = ({ order, isOpen, onClose })=>{
     _s();
-    const { updateOrderStatus } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$OrderContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useOrders"])();
+    const { cancelOrder } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$OrderContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useOrders"])();
     const [reason, setReason] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('Customer Request');
     const [customReason, setCustomReason] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     const [isCancelling, setIsCancelling] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
@@ -1214,12 +1214,7 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
         const finalReason = reason === 'Other' ? customReason : reason;
         setIsCancelling(true);
         try {
-            await updateOrderStatus(order.id, 'Cancelled', 'System Admin', finalReason);
-            // In a full app, a useToast hook would be used here. 
-            // We simulate the toast as requested (assuming toast will be hooked up later or we just alert for now, wait the prompt said "show a brief success toast" - we can use the toast context if it exists, otherwise dispatch a custom event).
-            // Actually, we must use the Toast context if it exists. But to be safe and simple, let's dispatch a custom event that the root might listen to, or just close. 
-            // Wait, the prompt says "toast notifications... should follow the existing notification pattern". Let's assume there is a Toast component or context, but since I am not sure of the exact hook name, I will dispatch a custom event or check if we know it. From file list, I see `ToastContext.tsx`. Let's assume `useToast` exists. But we'll omit the import and just do a console or let OrderDetails handle toast if we can't import it.
-            // Let's import it conditionally or just assume `useToast`.
+            await cancelOrder(order.id, finalReason, 'System Admin');
             onClose();
             // Just simulate toast in UI via a global event for now if `useToast` isn't imported, but actually I will just use `alert` fallback removed.
             // Let's use a simple custom event.
@@ -1280,7 +1275,7 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                                     color: "var(--color-shc-red)"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                    lineNumber: 64,
+                                    lineNumber: 59,
                                     columnNumber: 25
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 " Cancel Order #",
@@ -1288,7 +1283,7 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                            lineNumber: 63,
+                            lineNumber: 58,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0)),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1303,13 +1298,13 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                             children: "×"
                         }, void 0, false, {
                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                            lineNumber: 66,
+                            lineNumber: 61,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0))
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                    lineNumber: 62,
+                    lineNumber: 57,
                     columnNumber: 17
                 }, ("TURBOPACK compile-time value", void 0)),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1339,7 +1334,7 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                    lineNumber: 72,
+                                    lineNumber: 67,
                                     columnNumber: 25
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1352,20 +1347,20 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                                             children: "Warning:"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                            lineNumber: 74,
+                                            lineNumber: 69,
                                             columnNumber: 29
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         " This action cannot be undone. Inventory reservations for this order will be reversed."
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                    lineNumber: 73,
+                                    lineNumber: 68,
                                     columnNumber: 25
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                            lineNumber: 71,
+                            lineNumber: 66,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0)),
                         isPartiallyPicked && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1387,7 +1382,7 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                    lineNumber: 80,
+                                    lineNumber: 75,
                                     columnNumber: 29
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1400,20 +1395,20 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                                             children: "Restocking Required:"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                            lineNumber: 82,
+                                            lineNumber: 77,
                                             columnNumber: 33
                                         }, ("TURBOPACK compile-time value", void 0)),
                                         " This order has already been partially picked or packed. Physical items must be returned to stock."
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                    lineNumber: 81,
+                                    lineNumber: 76,
                                     columnNumber: 29
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                            lineNumber: 79,
+                            lineNumber: 74,
                             columnNumber: 25
                         }, ("TURBOPACK compile-time value", void 0)),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1427,7 +1422,7 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                                     children: "Cancellation Reason *"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                    lineNumber: 88,
+                                    lineNumber: 83,
                                     columnNumber: 25
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -1439,18 +1434,18 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                                             children: r
                                         }, r, false, {
                                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                            lineNumber: 94,
+                                            lineNumber: 89,
                                             columnNumber: 47
                                         }, ("TURBOPACK compile-time value", void 0)))
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                    lineNumber: 89,
+                                    lineNumber: 84,
                                     columnNumber: 25
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                            lineNumber: 87,
+                            lineNumber: 82,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0)),
                         reason === 'Other' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1464,7 +1459,7 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                                     children: "Custom Reason *"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                    lineNumber: 100,
+                                    lineNumber: 95,
                                     columnNumber: 29
                                 }, ("TURBOPACK compile-time value", void 0)),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -1476,19 +1471,19 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                                     required: true
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                                    lineNumber: 101,
+                                    lineNumber: 96,
                                     columnNumber: 29
                                 }, ("TURBOPACK compile-time value", void 0))
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                            lineNumber: 99,
+                            lineNumber: 94,
                             columnNumber: 25
                         }, ("TURBOPACK compile-time value", void 0))
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                    lineNumber: 69,
+                    lineNumber: 64,
                     columnNumber: 17
                 }, ("TURBOPACK compile-time value", void 0)),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1508,7 +1503,7 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                             children: "Keep Order"
                         }, void 0, false, {
                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                            lineNumber: 115,
+                            lineNumber: 110,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0)),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1518,28 +1513,28 @@ const CancelOrderModal = ({ order, isOpen, onClose })=>{
                             children: isCancelling ? 'Cancelling...' : 'Confirm Cancellation'
                         }, void 0, false, {
                             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                            lineNumber: 116,
+                            lineNumber: 111,
                             columnNumber: 21
                         }, ("TURBOPACK compile-time value", void 0))
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-                    lineNumber: 114,
+                    lineNumber: 109,
                     columnNumber: 17
                 }, ("TURBOPACK compile-time value", void 0))
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-            lineNumber: 61,
+            lineNumber: 56,
             columnNumber: 13
         }, ("TURBOPACK compile-time value", void 0))
     }, void 0, false, {
         fileName: "[project]/src/components/orders/CancelOrderModal.tsx",
-        lineNumber: 57,
+        lineNumber: 52,
         columnNumber: 9
     }, ("TURBOPACK compile-time value", void 0));
 };
-_s(CancelOrderModal, "5xAw/8wQ0P4x4fWkivku81pCnos=", false, function() {
+_s(CancelOrderModal, "vzgzUNFTImULr0rmKrjlDAnV3aM=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$OrderContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useOrders"]
     ];
@@ -3604,6 +3599,27 @@ const OrdersDashboard = ()=>{
     const { orders, loading, error, syncShipStationOrders } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$OrderContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useOrders"])();
     const [isB2BModalOpen, setIsB2BModalOpen] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [syncing, setSyncing] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [activeTab, setActiveTab] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('Pending');
+    const pendingOrders = orders.filter((o)=>[
+            'New',
+            'Allocated',
+            'Picking',
+            'Packed'
+        ].includes(o.fulfillmentStatus));
+    const shippedOrders = orders.filter((o)=>o.fulfillmentStatus === 'Shipped');
+    const cancelledOrders = orders.filter((o)=>o.fulfillmentStatus === 'Cancelled');
+    const getFilteredOrders = ()=>{
+        switch(activeTab){
+            case 'Pending':
+                return pendingOrders;
+            case 'Shipped':
+                return shippedOrders;
+            case 'Cancelled':
+                return cancelledOrders;
+            default:
+                return pendingOrders;
+        }
+    };
     const totalOrders = orders.length;
     const newOrders = orders.filter((o)=>o.fulfillmentStatus === 'New').length;
     const pendingFulfillment = orders.filter((o)=>[
@@ -3643,7 +3659,7 @@ const OrdersDashboard = ()=>{
                                 children: "Multichannel Management"
                             }, void 0, false, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 23,
+                                lineNumber: 37,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -3657,7 +3673,7 @@ const OrdersDashboard = ()=>{
                                 children: "Order Management"
                             }, void 0, false, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 26,
+                                lineNumber: 40,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3669,13 +3685,13 @@ const OrdersDashboard = ()=>{
                                 children: "Manage multichannel fulfillment, allocation, and tracking."
                             }, void 0, false, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 29,
+                                lineNumber: 43,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/views/OrdersDashboard.tsx",
-                        lineNumber: 22,
+                        lineNumber: 36,
                         columnNumber: 17
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3705,14 +3721,14 @@ const OrdersDashboard = ()=>{
                                         size: 18
                                     }, void 0, false, {
                                         fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                        lineNumber: 49,
+                                        lineNumber: 63,
                                         columnNumber: 25
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     syncing ? 'Importing...' : 'Import Orders'
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 34,
+                                lineNumber: 48,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -3723,26 +3739,26 @@ const OrdersDashboard = ()=>{
                                         size: 18
                                     }, void 0, false, {
                                         fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                        lineNumber: 56,
+                                        lineNumber: 70,
                                         columnNumber: 25
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     "Create B2B Order"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 52,
+                                lineNumber: 66,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/views/OrdersDashboard.tsx",
-                        lineNumber: 33,
+                        lineNumber: 47,
                         columnNumber: 17
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                lineNumber: 21,
+                lineNumber: 35,
                 columnNumber: 13
             }, ("TURBOPACK compile-time value", void 0)),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3763,7 +3779,7 @@ const OrdersDashboard = ()=>{
                                 children: "Total Orders"
                             }, void 0, false, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 65,
+                                lineNumber: 79,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3775,13 +3791,13 @@ const OrdersDashboard = ()=>{
                                 children: totalOrders
                             }, void 0, false, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 66,
+                                lineNumber: 80,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/views/OrdersDashboard.tsx",
-                        lineNumber: 64,
+                        lineNumber: 78,
                         columnNumber: 17
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3796,7 +3812,7 @@ const OrdersDashboard = ()=>{
                                 children: "New / Unallocated"
                             }, void 0, false, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 69,
+                                lineNumber: 83,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3808,13 +3824,13 @@ const OrdersDashboard = ()=>{
                                 children: newOrders
                             }, void 0, false, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 70,
+                                lineNumber: 84,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/views/OrdersDashboard.tsx",
-                        lineNumber: 68,
+                        lineNumber: 82,
                         columnNumber: 17
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3829,7 +3845,7 @@ const OrdersDashboard = ()=>{
                                 children: "In Progress"
                             }, void 0, false, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 73,
+                                lineNumber: 87,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3841,19 +3857,19 @@ const OrdersDashboard = ()=>{
                                 children: pendingFulfillment
                             }, void 0, false, {
                                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                                lineNumber: 74,
+                                lineNumber: 88,
                                 columnNumber: 21
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/views/OrdersDashboard.tsx",
-                        lineNumber: 72,
+                        lineNumber: 86,
                         columnNumber: 17
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                lineNumber: 63,
+                lineNumber: 77,
                 columnNumber: 13
             }, ("TURBOPACK compile-time value", void 0)),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3870,54 +3886,194 @@ const OrdersDashboard = ()=>{
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                lineNumber: 79,
+                lineNumber: 93,
                 columnNumber: 17
             }, ("TURBOPACK compile-time value", void 0)),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "card",
                 children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         style: {
-                            fontSize: '1.25rem',
-                            marginTop: 0,
+                            display: 'flex',
+                            gap: '1rem',
+                            borderBottom: '1px solid var(--color-border)',
                             marginBottom: '1.5rem',
-                            color: 'var(--color-primary-dark)'
+                            paddingBottom: '0.5rem'
                         },
-                        children: "Recent Orders"
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                onClick: ()=>setActiveTab('Pending'),
+                                style: {
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '0.5rem 1rem',
+                                    cursor: 'pointer',
+                                    fontWeight: activeTab === 'Pending' ? 600 : 400,
+                                    color: activeTab === 'Pending' ? 'var(--color-primary-dark)' : 'var(--color-text-muted)',
+                                    borderBottom: activeTab === 'Pending' ? '2px solid var(--color-primary-dark)' : '2px solid transparent',
+                                    marginBottom: '-9px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem'
+                                },
+                                children: [
+                                    "Pending ",
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                        style: {
+                                            backgroundColor: '#e2e8f0',
+                                            padding: '2px 8px',
+                                            borderRadius: '12px',
+                                            fontSize: '0.75rem',
+                                            color: '#1e293b'
+                                        },
+                                        children: pendingOrders.length
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/views/OrdersDashboard.tsx",
+                                        lineNumber: 112,
+                                        columnNumber: 33
+                                    }, ("TURBOPACK compile-time value", void 0))
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/views/OrdersDashboard.tsx",
+                                lineNumber: 101,
+                                columnNumber: 21
+                            }, ("TURBOPACK compile-time value", void 0)),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                onClick: ()=>setActiveTab('Shipped'),
+                                style: {
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '0.5rem 1rem',
+                                    cursor: 'pointer',
+                                    fontWeight: activeTab === 'Shipped' ? 600 : 400,
+                                    color: activeTab === 'Shipped' ? 'var(--color-primary-dark)' : 'var(--color-text-muted)',
+                                    borderBottom: activeTab === 'Shipped' ? '2px solid var(--color-primary-dark)' : '2px solid transparent',
+                                    marginBottom: '-9px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem'
+                                },
+                                children: [
+                                    "Shipped ",
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                        style: {
+                                            backgroundColor: '#e2e8f0',
+                                            padding: '2px 8px',
+                                            borderRadius: '12px',
+                                            fontSize: '0.75rem',
+                                            color: '#1e293b'
+                                        },
+                                        children: shippedOrders.length
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/views/OrdersDashboard.tsx",
+                                        lineNumber: 125,
+                                        columnNumber: 33
+                                    }, ("TURBOPACK compile-time value", void 0))
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/views/OrdersDashboard.tsx",
+                                lineNumber: 114,
+                                columnNumber: 21
+                            }, ("TURBOPACK compile-time value", void 0)),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                onClick: ()=>setActiveTab('Cancelled'),
+                                style: {
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '0.5rem 1rem',
+                                    cursor: 'pointer',
+                                    fontWeight: activeTab === 'Cancelled' ? 600 : 400,
+                                    color: activeTab === 'Cancelled' ? 'var(--color-shc-red)' : 'var(--color-text-muted)',
+                                    borderBottom: activeTab === 'Cancelled' ? '2px solid var(--color-shc-red)' : '2px solid transparent',
+                                    marginBottom: '-9px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem'
+                                },
+                                children: [
+                                    "Cancelled ",
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                        style: {
+                                            backgroundColor: '#fef2f2',
+                                            color: '#b91c1c',
+                                            padding: '2px 8px',
+                                            borderRadius: '12px',
+                                            fontSize: '0.75rem'
+                                        },
+                                        children: cancelledOrders.length
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/views/OrdersDashboard.tsx",
+                                        lineNumber: 138,
+                                        columnNumber: 35
+                                    }, ("TURBOPACK compile-time value", void 0))
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/views/OrdersDashboard.tsx",
+                                lineNumber: 127,
+                                columnNumber: 21
+                            }, ("TURBOPACK compile-time value", void 0))
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/views/OrdersDashboard.tsx",
+                        lineNumber: 100,
+                        columnNumber: 17
+                    }, ("TURBOPACK compile-time value", void 0)),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        style: {
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '1.5rem'
+                        },
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                            style: {
+                                fontSize: '1.25rem',
+                                margin: 0,
+                                color: 'var(--color-primary-dark)'
+                            },
+                            children: [
+                                activeTab,
+                                " Orders"
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/views/OrdersDashboard.tsx",
+                            lineNumber: 143,
+                            columnNumber: 21
+                        }, ("TURBOPACK compile-time value", void 0))
                     }, void 0, false, {
                         fileName: "[project]/src/views/OrdersDashboard.tsx",
-                        lineNumber: 86,
+                        lineNumber: 142,
                         columnNumber: 17
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$OrderTable$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
-                        orders: orders,
+                        orders: getFilteredOrders(),
                         loading: loading
                     }, void 0, false, {
                         fileName: "[project]/src/views/OrdersDashboard.tsx",
-                        lineNumber: 89,
+                        lineNumber: 147,
                         columnNumber: 17
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                lineNumber: 85,
+                lineNumber: 99,
                 columnNumber: 13
             }, ("TURBOPACK compile-time value", void 0)),
             isB2BModalOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$B2BOrderForm$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                 onClose: ()=>setIsB2BModalOpen(false)
             }, void 0, false, {
                 fileName: "[project]/src/views/OrdersDashboard.tsx",
-                lineNumber: 93,
+                lineNumber: 151,
                 columnNumber: 17
             }, ("TURBOPACK compile-time value", void 0))
         ]
     }, void 0, true, {
         fileName: "[project]/src/views/OrdersDashboard.tsx",
-        lineNumber: 19,
+        lineNumber: 33,
         columnNumber: 9
     }, ("TURBOPACK compile-time value", void 0));
 };
-_s(OrdersDashboard, "R0gR0/v2IJaYICN+wSdjvzj05HY=", false, function() {
+_s(OrdersDashboard, "jVOb5vk2YbaAYWs/I+kDwRsZsz4=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$OrderContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useOrders"]
     ];

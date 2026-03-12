@@ -285,7 +285,7 @@ const warehouseStore = [
         updatedBy: 'System'
     }
 ];
-const channelStore = [
+const INITIAL_CHANNELS = [
     {
         id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$uuid$2f$dist$2f$v4$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__v4$3e$__["v4"])(),
         channel: 'Amazon',
@@ -322,6 +322,35 @@ const channelStore = [
         syncTracking: true
     }
 ];
+// Initialize from LocalStorage or use defaults
+let channelStore = [];
+if ("TURBOPACK compile-time truthy", 1) {
+    const savedChannels = localStorage.getItem('shc_channels');
+    if (savedChannels) {
+        try {
+            channelStore = JSON.parse(savedChannels);
+        } catch (e) {
+            console.error("Failed to parse channels from localStorage", e);
+            channelStore = [
+                ...INITIAL_CHANNELS
+            ];
+        }
+    } else {
+        channelStore = [
+            ...INITIAL_CHANNELS
+        ];
+        localStorage.setItem('shc_channels', JSON.stringify(channelStore));
+    }
+} else {
+    channelStore = [
+        ...INITIAL_CHANNELS
+    ];
+}
+const persistChannels = ()=>{
+    if ("TURBOPACK compile-time truthy", 1) {
+        localStorage.setItem('shc_channels', JSON.stringify(channelStore));
+    }
+};
 const systemSettingsStore = {
     defaultTimeZone: 'America/New_York',
     defaultCurrency: 'USD',
@@ -350,6 +379,33 @@ const api = {
         return [
             ...movementStore
         ].sort((a, b)=>new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    },
+    reserveInventory: async (items, performedBy)=>{
+        await delay(300);
+        for (const item of items){
+            let remaining = item.quantity;
+            const availableLots = inventoryStore.filter((inv)=>inv.id === item.sku && inv.quantityOnHand - inv.quantityReserved > 0).sort((a, b)=>new Date(a.expirationDate || '9999-12-31').getTime() - new Date(b.expirationDate || '9999-12-31').getTime());
+            for (const lot of availableLots){
+                if (remaining <= 0) break;
+                const available = lot.quantityOnHand - lot.quantityReserved;
+                const toReserve = Math.min(available, remaining);
+                lot.quantityReserved += toReserve;
+                remaining -= toReserve;
+            }
+        }
+    },
+    releaseInventory: async (items, performedBy)=>{
+        await delay(300);
+        for (const item of items){
+            let remaining = item.quantity;
+            const reservedLots = inventoryStore.filter((inv)=>inv.id === item.sku && inv.quantityReserved > 0);
+            for (const lot of reservedLots){
+                if (remaining <= 0) break;
+                const toRelease = Math.min(lot.quantityReserved, remaining);
+                lot.quantityReserved -= toRelease;
+                remaining -= toRelease;
+            }
+        }
     },
     getDailySnapshots: async ()=>{
         await delay(150);
@@ -698,27 +754,32 @@ const api = {
     addChannel: async (data)=>{
         await delay(300);
         const newChannel = {
-            ...data,
-            id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$uuid$2f$dist$2f$v4$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__v4$3e$__["v4"])()
+            id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$uuid$2f$dist$2f$v4$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__v4$3e$__["v4"])(),
+            ...data
         };
         channelStore.push(newChannel);
+        persistChannels();
         return newChannel;
     },
-    updateChannel: async (id, data)=>{
+    updateChannel: async (id, updates)=>{
         await delay(300);
         const index = channelStore.findIndex((c)=>c.id === id);
         if (index === -1) throw new Error('Channel not found');
         channelStore[index] = {
             ...channelStore[index],
-            ...data
+            ...updates
         };
+        persistChannels();
         return channelStore[index];
     },
     deleteChannel: async (id)=>{
         await delay(300);
         const index = channelStore.findIndex((c)=>c.id === id);
         if (index === -1) throw new Error('Channel not found');
-        channelStore.splice(index, 1);
+        if (index > -1) {
+            channelStore.splice(index, 1);
+            persistChannels();
+        }
     },
     getSystemSettings: async ()=>{
         await delay(200);
@@ -1067,7 +1128,8 @@ const shipstationApi = {
         const ssOrders = data.orders || [];
         // Map the real ShipStation data to our internal Order schema
         const mappedOrders = ssOrders.map((ssOrder)=>{
-            const orderId = `ORD-SS-${ssOrder.orderId}`;
+            // Requirement 5: Exact ShipStation Order Number
+            const orderId = ssOrder.orderNumber;
             // Map items gracefully checking if items array exists
             const mappedItems = (ssOrder.items || []).map((item)=>({
                     id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$uuid$2f$dist$2f$v4$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__v4$3e$__["v4"])(),
@@ -1075,7 +1137,8 @@ const shipstationApi = {
                     sku: item.sku,
                     quantity: item.quantity,
                     price: item.unitPrice,
-                    pickStatus: 'Pending'
+                    pickStatus: 'Pending',
+                    mappingStatus: 'Mapped'
                 }));
             // Subtotal
             const subtotal = mappedItems.reduce((acc, item)=>acc + item.quantity * item.price, 0);
@@ -1083,13 +1146,17 @@ const shipstationApi = {
             return {
                 id: orderId,
                 channel: 'ShipStation',
+                storeName: ssOrder.advancedOptions?.source || 'ShipStation Store',
                 customerName: ssOrder.customerUsername || 'Unknown Customer',
+                shipToName: ssOrder.shipTo?.name || 'Unknown Recipient',
                 customerEmail: ssOrder.customerEmail || 'no-email@shc.com',
                 shippingAddress: formatAddress(ssOrder.shipTo),
                 orderDate: ssOrder.orderDate,
                 // Map SS status to our internal
                 fulfillmentStatus: 'New',
                 paymentStatus: 'Paid',
+                carrier: ssOrder.carrierCode,
+                requestedService: ssOrder.requestedShippingService,
                 items: mappedItems,
                 timeline: [
                     {
@@ -1166,12 +1233,34 @@ const SettingsProvider = ({ children })=>{
             ]);
             setUsers(usersData);
             setWarehouses(warehousesData);
-            setChannels(channelsData);
             setSystemSettings(systemSettingsData);
+            // Fetch channels from localStorage if available, otherwise fallback to API default
+            if ("TURBOPACK compile-time truthy", 1) {
+                const savedChannels = localStorage.getItem('shc_channels');
+                if (savedChannels) {
+                    try {
+                        setChannels(JSON.parse(savedChannels));
+                    } catch (e) {
+                        console.error("Failed to parse channels", e);
+                        setChannels(channelsData);
+                    }
+                } else {
+                    setChannels(channelsData);
+                    localStorage.setItem('shc_channels', JSON.stringify(channelsData));
+                }
+            } else //TURBOPACK unreachable
+            ;
         } catch (err) {
             setError(err.message || "Failed to load settings data");
         } finally{
             setLoading(false);
+        }
+    };
+    // Helper to persist to localStorage whenever channels change
+    const updateChannelsState = (newChannels)=>{
+        setChannels(newChannels);
+        if ("TURBOPACK compile-time truthy", 1) {
+            localStorage.setItem('shc_channels', JSON.stringify(newChannels));
         }
     };
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
@@ -1265,8 +1354,11 @@ const SettingsProvider = ({ children })=>{
         try {
             setLoading(true);
             setError(null);
-            await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["api"].addChannel(data);
-            await refreshSettings();
+            const newChannel = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["api"].addChannel(data);
+            updateChannelsState([
+                ...channels,
+                newChannel
+            ]);
         } catch (err) {
             setError(err.message || 'Failed to add channel');
             throw err;
@@ -1278,8 +1370,8 @@ const SettingsProvider = ({ children })=>{
         try {
             setLoading(true);
             setError(null);
-            await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["api"].updateChannel(id, data);
-            await refreshSettings();
+            const updatedChannel = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["api"].updateChannel(id, data);
+            updateChannelsState(channels.map((c)=>c.id === id ? updatedChannel : c));
         } catch (err) {
             setError(err.message || 'Failed to update channel');
             throw err;
@@ -1292,7 +1384,7 @@ const SettingsProvider = ({ children })=>{
             setLoading(true);
             setError(null);
             await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["api"].deleteChannel(id);
-            await refreshSettings();
+            updateChannelsState(channels.filter((c)=>c.id !== id));
         } catch (err) {
             setError(err.message || 'Failed to delete channel');
             throw err;
@@ -1335,7 +1427,7 @@ const SettingsProvider = ({ children })=>{
         children: children
     }, void 0, false, {
         fileName: "[project]/src/context/SettingsContext.tsx",
-        lineNumber: 206,
+        lineNumber: 232,
         columnNumber: 9
     }, ("TURBOPACK compile-time value", void 0));
 };
@@ -1887,6 +1979,28 @@ const InventoryProvider = ({ children })=>{
             setLoading(false);
         }
     };
+    const reserveInventory = async (items, performedBy)=>{
+        try {
+            setLoading(true);
+            await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["api"].reserveInventory(items, performedBy);
+            await refreshInventory();
+        } catch (err) {
+            setError(err.message || 'Failed to reserve inventory');
+        } finally{
+            setLoading(false);
+        }
+    };
+    const releaseInventory = async (items, performedBy)=>{
+        try {
+            setLoading(true);
+            await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["api"].releaseInventory(items, performedBy);
+            await refreshInventory();
+        } catch (err) {
+            setError(err.message || 'Failed to release inventory');
+        } finally{
+            setLoading(false);
+        }
+    };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(InventoryContext.Provider, {
         value: {
             inventory,
@@ -1899,12 +2013,14 @@ const InventoryProvider = ({ children })=>{
             receiveStock,
             adjustStock,
             transferStock,
-            reverseMovement
+            reverseMovement,
+            reserveInventory,
+            releaseInventory
         },
         children: children
     }, void 0, false, {
         fileName: "[project]/src/context/InventoryContext.tsx",
-        lineNumber: 112,
+        lineNumber: 138,
         columnNumber: 9
     }, ("TURBOPACK compile-time value", void 0));
 };
@@ -2229,6 +2345,34 @@ const ordersApi = {
         ];
         ordersStore[index] = order;
         return order;
+    },
+    cancelOrder: async (orderId, reason, performedBy)=>{
+        await delay(400);
+        const index = ordersStore.findIndex((o)=>o.id === orderId);
+        if (index === -1) throw new Error(`Order ${orderId} not found`);
+        const order = {
+            ...ordersStore[index]
+        };
+        if (order.fulfillmentStatus === 'Shipped') {
+            throw new Error('Cannot cancel an order that has already shipped');
+        }
+        order.fulfillmentStatus = 'Cancelled';
+        order.canceledAt = new Date().toISOString();
+        order.canceledBy = performedBy;
+        order.cancellationReason = reason;
+        order.timeline = [
+            ...order.timeline,
+            {
+                id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$uuid$2f$dist$2f$v4$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__v4$3e$__["v4"])(),
+                orderId,
+                timestamp: order.canceledAt,
+                action: 'Order Cancelled',
+                performedBy,
+                notes: `Reason: ${reason}`
+            }
+        ];
+        ordersStore[index] = order;
+        return order;
     }
 };
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
@@ -2249,8 +2393,10 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$ordersApi$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/services/ordersApi.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$SettingsContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/context/SettingsContext.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$shipstationApi$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/services/shipstationApi.ts [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$InventoryContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/context/InventoryContext.tsx [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature();
+;
 ;
 ;
 ;
@@ -2271,6 +2417,7 @@ const OrderProvider = ({ children })=>{
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const { channels } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$SettingsContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSettings"])();
+    const { reserveInventory, releaseInventory, inventory } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$InventoryContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useInventory"])();
     const fetchOrders = async ()=>{
         setLoading(true);
         setError(null);
@@ -2288,6 +2435,10 @@ const OrderProvider = ({ children })=>{
         setError(null);
         try {
             await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$ordersApi$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ordersApi"].createB2BOrder(data);
+            await reserveInventory(data.items.map((i)=>({
+                    sku: i.sku,
+                    quantity: i.quantity
+                })), data.performedBy);
             await fetchOrders(); // Refresh table
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create B2B order');
@@ -2323,6 +2474,26 @@ const OrderProvider = ({ children })=>{
             setLoading(false);
         }
     };
+    const cancelOrder = async (orderId, reason, performedBy)=>{
+        setLoading(true);
+        setError(null);
+        try {
+            const orderToCancel = orders.find((o)=>o.id === orderId);
+            await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$ordersApi$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ordersApi"].cancelOrder(orderId, reason, performedBy);
+            if (orderToCancel) {
+                await releaseInventory(orderToCancel.items.map((i)=>({
+                        sku: i.sku,
+                        quantity: i.quantity
+                    })), performedBy);
+            }
+            await fetchOrders();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to cancel order');
+            throw err;
+        } finally{
+            setLoading(false);
+        }
+    };
     const syncShipStationOrders = async ()=>{
         setLoading(true);
         setError(null);
@@ -2335,13 +2506,32 @@ const OrderProvider = ({ children })=>{
                 throw new Error("ShipStation API Keys are missing. Head to Settings > Integrations to configure them.");
             }
             const newOrders = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$shipstationApi$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["shipstationApi"].fetchOrders(ssChannel.apiKey, ssChannel.apiSecret);
+            const existingIds = new Set(orders.map((o)=>o.id)); // Use current orders snapshot
+            const toAdd = newOrders.filter((o)=>!existingIds.has(o.id));
+            if (toAdd.length > 0) {
+                // Cross-reference with inventory to set mappingStatus
+                const existingSkus = new Set(inventory.map((inv)=>inv.id));
+                toAdd.forEach((order)=>{
+                    order.items.forEach((item)=>{
+                        item.mappingStatus = existingSkus.has(item.sku) ? 'Mapped' : 'Unmapped';
+                    });
+                });
+                // Reserve inventory for valid items automatically
+                const itemsToReserve = toAdd.flatMap((o)=>o.items.filter((i)=>i.mappingStatus === 'Mapped').map((i)=>({
+                            sku: i.sku,
+                            quantity: i.quantity
+                        })));
+                if (itemsToReserve.length > 0) {
+                    await reserveInventory(itemsToReserve, 'System API Sync');
+                }
+            }
             // In a real app we'd save these via the backend ordersApi.
             // For now, we simulate inserting them into our context/store.
             setOrders((prev)=>{
-                const existingIds = new Set(prev.map((o)=>o.id));
-                const toAdd = newOrders.filter((o)=>!existingIds.has(o.id));
+                const prevIds = new Set(prev.map((o)=>o.id));
+                const uniqueToAdd = toAdd.filter((o)=>!prevIds.has(o.id));
                 return [
-                    ...toAdd,
+                    ...uniqueToAdd,
                     ...prev
                 ];
             });
@@ -2366,18 +2556,20 @@ const OrderProvider = ({ children })=>{
             createB2BOrder,
             updateOrderStatus,
             allocateOrderInventory,
-            syncShipStationOrders
+            syncShipStationOrders,
+            cancelOrder
         },
         children: children
     }, void 0, false, {
         fileName: "[project]/src/context/OrderContext.tsx",
-        lineNumber: 125,
+        lineNumber: 169,
         columnNumber: 9
     }, ("TURBOPACK compile-time value", void 0));
 };
-_s1(OrderProvider, "QhP3i8fVWsNmRbDlZVlFJaytaB4=", false, function() {
+_s1(OrderProvider, "iWJk0Ah+HtykwvvqVez5W8J+6jM=", false, function() {
     return [
-        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$SettingsContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSettings"]
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$SettingsContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSettings"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$context$2f$InventoryContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useInventory"]
     ];
 });
 _c = OrderProvider;
