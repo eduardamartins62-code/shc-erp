@@ -4,6 +4,7 @@ import { useProducts } from '../context/ProductContext';
 import { useInventory } from '../context/InventoryContext';
 import { useLocations } from '../context/LocationContext';
 import { useOrders } from '../context/OrderContext';
+import Papa from 'papaparse';
 import { exportProductsToCSV, exportInventoryToCSV, exportOrdersToCSV, exportLocationsToCSV } from '../utils/csvExport';
 
 type TabType = 'products' | 'inventory' | 'locations' | 'orders';
@@ -11,11 +12,13 @@ type TabType = 'products' | 'inventory' | 'locations' | 'orders';
 const DataManagement: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('products');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isImporting, setIsImporting] = useState(false);
+    const [importResult, setImportResult] = useState<{ success: boolean; message: string; rowsProcessed?: number } | null>(null);
 
     // Bring in data contexts
-    const { products } = useProducts();
+    const { products, bulkImportProducts } = useProducts();
     const { inventory } = useInventory();
-    const { locations } = useLocations();
+    const { locations, bulkImportLocations } = useLocations();
     const { orders } = useOrders();
 
     const tabs = [
@@ -31,15 +34,92 @@ const DataManagement: React.FC = () => {
         }
     };
 
-    const handleImport = () => {
+    const handleImport = async () => {
         if (!selectedFile) {
-            alert('Please select a CSV file to import first.');
+            setImportResult({ success: false, message: 'Please select a CSV file to import first.' });
             return;
         }
 
-        // Mock import process
-        alert(`Simulating import of "${selectedFile.name}" for ${activeTab}... This feature requires a backend API to parse and save the data.`);
-        setSelectedFile(null); // Reset after "import"
+        setIsImporting(true);
+        setImportResult(null);
+
+        Papa.parse(selectedFile, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                try {
+                    const rows = results.data as any[];
+                    if (rows.length === 0) {
+                        setImportResult({ success: false, message: 'The uploaded file is empty.' });
+                        return;
+                    }
+
+                    if (activeTab === 'products') {
+                        // Quick structural validation for Products
+                        if (!rows[0].sku || !rows[0].name) {
+                            throw new Error("Invalid format. Must contain 'sku' and 'name' header columns.");
+                        }
+
+                        // Map CSV rows to Product schema interface
+                        const mappedProducts = rows.map(r => ({
+                            sku: r.sku,
+                            name: r.name,
+                            type: r.type || 'simple',
+                            brand: r.brand || '',
+                            category: r.category || '',
+                            status: r.status || 'Active',
+                            costOfGoods: r.costOfGoods ? parseFloat(r.costOfGoods) : undefined,
+                            msrpPrice: r.msrpPrice ? parseFloat(r.msrpPrice) : undefined,
+                            description: r.description || ''
+                        }));
+
+                        await bulkImportProducts(mappedProducts);
+                        setImportResult({ success: true, message: 'Products successfully imported into catalog.', rowsProcessed: rows.length });
+                    }
+                    else if (activeTab === 'locations') {
+                        // Quick structural validation for Locations
+                        if (!rows[0].warehouseId || !rows[0].locationCode) {
+                            throw new Error("Invalid format. Must contain 'warehouseId' and 'locationCode' header columns.");
+                        }
+
+                        const mappedLocations = rows.map(r => ({
+                            warehouseId: r.warehouseId,
+                            locationCode: r.locationCode,
+                            warehouseCode: r.warehouseId,
+                            warehouseName: r.warehouseName || r.warehouseId, // Fallback
+                            displayName: r.displayName || r.locationCode,
+                            type: r.type || 'SHELF',
+                            description: r.description || '',
+                            aisle: r.aisle || '',
+                            section: r.section || '',
+                            shelf: r.shelf || '',
+                            bin: r.bin || '',
+                            barcodeValue: r.barcodeValue || r.locationCode,
+                            isActive: r.isActive ? String(r.isActive).toLowerCase() === 'true' : true,
+                            createdBy: 'System CSV Import',
+                            updatedBy: 'System CSV Import'
+                        }));
+
+                        await bulkImportLocations(mappedLocations);
+                        setImportResult({ success: true, message: 'Locations successfully generated.', rowsProcessed: rows.length });
+                    }
+                    else {
+                        setImportResult({ success: false, message: `Bulk import is not yet visually configured for ${activeTab}.` });
+                    }
+                } catch (err: any) {
+                    console.error("Import Parsing Error:", err);
+                    setImportResult({ success: false, message: err.message || 'Failed to parse file mappings.' });
+                } finally {
+                    setIsImporting(false);
+                    setSelectedFile(null); // Reset after import attempt
+                }
+            },
+            error: (error) => {
+                console.error("PapaParse Error:", error);
+                setImportResult({ success: false, message: 'Failed to read the raw CSV file.' });
+                setIsImporting(false);
+            }
+        });
     };
 
     const handleExport = () => {
@@ -144,8 +224,34 @@ const DataManagement: React.FC = () => {
 
                     <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
                         <button className="btn btn-secondary" style={{ flex: 1 }}>Download Template</button>
-                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleImport}>Import Data</button>
+                        <button 
+                            className="btn btn-primary" 
+                            style={{ flex: 1 }} 
+                            onClick={handleImport}
+                            disabled={isImporting}
+                        >
+                            {isImporting ? 'Processing...' : 'Import Data'}
+                        </button>
                     </div>
+
+                    {importResult && (
+                        <div style={{
+                            marginTop: '1.5rem', width: '100%', padding: '1rem', borderRadius: '8px', fontSize: '0.875rem',
+                            backgroundColor: importResult.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            color: importResult.success ? '#047857' : '#b91c1c',
+                            border: `1px solid ${importResult.success ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                        }}>
+                            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
+                                {importResult.success ? 'Success' : 'Import Failed'}
+                            </div>
+                            <div>{importResult.message}</div>
+                            {importResult.rowsProcessed !== undefined && (
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', opacity: 0.8 }}>
+                                    Processed {importResult.rowsProcessed} rows
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Export Card */}

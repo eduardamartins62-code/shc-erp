@@ -445,12 +445,27 @@ const api = {
         if ((data.warehouseId || data.locationCode) && locationStore.some((loc)=>loc.id !== id && loc.warehouseId === newWarehouseId && loc.locationCode === newLocationCode)) {
             throw new Error(`Location code "${newLocationCode}" already exists in the selected warehouse.`);
         }
-        locationStore[index] = {
-            ...locationStore[index],
+        const oldLocation = locationStore[index];
+        const updatedLocation = {
+            ...oldLocation,
             ...data,
             updatedAt: new Date().toISOString()
         };
-        return locationStore[index];
+        locationStore[index] = updatedLocation;
+        return updatedLocation;
+    },
+    bulkImportLocations: async (newLocations)=>{
+        await delay(300); // Simulate network
+        const locationsToAdd = newLocations.map((data)=>({
+                ...data,
+                id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$uuid$2f$dist$2f$v4$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__v4$3e$__["v4"])(),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }));
+        // Deduplicate on locationCode + warehouseId
+        const existingKeys = new Set(locationStore.map((l)=>`${l.warehouseId}-${l.locationCode}`));
+        const distinctNew = locationsToAdd.filter((l)=>!existingKeys.has(`${l.warehouseId}-${l.locationCode}`));
+        locationStore.push(...distinctNew);
     },
     receiveStock: async (data)=>{
         await delay(500);
@@ -949,6 +964,18 @@ const LocationProvider = ({ children })=>{
             setLoading(false);
         }
     };
+    const bulkImportLocations = async (newLocations)=>{
+        try {
+            setLoading(true);
+            await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["api"].bulkImportLocations(newLocations);
+            await refreshLocations();
+        } catch (err) {
+            setError(err.message || 'Failed to import locations');
+            throw err;
+        } finally{
+            setLoading(false);
+        }
+    };
     const isLocationCodeUnique = (warehouseId, locationCode, excludeId)=>{
         return !locations.some((loc)=>loc.warehouseId === warehouseId && loc.locationCode === locationCode && loc.id !== excludeId);
     };
@@ -973,13 +1000,14 @@ const LocationProvider = ({ children })=>{
             refreshLocations,
             addLocation,
             updateLocation,
+            bulkImportLocations,
             isLocationCodeUnique,
             generateLocationCode
         },
         children: children
     }, void 0, false, {
         fileName: "[project]/src/context/LocationContext.tsx",
-        lineNumber: 92,
+        lineNumber: 106,
         columnNumber: 9
     }, ("TURBOPACK compile-time value", void 0));
 };
@@ -1749,6 +1777,23 @@ const ProductProvider = ({ children })=>{
                     updatedAt: new Date().toISOString()
                 } : p));
     };
+    const bulkImportProducts = (newProducts)=>{
+        const productsToAdd = newProducts.map((data)=>({
+                ...data,
+                id: crypto.randomUUID(),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }));
+        // Deduplicate based on SKU (if they exist, ignore the new one for now)
+        setProducts((prev)=>{
+            const existingSkus = new Set(prev.map((p)=>p.sku));
+            const distinctNew = productsToAdd.filter((p)=>!existingSkus.has(p.sku));
+            return [
+                ...distinctNew,
+                ...prev
+            ];
+        });
+    };
     const getInventoryLocations = (productId)=>inventoryLocations.filter((loc)=>loc.productId === productId);
     const getBundleComponents = (bundleId)=>bundleComponents.filter((bc)=>bc.bundleProductId === bundleId);
     const addBundleComponent = (data)=>{
@@ -1843,6 +1888,7 @@ const ProductProvider = ({ children })=>{
             getProduct,
             addProduct,
             updateProduct,
+            bulkImportProducts,
             getInventoryLocations,
             getBundleComponents,
             addBundleComponent,
@@ -1856,7 +1902,7 @@ const ProductProvider = ({ children })=>{
         children: children
     }, void 0, false, {
         fileName: "[project]/src/context/ProductContext.tsx",
-        lineNumber: 255,
+        lineNumber: 272,
         columnNumber: 9
     }, ("TURBOPACK compile-time value", void 0));
 };

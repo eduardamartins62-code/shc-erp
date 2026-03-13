@@ -48,7 +48,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ isOpen, onCl
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         const submittedData = {
@@ -63,7 +63,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ isOpen, onCl
         };
 
         if (isDuplicate && product) {
-            const newProduct = addProduct({
+            const newProduct = await addProduct({
                 ...submittedData,
                 type: product.type,
                 reorderPoint: product.reorderPoint,
@@ -73,7 +73,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ isOpen, onCl
             onClose();
             navigate.push(`/products/${newProduct.id}`);
         } else if (product) {
-            updateProduct(product.id, submittedData);
+            await updateProduct(product.id, submittedData);
             onClose();
         }
     };

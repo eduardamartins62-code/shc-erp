@@ -9,6 +9,7 @@ interface LocationContextType {
     refreshLocations: () => Promise<void>;
     addLocation: (data: Omit<WarehouseLocation, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
     updateLocation: (id: string, data: Partial<WarehouseLocation>) => Promise<void>;
+    bulkImportLocations: (locations: Omit<WarehouseLocation, 'id' | 'createdAt' | 'updatedAt'>[]) => Promise<void>;
     isLocationCodeUnique: (warehouseId: string, locationCode: string, excludeId?: string) => boolean;
     generateLocationCode: (warehousePrefix: string, aisle: string, section: string, shelf: string, bin: string) => string;
 }
@@ -63,6 +64,19 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     };
 
+    const bulkImportLocations = async (newLocations: Omit<WarehouseLocation, 'id' | 'createdAt' | 'updatedAt'>[]) => {
+        try {
+            setLoading(true);
+            await api.bulkImportLocations(newLocations);
+            await refreshLocations();
+        } catch (err: any) {
+            setError(err.message || 'Failed to import locations');
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const isLocationCodeUnique = (warehouseId: string, locationCode: string, excludeId?: string) => {
         return !locations.some(loc =>
             loc.warehouseId === warehouseId &&
@@ -96,6 +110,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             refreshLocations,
             addLocation,
             updateLocation,
+            bulkImportLocations,
             isLocationCodeUnique,
             generateLocationCode
         }}>

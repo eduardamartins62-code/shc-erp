@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { Product, InventoryLocation, BundleComponent, COGSHistoryLog, ProductActivityLog } from '../types/products';
 
@@ -10,9 +10,11 @@ interface ProductContextType {
     activityLogs: ProductActivityLog[];
 
     getProducts: () => Product[];
+    fetchProducts: () => Promise<void>;
     getProduct: (id: string) => Product | undefined;
-    addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Product;
-    updateProduct: (id: string, product: Partial<Product>) => void;
+    addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Product>;
+    updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
+    bulkImportProducts: (products: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>[]) => Promise<void>;
 
     getInventoryLocations: (productId: string) => InventoryLocation[];
 
@@ -27,6 +29,8 @@ interface ProductContextType {
     logCostChange: (sku: string, newCost: number, notes?: string) => void;
     logProductActivity: (sku: string, action: string, details: string, module: string) => void;
 }
+
+import { api } from '../services/api';
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
@@ -136,29 +140,43 @@ const initialActivityLogs: ProductActivityLog[] = [
 ];
 
 export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [products, setProducts] = useState<Product[]>(initialProducts);
+    const [products, setProducts] = useState<Product[]>([]);
     const [inventoryLocations] = useState<InventoryLocation[]>(initialInventory);
     const [bundleComponents, setBundleComponents] = useState<BundleComponent[]>(initialBundleComponents);
     const [cogsHistory, setCogsHistory] = useState<COGSHistoryLog[]>(initialCOGSHistory);
     const [activityLogs, setActivityLogs] = useState<ProductActivityLog[]>(initialActivityLogs);
 
+    const fetchProducts = async () => {
+        try {
+            const data = await api.getProducts();
+            setProducts(data);
+        } catch (err) {
+            console.error("Failed to fetch products:", err);
+        }
+    };
+
+    useEffect(() => {
+        fetchProducts();
+    }, []);
+
     const getProducts = () => products;
 
     const getProduct = (id: string) => products.find(p => p.id === id);
 
-    const addProduct = (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Product => {
-        const newProduct: Product = {
-            ...data,
-            id: crypto.randomUUID(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-        setProducts(prev => [...prev, newProduct]);
+    const addProduct = async (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> => {
+        const newProduct = await api.createProduct(data);
+        await fetchProducts();
         return newProduct;
     };
 
-    const updateProduct = (id: string, data: Partial<Product>) => {
-        setProducts(prev => prev.map(p => p.id === id ? { ...p, ...data, updatedAt: new Date().toISOString() } : p));
+    const updateProduct = async (id: string, data: Partial<Product>) => {
+        await api.updateProduct(id, data);
+        await fetchProducts();
+    };
+
+    const bulkImportProducts = async (newProducts: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>[]) => {
+        await api.bulkCreateProducts(newProducts);
+        await fetchProducts();
     };
 
     const getInventoryLocations = (productId: string) => inventoryLocations.filter(loc => loc.productId === productId);
@@ -259,9 +277,11 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
             cogsHistory,
             activityLogs,
             getProducts,
+            fetchProducts,
             getProduct,
             addProduct,
             updateProduct,
+            bulkImportProducts,
             getInventoryLocations,
             getBundleComponents,
             addBundleComponent,

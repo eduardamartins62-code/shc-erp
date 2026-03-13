@@ -1,270 +1,278 @@
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../lib/supabase';
 import { api as inventoryApi } from './api';
 import type { Order, OrderItem, OrderHistoryEvent, OrderStatus, B2BOrderFormData } from '../types';
 
-const generateMockTimeline = (orderId: string, status: OrderStatus): OrderHistoryEvent[] => {
+// Helper to reconstruct a pseudo-timeline from standard status + DB timestamps
+const generateTimelineForOrder = (order: any): OrderHistoryEvent[] => {
     const timeline: OrderHistoryEvent[] = [];
-    const baseDate = new Date();
-    baseDate.setDate(baseDate.getDate() - 3);
-
+    
+    // Created
     timeline.push({
         id: uuidv4(),
-        orderId,
-        timestamp: baseDate.toISOString(),
+        orderId: order.id,
+        timestamp: order.created_at,
         action: 'Order Created',
         performedBy: 'System',
-        notes: 'Imported from Channel'
+        notes: `Imported from ${order.channel}`
     });
 
-    if (status === 'Allocated' || status === 'Picking' || status === 'Packed' || status === 'Shipped') {
-        baseDate.setHours(baseDate.getHours() + 2);
+    if (order.fulfillment_status === 'Allocated' || order.fulfillment_status === 'Picking' || order.fulfillment_status === 'Shipped') {
         timeline.push({
             id: uuidv4(),
-            orderId,
-            timestamp: baseDate.toISOString(),
+            orderId: order.id,
+            timestamp: order.updated_at,
             action: 'Inventory Allocated',
-            performedBy: 'System Admin'
+            performedBy: 'System'
         });
     }
 
-    if (status === 'Picking' || status === 'Packed' || status === 'Shipped') {
-        baseDate.setHours(baseDate.getHours() + 4);
+    if (order.fulfillment_status === 'Shipped') {
         timeline.push({
             id: uuidv4(),
-            orderId,
-            timestamp: baseDate.toISOString(),
-            action: 'Picking Started',
-            performedBy: 'Warehouse Staff'
-        });
-    }
-
-    if (status === 'Packed' || status === 'Shipped') {
-        baseDate.setHours(baseDate.getHours() + 1);
-        timeline.push({
-            id: uuidv4(),
-            orderId,
-            timestamp: baseDate.toISOString(),
-            action: 'Order Packed',
-            performedBy: 'Warehouse Staff'
-        });
-    }
-
-    if (status === 'Shipped') {
-        baseDate.setHours(baseDate.getHours() + 5);
-        timeline.push({
-            id: uuidv4(),
-            orderId,
-            timestamp: baseDate.toISOString(),
+            orderId: order.id,
+            timestamp: order.updated_at,
             action: 'Order Shipped',
             performedBy: 'Shipping Dept',
-            notes: 'Tracking: 1Z9999999999999999'
+            notes: order.carrier ? `Carrier: ${order.carrier}` : undefined
+        });
+    }
+
+    if (order.fulfillment_status === 'Cancelled') {
+        timeline.push({
+            id: uuidv4(),
+            orderId: order.id,
+            timestamp: order.canceled_at || order.updated_at,
+            action: 'Order Cancelled',
+            performedBy: order.canceled_by || 'System',
+            notes: order.cancellation_reason ? `Reason: ${order.cancellation_reason}` : undefined
         });
     }
 
     return timeline;
 };
 
-const initialOrders: Order[] = [
-    {
-        id: 'ORD-2024-1001',
-        channel: 'Amazon',
-        customerName: 'John Doe',
-        customerEmail: 'john.doe@example.com',
-        shippingAddress: '123 Main St, Anytown, CA 90210',
-        orderDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-        fulfillmentStatus: 'New',
-        paymentStatus: 'Paid',
-        items: [
-            {
-                id: uuidv4(),
-                orderId: 'ORD-2024-1001',
-                sku: 'SKU-1001',
-                quantity: 2,
-                price: 29.99,
-                pickStatus: 'Pending'
-            }
-        ],
-        timeline: generateMockTimeline('ORD-2024-1001', 'New'),
-        subtotal: 59.98,
-        tax: 4.80,
-        fees: 0,
-        total: 64.78,
-        margin: 25.50
-    },
-    {
-        id: 'ORD-2024-1002',
-        channel: 'B2B',
-        customerName: 'Healthy Clinics Inc.',
-        customerEmail: 'procurement@healthyclinics.com',
-        shippingAddress: '456 Med Blvd, Suite 100, Wellness City, NY 10001',
-        orderDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-        fulfillmentStatus: 'Shipped',
-        paymentStatus: 'Paid',
-        items: [
-            {
-                id: uuidv4(),
-                orderId: 'ORD-2024-1002',
-                sku: 'SKU-1002',
-                quantity: 50,
-                price: 15.00,
-                allocatedWarehouseId: 'WH-EAST',
-                allocatedLotNumber: 'L-2023-B2',
-                pickStatus: 'Picked'
-            },
-            {
-                id: uuidv4(),
-                orderId: 'ORD-2024-1002',
-                sku: 'SKU-1004',
-                quantity: 5,
-                price: 45.00,
-                allocatedWarehouseId: 'WH-WEST',
-                allocatedLotNumber: 'L-2022-D4',
-                pickStatus: 'Picked'
-            }
-        ],
-        timeline: generateMockTimeline('ORD-2024-1002', 'Shipped'),
-        subtotal: 975.00,
-        tax: 0,
-        fees: 25.00, // Shipping fee
-        total: 1000.00,
-        margin: 400.00
-    },
-    {
-        id: 'ORD-2024-1003',
-        channel: 'Shopify',
-        customerName: 'Jane Smith',
-        customerEmail: 'jane.smith@email.com',
-        shippingAddress: '789 Oak Ln, Suburbia, TX 75001',
-        orderDate: new Date().toISOString(),
-        fulfillmentStatus: 'Allocated',
-        paymentStatus: 'Paid',
-        items: [
-            {
-                id: uuidv4(),
-                orderId: 'ORD-2024-1003',
-                sku: 'SKU-1003',
-                quantity: 1,
-                price: 89.99,
-                allocatedWarehouseId: 'WH-MAIN',
-                allocatedLotNumber: 'L-2024-C3',
-                pickStatus: 'Pending'
-            }
-        ],
-        timeline: generateMockTimeline('ORD-2024-1003', 'Allocated'),
-        subtotal: 89.99,
-        tax: 7.20,
-        fees: 5.00,
-        total: 102.19,
-        margin: 45.00
-    }
-];
-
-const ordersStore = [...initialOrders];
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 export const ordersApi = {
     getOrders: async (): Promise<Order[]> => {
-        await delay(400);
-        return [...ordersStore].sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
+        const { data: dbOrders, error: ordersError } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                order_items (*)
+            `)
+            .order('order_date', { ascending: false });
+
+        if (ordersError) throw new Error(ordersError.message);
+
+        return dbOrders.map((o: any) => ({
+            id: o.id,
+            channel: o.channel,
+            storeName: o.store_name,
+            customerName: o.customer_name,
+            shipToName: o.ship_to_name,
+            customerEmail: o.customer_email,
+            shippingAddress: o.shipping_address,
+            orderDate: o.order_date,
+            fulfillmentStatus: o.fulfillment_status,
+            paymentStatus: o.payment_status,
+            carrier: o.carrier,
+            requestedService: o.requested_service,
+            subtotal: o.subtotal,
+            tax: o.tax,
+            fees: o.fees,
+            total: o.total,
+            margin: o.margin,
+            notes: o.notes,
+            canceledAt: o.canceled_at,
+            canceledBy: o.canceled_by,
+            cancellationReason: o.cancellation_reason,
+            timeline: generateTimelineForOrder(o),
+            items: o.order_items.map((i: any) => ({
+                id: i.id,
+                orderId: i.order_id,
+                sku: i.sku,
+                quantity: i.quantity,
+                price: i.price,
+                allocatedWarehouseId: i.allocated_warehouse_id,
+                allocatedLotNumber: i.allocated_lot_number,
+                pickStatus: i.pick_status,
+                mappingStatus: i.mapping_status
+            }))
+        })) as Order[];
     },
 
     getOrderById: async (id: string): Promise<Order | undefined> => {
-        await delay(200);
-        return ordersStore.find(o => o.id === id);
+        const { data: dbOrder, error } = await supabase
+            .from('orders')
+            .select('*, order_items(*)')
+            .eq('id', id)
+            .single();
+
+        if (error || !dbOrder) return undefined;
+
+        return {
+            id: dbOrder.id,
+            channel: dbOrder.channel,
+            storeName: dbOrder.store_name,
+            customerName: dbOrder.customer_name,
+            shipToName: dbOrder.ship_to_name,
+            customerEmail: dbOrder.customer_email,
+            shippingAddress: dbOrder.shipping_address,
+            orderDate: dbOrder.order_date,
+            fulfillmentStatus: dbOrder.fulfillment_status,
+            paymentStatus: dbOrder.payment_status,
+            carrier: dbOrder.carrier,
+            requestedService: dbOrder.requested_service,
+            subtotal: dbOrder.subtotal,
+            tax: dbOrder.tax,
+            fees: dbOrder.fees,
+            total: dbOrder.total,
+            margin: dbOrder.margin,
+            notes: dbOrder.notes,
+            canceledAt: dbOrder.canceled_at,
+            canceledBy: dbOrder.canceled_by,
+            cancellationReason: dbOrder.cancellation_reason,
+            timeline: generateTimelineForOrder(dbOrder),
+            items: dbOrder.order_items.map((i: any) => ({
+                id: i.id,
+                orderId: i.order_id,
+                sku: i.sku,
+                quantity: i.quantity,
+                price: i.price,
+                allocatedWarehouseId: i.allocated_warehouse_id,
+                allocatedLotNumber: i.allocated_lot_number,
+                pickStatus: i.pick_status,
+                mappingStatus: i.mapping_status
+            }))
+        } as Order;
     },
 
     createB2BOrder: async (data: B2BOrderFormData): Promise<Order> => {
-        await delay(600);
         const orderId = `ORD-B2B-${Math.floor(Math.random() * 10000)}`;
 
-        // Calculate totals
         let subtotal = 0;
-        const items: OrderItem[] = data.items.map(item => {
+        data.items.forEach(item => {
             subtotal += item.price * item.quantity;
-            return {
-                id: uuidv4(),
-                orderId,
-                sku: item.sku,
-                quantity: item.quantity,
-                price: item.price,
-                pickStatus: 'Pending'
-            };
         });
 
-        const tax = 0; // B2B usually tax exempt or handled differently
-        const fees = 0;
-        const total = subtotal + tax + fees;
-        const margin = subtotal * 0.4; // Mock margin calculation
+        const margin = subtotal * 0.4;
+        const total = subtotal;
 
-        const newOrder: Order = {
+        const orderEntry = {
             id: orderId,
             channel: 'B2B',
-            customerName: data.customerName,
-            customerEmail: data.customerEmail,
-            shippingAddress: data.shippingAddress,
-            orderDate: new Date().toISOString(),
-            fulfillmentStatus: 'New',
-            paymentStatus: 'Unpaid',
-            items,
-            timeline: [
-                {
-                    id: uuidv4(),
-                    orderId,
-                    timestamp: new Date().toISOString(),
-                    action: 'B2B Order Created manually',
-                    performedBy: data.performedBy,
-                    notes: data.notes
-                }
-            ],
+            customer_name: data.customerName,
+            customer_email: data.customerEmail,
+            shipping_address: data.shippingAddress,
+            order_date: new Date().toISOString(),
+            fulfillment_status: 'New',
+            payment_status: 'Unpaid',
             subtotal,
-            tax,
-            fees,
+            tax: 0,
+            fees: 0,
             total,
             margin,
             notes: data.notes
         };
 
-        ordersStore.push(newOrder);
+        const { error: orderError } = await supabase.from('orders').insert([orderEntry]);
+        if (orderError) throw new Error(orderError.message);
+
+        const orderItemsEntries = data.items.map(item => ({
+            order_id: orderId,
+            sku: item.sku,
+            quantity: item.quantity,
+            price: item.price,
+            pick_status: 'Pending'
+        }));
+
+        const { error: itemsError } = await supabase.from('order_items').insert(orderItemsEntries);
+        if (itemsError) throw new Error(itemsError.message);
+
+        const newOrder = await ordersApi.getOrderById(orderId);
+        if (!newOrder) throw new Error('Failed to retrieve newly created B2B order');
         return newOrder;
     },
 
-    updateOrderStatus: async (orderId: string, status: OrderStatus, performedBy: string, notes?: string): Promise<Order> => {
-        await delay(400);
-        const index = ordersStore.findIndex(o => o.id === orderId);
-        if (index === -1) throw new Error(`Order ${orderId} not found`);
+    batchCreateOrders: async (orders: Order[]): Promise<void> => {
+        if (!orders || orders.length === 0) return;
 
-        const order = { ...ordersStore[index] };
-        order.fulfillmentStatus = status;
+        const orderEntries = orders.map(o => ({
+            id: o.id,
+            channel: o.channel,
+            store_name: o.storeName,
+            customer_name: o.customerName,
+            ship_to_name: o.shipToName,
+            customer_email: o.customerEmail,
+            shipping_address: o.shippingAddress,
+            order_date: o.orderDate,
+            fulfillment_status: o.fulfillmentStatus,
+            payment_status: o.paymentStatus,
+            carrier: o.carrier,
+            requested_service: o.requestedService,
+            subtotal: o.subtotal,
+            tax: o.tax,
+            fees: o.fees,
+            total: o.total,
+            margin: o.margin,
+            notes: o.notes
+        }));
 
-        // If picking started, we don't automatically mark items as picked until they actually do it,
-        // but for simplicity if Packed/Shipped, ensure items are picked.
-        if (status === 'Packed' || status === 'Shipped') {
-            order.items = order.items.map(item => ({ ...item, pickStatus: 'Picked' }));
+        // Upsert orders
+        const { error: ordersError } = await supabase
+            .from('orders')
+            .upsert(orderEntries, { onConflict: 'id', ignoreDuplicates: true });
+
+        if (ordersError) throw new Error(ordersError.message);
+
+        // Map items
+        const itemEntries: any[] = [];
+        orders.forEach(o => {
+            o.items.forEach(i => {
+                itemEntries.push({
+                    order_id: o.id,
+                    sku: i.sku,
+                    quantity: i.quantity,
+                    price: i.price,
+                    pick_status: i.pickStatus,
+                    mapping_status: i.mappingStatus
+                });
+            });
+        });
+
+        // Insert items (we could deduplicate better, but for SS sync we only pass new orders)
+        if (itemEntries.length > 0) {
+            const { error: itemsError } = await supabase.from('order_items').insert(itemEntries);
+            if (itemsError) throw new Error(itemsError.message);
         }
+    },
 
-        order.timeline = [
-            ...order.timeline,
-            {
-                id: uuidv4(),
-                orderId,
-                timestamp: new Date().toISOString(),
-                action: `Status changed to ${status}`,
-                performedBy,
-                notes
-            }
-        ];
+    updateOrderStatus: async (orderId: string, status: OrderStatus, performedBy: string, notes?: string): Promise<void> => {
+        const updateData: any = {
+            fulfillment_status: status,
+            updated_at: new Date().toISOString()
+        };
 
-        ordersStore[index] = order;
-        return order;
+        const { error: orderError } = await supabase
+            .from('orders')
+            .update(updateData)
+            .eq('id', orderId);
+
+        if (orderError) throw new Error(orderError.message);
+
+        if (status === 'Packed' || status === 'Shipped') {
+            const { error: itemsError } = await supabase
+                .from('order_items')
+                .update({ pick_status: 'Picked' })
+                .eq('order_id', orderId);
+            if (itemsError) throw new Error(itemsError.message);
+        }
     },
 
     allocateInventory: async (orderId: string, performedBy: string): Promise<Order> => {
-        await delay(800);
-        const index = ordersStore.findIndex(o => o.id === orderId);
-        if (index === -1) throw new Error(`Order ${orderId} not found`);
+        const order = await ordersApi.getOrderById(orderId);
+        if (!order) throw new Error(`Order ${orderId} not found`);
 
-        const order = { ...ordersStore[index] };
         if (order.fulfillmentStatus !== 'New') {
             throw new Error(`Order ${orderId} is already ${order.fulfillmentStatus}. Cannot allocate.`);
         }
@@ -272,80 +280,62 @@ export const ordersApi = {
         const inventory = await inventoryApi.getInventory();
         const allocationIssues: string[] = [];
 
-        // Simple FEFO Allocation Logic mapped over items
-        const updatedItems = order.items.map(item => {
-            // Find all available lots for this SKU, sorted by earliest expiration date first
+        // For each item, allocate
+        for (const item of order.items) {
             const availableLots = inventory
                 .filter(inv => inv.id === item.sku && (inv.quantityOnHand - inv.quantityReserved) > 0)
-                .sort((a, b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime());
+                .sort((a, b) => new Date(a.expirationDate || '9999-12-31').getTime() - new Date(b.expirationDate || '9999-12-31').getTime());
 
-            // For simplicity in this mock: we assume one order item line can be fulfilled by ONE lot right now
-            // In a real system, it might split the item line into multiple lines for different lots.
             const targetLot = availableLots.find(lot => (lot.quantityOnHand - lot.quantityReserved) >= item.quantity);
 
             if (targetLot) {
-                // In a true integration, we should call an API to reserve these items.
-                // For this mock, we just record the allocation on the order.
-                return {
-                    ...item,
-                    allocatedWarehouseId: targetLot.warehouseId,
-                    allocatedLotNumber: targetLot.lotNumber
-                };
+                // Update specific order item with allocated warehouse/lot
+                await supabase
+                    .from('order_items')
+                    .update({ 
+                        allocated_warehouse_id: targetLot.warehouseId,
+                        allocated_lot_number: targetLot.lotNumber 
+                    })
+                    .eq('id', item.id);
             } else {
-                allocationIssues.push(`Insufficient stock for SKU ${item.sku}. Required: ${item.quantity}`);
-                return item; // Unchanged
+                allocationIssues.push(`Insufficient stock for SKU ${item.sku}`);
             }
-        });
+        }
 
         if (allocationIssues.length > 0) {
             throw new Error(`Allocation Failed: ${allocationIssues.join(' | ')}`);
         }
 
-        order.items = updatedItems;
-        order.fulfillmentStatus = 'Allocated';
-        order.timeline = [
-            ...order.timeline,
-            {
-                id: uuidv4(),
-                orderId,
-                timestamp: new Date().toISOString(),
-                action: 'Inventory Allocated (FEFO)',
-                performedBy
-            }
-        ];
-
-        ordersStore[index] = order;
-        return order;
+        // Only update status if fully allocated without throws
+        await ordersApi.updateOrderStatus(orderId, 'Allocated', performedBy);
+        
+        const finalOrder = await ordersApi.getOrderById(orderId);
+        return finalOrder as Order;
     },
 
     cancelOrder: async (orderId: string, reason: string, performedBy: string): Promise<Order> => {
-        await delay(400);
-        const index = ordersStore.findIndex(o => o.id === orderId);
-        if (index === -1) throw new Error(`Order ${orderId} not found`);
+        const order = await ordersApi.getOrderById(orderId);
+        if (!order) throw new Error(`Order ${orderId} not found`);
 
-        const order = { ...ordersStore[index] };
         if (order.fulfillmentStatus === 'Shipped') {
             throw new Error('Cannot cancel an order that has already shipped');
         }
 
-        order.fulfillmentStatus = 'Cancelled';
-        order.canceledAt = new Date().toISOString();
-        order.canceledBy = performedBy;
-        order.cancellationReason = reason;
+        const timestamp = new Date().toISOString();
+        const { error } = await supabase
+            .from('orders')
+            .update({
+                fulfillment_status: 'Cancelled',
+                canceled_at: timestamp,
+                canceled_by: performedBy,
+                cancellation_reason: reason,
+                updated_at: timestamp
+            })
+            .eq('id', orderId);
 
-        order.timeline = [
-            ...order.timeline,
-            {
-                id: uuidv4(),
-                orderId,
-                timestamp: order.canceledAt,
-                action: 'Order Cancelled',
-                performedBy,
-                notes: `Reason: ${reason}`
-            }
-        ];
+        if (error) throw new Error(error.message);
 
-        ordersStore[index] = order;
-        return order;
+        const updatedOrder = await ordersApi.getOrderById(orderId);
+        return updatedOrder as Order;
     }
 };

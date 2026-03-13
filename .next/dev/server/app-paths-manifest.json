@@ -1,8 +1,8 @@
 {
-  "/api/shipstation/validate/route": "app/api/shipstation/validate/route.js",
-  "/orders/[id]/page": "app/orders/[id]/page.js",
-  "/orders/page": "app/orders/page.js",
+  "/data-management/page": "app/data-management/page.js",
+  "/movements/page": "app/movements/page.js",
+  "/page": "app/page.js",
+  "/products/page": "app/products/page.js",
   "/settings/channels/page": "app/settings/channels/page.js",
-  "/settings/page": "app/settings/page.js",
   "/settings/users/page": "app/settings/users/page.js"
 }

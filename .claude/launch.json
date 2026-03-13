@@ -14,5 +14,18 @@
       "runtimeArgs": ["run", "preview"],
       "port": 4173
     }
+  ,
+    {
+      "name": "The Caddy - Expo Web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/eduardapantaleao/the-caddy/apps/mobile && /Users/eduardapantaleao/the-caddy/node_modules/.bin/expo start --web --port 8081"],
+      "port": 8081
+    },
+    {
+      "name": "The Caddy - API",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/eduardapantaleao/the-caddy/apps/api && cp ../../node_modules -r . 2>/dev/null; /Users/eduardapantaleao/the-caddy/node_modules/.bin/ts-node-dev --respawn --transpile-only src/index.ts"],
+      "port": 4000
+    }
   ]
 }

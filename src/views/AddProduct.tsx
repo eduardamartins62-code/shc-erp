@@ -45,7 +45,7 @@ const AddProduct: React.FC = () => {
         setComponents(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         const newProduct: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> = {
@@ -60,7 +60,7 @@ const AddProduct: React.FC = () => {
             status: formData.status
         };
 
-        const createdProduct = addProduct(newProduct);
+        const createdProduct = await addProduct(newProduct);
 
         if (type === 'bundle' && components.length > 0) {
             components.forEach(comp => {

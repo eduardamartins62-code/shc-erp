@@ -16,7 +16,23 @@
       "Bash(npm install -D @types/bcryptjs @types/uuid)",
       "Bash(npx prisma init --datasource-provider sqlite)",
       "Bash(node -e \"const p=require\\(''./package.json''\\); console.log\\(''next:'', p.dependencies.next, ''prisma:'', p.devDependencies?.prisma || p.dependencies?.prisma, ''next-auth:'', p.dependencies[''next-auth'']\\)\")",
-      "Bash(npx prisma migrate dev --name init)"
+      "Bash(npx prisma migrate dev --name init)",
+      "Bash(mkdir -p /Users/eduardapantaleao/the-caddy)",
+      "Read(//Users/eduardapantaleao/**)",
+      "Bash(yarn install:*)",
+      "Bash(npm install:*)",
+      "Bash(node_modules/.bin/expo install:*)",
+      "Bash(ln -s /Users/eduardapantaleao/the-caddy/node_modules /Users/eduardapantaleao/the-caddy/apps/mobile/node_modules)",
+      "Bash(node_modules/.bin/prisma generate:*)",
+      "Bash(../../node_modules/.bin/prisma generate:*)",
+      "Bash(psql --version)",
+      "Bash(/Users/eduardapantaleao/the-caddy/apps/api/.env:*)",
+      "Bash(../../node_modules/.bin/prisma db:*)",
+      "Bash(../../node_modules/.bin/ts-node --transpile-only prisma/seed.ts)",
+      "Bash(curl -s -X POST http://localhost:4000/api/auth/request-otp -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@example.com\"\"}')",
+      "Bash(curl -s -X POST http://localhost:4000/api/auth/verify-otp -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@example.com\"\",\"\"code\"\":\"\"493651\"\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8081)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4000/health)"
     ]
   }
 }

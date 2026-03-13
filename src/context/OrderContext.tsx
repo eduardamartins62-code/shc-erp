@@ -143,15 +143,13 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 if (itemsToReserve.length > 0) {
                     await reserveInventory(itemsToReserve, 'System API Sync');
                 }
-            }
 
-            // In a real app we'd save these via the backend ordersApi.
-            // For now, we simulate inserting them into our context/store.
-            setOrders(prev => {
-                const prevIds = new Set(prev.map(o => o.id));
-                const uniqueToAdd = toAdd.filter(o => !prevIds.has(o.id));
-                return [...uniqueToAdd, ...prev];
-            });
+                // Persist the newly fetched external orders into our Supabase database permanently
+                await ordersApi.batchCreateOrders(toAdd);
+
+                // Fetch orders directly from DB to refresh UI with truth
+                await fetchOrders();
+            }
 
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to sync with ShipStation');

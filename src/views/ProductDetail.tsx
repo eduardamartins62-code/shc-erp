@@ -114,8 +114,8 @@ const ProductDetail: React.FC = () => {
         return <span className="badge badge-red">{status}</span>;
     };
 
-    const handleSaveImage = (imageUrl: string) => {
-        updateProduct(product.id, { productImageUrl: imageUrl });
+    const handleSaveImage = async (imageUrl: string) => {
+        await updateProduct(product.id, { productImageUrl: imageUrl });
     };
 
     const handleLogCostChange = (newCost: number, notes: string) => {
@@ -228,10 +228,10 @@ const ProductDetail: React.FC = () => {
                                     Duplicate Product
                                 </button>
                                 <button
-                                    onClick={() => {
+                                    onClick={async () => {
                                         setIsMoreMenuOpen(false);
                                         if (window.confirm(`Are you sure you want to deactivate ${product.sku}?`)) {
-                                            updateProduct(product.id, { status: 'Inactive' });
+                                            await updateProduct(product.id, { status: 'Inactive' });
                                         }
                                     }}
                                     style={{
