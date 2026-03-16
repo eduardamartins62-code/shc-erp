@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../../../src/app/settings/page.tsx"],"sourcesContent":["\"use client\";\n\nexport default function Page() {\n  return <div>Select a setting to manage.</div>;\n}"],"names":[],"mappings":"wDAEe,SAAS,IACtB,MAAO,CAAA,EAAA,EAAA,GAAA,EAAC,MAAA,UAAI,+BACd"}

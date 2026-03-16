@@ -1,8 +1,0 @@
-{
-  "/data-management/page": "app/data-management/page.js",
-  "/movements/page": "app/movements/page.js",
-  "/page": "app/page.js",
-  "/products/page": "app/products/page.js",
-  "/settings/channels/page": "app/settings/channels/page.js",
-  "/settings/users/page": "app/settings/users/page.js"
-}
