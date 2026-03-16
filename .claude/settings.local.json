@@ -32,7 +32,27 @@
       "Bash(curl -s -X POST http://localhost:4000/api/auth/request-otp -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@example.com\"\"}')",
       "Bash(curl -s -X POST http://localhost:4000/api/auth/verify-otp -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@example.com\"\",\"\"code\"\":\"\"493651\"\"}')",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8081)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4000/health)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4000/health)",
+      "Bash(grep -v \"^$\")",
+      "Bash(node -e \":*)",
+      "Bash(curl -s -X POST http://localhost:4000/api/auth/request-otp -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"admin@thecaddy.app\"\"}')",
+      "Bash(curl -s -X POST http://localhost:4000/api/auth/verify-otp -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"admin@thecaddy.app\"\"\"\",\"\"\"\"code\"\"\"\":\"\"\"\"882255\"\"\"\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:4000/health)",
+      "Bash(find /Users/eduardapantaleao/the-caddy/apps/mobile -maxdepth 2 -name *.html -o -name *.css)",
+      "Bash(/Users/eduardapantaleao/the-caddy/node_modules/.bin/prisma db:*)",
+      "Bash(npx --prefix /Users/eduardapantaleao/the-caddy prisma --version)",
+      "Bash(find /Users/eduardapantaleao/the-caddy -path */prisma/build/index.js)",
+      "Bash(npm run:*)",
+      "Bash(npx prisma:*)",
+      "Bash(find /Users/eduardapantaleao/the-caddy -name prisma -not -path */prisma/schema* -not -path */.expo/*)",
+      "Bash(find /Users/eduardapantaleao/the-caddy -name prisma -path */.bin/*)",
+      "Bash(find /Users/eduardapantaleao/the-caddy -name jest-worker -type d -not -path */.expo/*)",
+      "Bash(find /Users/eduardapantaleao/the-caddy -name expo -path */.bin/expo)",
+      "Bash(ln -s /Users/eduardapantaleao/the-caddy/apps/mobile/node_modules/expo /Users/eduardapantaleao/the-caddy/node_modules/expo)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
