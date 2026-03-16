@@ -3,8 +3,11 @@
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useOrders } from '../context/OrderContext';
+import { useTags } from '../context/TagsContext';
 import StatusBadge from '../components/StatusBadge';
-import { ArrowLeft, Package, MapPin, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import TagChip from '../components/ui/TagChip';
+import TagMultiSelect from '../components/ui/TagMultiSelect';
+import { ArrowLeft, Package, MapPin, CheckCircle, Clock, AlertTriangle, Tag } from 'lucide-react';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { SkuLink } from '../components/ui/SkuLink';
 import type { OrderItem } from '../types';
@@ -15,7 +18,8 @@ import { useState } from 'react';
 const OrderDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useRouter();
-    const { orders, allocateOrderInventory, updateOrderStatus, loading } = useOrders();
+    const { orders, allocateOrderInventory, updateOrderStatus, fetchOrders, loading } = useOrders();
+    const { assignTagToOrder, removeTagFromOrder } = useTags();
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showPrintModal, setShowPrintModal] = useState(false);
 
@@ -67,6 +71,11 @@ const OrderDetails: React.FC = () => {
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Failed to ship order');
         }
+    };
+
+    const handleRemoveTag = async (tagId: string) => {
+        await removeTagFromOrder(order.id, tagId);
+        await fetchOrders();
     };
 
     const itemColumns: Column<OrderItem>[] = [
@@ -276,6 +285,30 @@ const OrderDetails: React.FC = () => {
                         <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.5 }}>
                             {order.shippingAddress}
                         </p>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="card">
+                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--color-primary-dark)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Tag size={16} /> Tags
+                        </h3>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                            {(order.tags ?? []).map(tag => (
+                                <TagChip key={tag.id} tag={tag} onRemove={() => handleRemoveTag(tag.id)} size="md" />
+                            ))}
+                            {(order.tags ?? []).length === 0 && <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>No tags</span>}
+                        </div>
+                        <TagMultiSelect
+                            selectedTagIds={(order.tags ?? []).map(t => t.id)}
+                            onChange={async (newIds) => {
+                                const currentIds = (order.tags ?? []).map(t => t.id);
+                                const added = newIds.filter(id => !currentIds.includes(id));
+                                for (const tagId of added) {
+                                    await assignTagToOrder(order.id, tagId);
+                                }
+                                await fetchOrders();
+                            }}
+                        />
                     </div>
 
                     {/* Summary */}

@@ -6,6 +6,7 @@ import { ToastProvider } from '../context/ToastContext';
 import { ProductProvider } from '../context/ProductContext';
 import { InventoryProvider } from '../context/InventoryContext';
 import { OrderProvider } from '../context/OrderContext';
+import { TagsProvider } from '../context/TagsContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
@@ -15,7 +16,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     <ProductProvider>
                         <InventoryProvider>
                             <OrderProvider>
-                                {children}
+                                <TagsProvider>
+                                    {children}
+                                </TagsProvider>
                             </OrderProvider>
                         </InventoryProvider>
                     </ProductProvider>

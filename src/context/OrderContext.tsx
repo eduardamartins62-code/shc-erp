@@ -9,11 +9,13 @@ interface OrderContextProps {
     orders: Order[];
     loading: boolean;
     error: string | null;
+    lastOrderSyncedAt: string | null;
     fetchOrders: () => Promise<void>;
     createB2BOrder: (data: B2BOrderFormData) => Promise<void>;
     updateOrderStatus: (orderId: string, status: OrderStatus, performedBy: string, notes?: string) => Promise<void>;
     allocateOrderInventory: (orderId: string, performedBy: string) => Promise<void>;
     syncShipStationOrders: () => Promise<void>;
+    syncShippedOrders: () => Promise<void>;
     cancelOrder: (orderId: string, reason: string, performedBy: string) => Promise<void>;
 }
 
@@ -31,7 +33,11 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { channels } = useSettings();
+    const [lastOrderSyncedAt, setLastOrderSyncedAt] = useState<string | null>(() => {
+        if (typeof window !== 'undefined') return sessionStorage.getItem('orders_last_synced');
+        return null;
+    });
+    const { channels, systemSettings } = useSettings();
     const { reserveInventory, releaseInventory, inventory } = useInventory();
 
     const fetchOrders = async () => {
@@ -136,10 +142,10 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 });
 
                 // Reserve inventory for valid items automatically
-                const itemsToReserve = toAdd.flatMap(o => 
+                const itemsToReserve = toAdd.flatMap(o =>
                     o.items.filter(i => i.mappingStatus === 'Mapped').map(i => ({ sku: i.sku, quantity: i.quantity }))
                 );
-                
+
                 if (itemsToReserve.length > 0) {
                     await reserveInventory(itemsToReserve, 'System API Sync');
                 }
@@ -159,9 +165,54 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
     };
 
+    const syncShippedOrders = async () => {
+        try {
+            const ssChannel = channels.find(c => c.channel === 'ShipStation');
+            if (!ssChannel || !ssChannel.isEnabled || !ssChannel.apiKey || !ssChannel.apiSecret) return;
+
+            const method = (systemSettings as any)?.inventoryDeductionMethod || 'FEFO';
+
+            const shippedFromSS = await shipstationApi.fetchShippedOrders(ssChannel.apiKey, ssChannel.apiSecret);
+            const shippedOrderNumbers = new Set(shippedFromSS.map(o => o.orderNumber));
+
+            const ordersToMarkShipped = orders.filter(o =>
+                shippedOrderNumbers.has(o.id) &&
+                o.fulfillmentStatus !== 'Shipped' &&
+                o.fulfillmentStatus !== 'Cancelled'
+            );
+
+            for (const order of ordersToMarkShipped) {
+                await ordersApi.deductInventoryForShippedOrder(order.id, method, 'ShipStation Sync');
+                await ordersApi.updateOrderStatus(order.id, 'Shipped', 'ShipStation Sync');
+            }
+
+            if (ordersToMarkShipped.length > 0) {
+                await fetchOrders();
+            }
+        } catch (err) {
+            console.error('Failed to sync shipped orders', err);
+        }
+    };
+
     useEffect(() => {
         fetchOrders();
     }, []);
+
+    // 15-min auto-sync interval
+    useEffect(() => {
+        const ssChannel = channels.find(c => c.channel === 'ShipStation');
+        if (!ssChannel || !ssChannel.isEnabled || !ssChannel.autoImportOrders) return;
+
+        const interval = setInterval(async () => {
+            await syncShipStationOrders();
+            await syncShippedOrders();
+            const now = new Date().toISOString();
+            setLastOrderSyncedAt(now);
+            sessionStorage.setItem('orders_last_synced', now);
+        }, 15 * 60 * 1000);
+
+        return () => clearInterval(interval);
+    }, [channels]);
 
     return (
         <OrderContext.Provider
@@ -169,11 +220,13 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 orders,
                 loading,
                 error,
+                lastOrderSyncedAt,
                 fetchOrders,
                 createB2BOrder,
                 updateOrderStatus,
                 allocateOrderInventory,
                 syncShipStationOrders,
+                syncShippedOrders,
                 cancelOrder,
             }}
         >

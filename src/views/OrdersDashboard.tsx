@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useOrders } from '../context/OrderContext';
+import { useRouter } from 'next/navigation';
 import OrderTable from '../components/OrderTable';
-import B2BOrderForm from '../components/B2BOrderForm';
 import { Download, Plus } from 'lucide-react';
 
 const OrdersDashboard: React.FC = () => {
-    const { orders, loading, error, syncShipStationOrders } = useOrders();
-    const [isB2BModalOpen, setIsB2BModalOpen] = useState(false);
+    const { orders, loading, error, syncShipStationOrders, lastOrderSyncedAt } = useOrders();
+    const router = useRouter();
     const [syncing, setSyncing] = useState(false);
     const [activeTab, setActiveTab] = useState<'Pending' | 'Shipped' | 'Cancelled'>('Pending');
 
@@ -44,28 +44,35 @@ const OrdersDashboard: React.FC = () => {
                         Manage multichannel fulfillment, allocation, and tracking.
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', flexShrink: 0, flexWrap: 'wrap' }}>
-                    <button
-                        className="btn-secondary"
-                        onClick={async () => {
-                            setSyncing(true);
-                            try {
-                                await syncShipStationOrders();
-                                alert('Orders synced successfully!');
-                            } catch (e: any) {
-                                alert(e.message);
-                            } finally {
-                                setSyncing(false);
-                            }
-                        }}
-                        disabled={syncing || loading}
-                    >
-                        <Download size={18} />
-                        {syncing ? 'Importing...' : 'Import Orders'}
-                    </button>
+                <div style={{ display: 'flex', gap: '1rem', flexShrink: 0, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                        <button
+                            className="btn-secondary"
+                            onClick={async () => {
+                                setSyncing(true);
+                                try {
+                                    await syncShipStationOrders();
+                                    alert('Orders synced successfully!');
+                                } catch (e: any) {
+                                    alert(e.message);
+                                } finally {
+                                    setSyncing(false);
+                                }
+                            }}
+                            disabled={syncing || loading}
+                        >
+                            <Download size={18} />
+                            {syncing ? 'Importing...' : 'Import Orders'}
+                        </button>
+                        {lastOrderSyncedAt && (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                Last synced: {new Date(lastOrderSyncedAt).toLocaleTimeString()}
+                            </span>
+                        )}
+                    </div>
                     <button
                         className="btn-primary"
-                        onClick={() => setIsB2BModalOpen(true)}
+                        onClick={() => router.push('/orders/new')}
                     >
                         <Plus size={18} />
                         Create B2B Order
@@ -146,10 +153,6 @@ const OrdersDashboard: React.FC = () => {
                 </div>
                 <OrderTable orders={getFilteredOrders()} loading={loading} />
             </div>
-
-            {isB2BModalOpen && (
-                <B2BOrderForm onClose={() => setIsB2BModalOpen(false)} />
-            )}
         </div>
     );
 };

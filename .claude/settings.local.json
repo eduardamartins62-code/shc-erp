@@ -52,7 +52,8 @@
       "Bash(ln -s /Users/eduardapantaleao/the-caddy/apps/mobile/node_modules/expo /Users/eduardapantaleao/the-caddy/node_modules/expo)",
       "Bash(git rm:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(ls /Users/eduardapantaleao/ERP/.env*)"
     ]
   }
 }

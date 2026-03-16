@@ -1,4 +1,4 @@
-
+import type { OrderTag } from './tags';
 
 export type OrderStatus = 'New' | 'Allocated' | 'Picking' | 'Packed' | 'Shipped' | 'Cancelled' | 'Returned';
 export type PaymentStatus = 'Paid' | 'Unpaid' | 'Refunded';
@@ -26,7 +26,7 @@ export interface OrderHistoryEvent {
 }
 
 export interface Order {
-    id: string; // e.g., ORD-2024-001
+    id: string;
     channel: 'Amazon' | 'Walmart' | 'Shopify' | 'eBay' | 'TikTok Shop' | 'B2B' | 'ShipStation';
     storeName?: string;
     customerName: string;
@@ -49,13 +49,34 @@ export interface Order {
     canceledAt?: string;
     canceledBy?: string;
     cancellationReason?: string;
+    tags?: OrderTag[];
+}
+
+export interface B2BShipTo {
+    name: string;
+    company?: string;
+    address1: string;
+    address2?: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+    phone?: string;
+    email?: string;
 }
 
 export interface B2BOrderFormData {
-    customerName: string;
-    customerEmail: string;
-    shippingAddress: string;
+    orderNumber: string;
+    orderDate: string;
+    shipTo: B2BShipTo;
     items: { sku: string; quantity: number; price: number }[];
+    tax: number;
+    shippingFee: number;
     notes?: string;
+    internalNotes?: string;
+    tagIds: string[];
+    carrier?: string;
+    requestedService?: string;
+    warehouseId?: string;
     performedBy: string;
 }

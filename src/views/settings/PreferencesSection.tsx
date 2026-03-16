@@ -10,7 +10,8 @@ export const PreferencesSection: React.FC = () => {
         defaultDateFormat: 'MM/DD/YYYY',
         lowStockThresholdDefault: 20,
         enableLotTracking: true,
-        enableExpirationTracking: true
+        enableExpirationTracking: true,
+        inventoryDeductionMethod: 'FEFO' as 'FIFO' | 'FEFO'
     });
 
     useEffect(() => {
@@ -141,6 +142,27 @@ export const PreferencesSection: React.FC = () => {
                                 Enable Expiration Date Tracking Globally
                             </label>
                         </div>
+                    </div>
+                </div>
+
+                {/* Order Fulfillment */}
+                <div>
+                    <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--color-primary-dark)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>Order Fulfillment</h4>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.875rem' }}>
+                            Inventory Deduction Method
+                        </label>
+                        <select
+                            value={formData.inventoryDeductionMethod}
+                            onChange={e => setFormData({ ...formData, inventoryDeductionMethod: e.target.value as 'FIFO' | 'FEFO' })}
+                            style={{ width: '200px', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                        >
+                            <option value="FEFO">FEFO (First Expired, First Out)</option>
+                            <option value="FIFO">FIFO (First In, First Out)</option>
+                        </select>
+                        <p style={{ margin: '0.25rem 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                            Determines the order in which inventory lots are deducted when an order ships.
+                        </p>
                     </div>
                 </div>
 

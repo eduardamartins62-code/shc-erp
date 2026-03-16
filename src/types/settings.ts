@@ -56,4 +56,5 @@ export interface SystemSettings {
     lowStockThresholdDefault: number;
     enableLotTracking: boolean;
     enableExpirationTracking: boolean;
+    inventoryDeductionMethod: 'FIFO' | 'FEFO';
 }

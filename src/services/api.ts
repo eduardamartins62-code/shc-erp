@@ -189,7 +189,8 @@ const systemSettingsStore: SystemSettings = {
     defaultDateFormat: 'MM/DD/YYYY',
     lowStockThresholdDefault: 20,
     enableLotTracking: true,
-    enableExpirationTracking: true
+    enableExpirationTracking: true,
+    inventoryDeductionMethod: 'FEFO'
 };
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

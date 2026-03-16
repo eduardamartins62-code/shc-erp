@@ -1,12 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../lib/supabase';
 import { api as inventoryApi } from './api';
+import { tagsApi } from './tagsApi';
 import type { Order, OrderItem, OrderHistoryEvent, OrderStatus, B2BOrderFormData } from '../types';
 
 // Helper to reconstruct a pseudo-timeline from standard status + DB timestamps
 const generateTimelineForOrder = (order: any): OrderHistoryEvent[] => {
     const timeline: OrderHistoryEvent[] = [];
-    
+
     // Created
     timeline.push({
         id: uuidv4(),
@@ -64,7 +65,27 @@ export const ordersApi = {
 
         if (ordersError) throw new Error(ordersError.message);
 
-        return dbOrders.map((o: any) => ({
+        // Fetch persistent timeline events
+        const { data: timelineRows } = await supabase
+            .from('order_timeline')
+            .select('*')
+            .in('order_id', dbOrders.map((o: any) => o.id))
+            .order('timestamp', { ascending: true });
+
+        const timelineMap: Record<string, any[]> = {};
+        (timelineRows || []).forEach((row: any) => {
+            if (!timelineMap[row.order_id]) timelineMap[row.order_id] = [];
+            timelineMap[row.order_id].push({
+                id: row.id,
+                orderId: row.order_id,
+                timestamp: row.timestamp,
+                action: row.action,
+                performedBy: row.performed_by,
+                notes: row.notes
+            });
+        });
+
+        const result = dbOrders.map((o: any) => ({
             id: o.id,
             channel: o.channel,
             storeName: o.store_name,
@@ -86,7 +107,7 @@ export const ordersApi = {
             canceledAt: o.canceled_at,
             canceledBy: o.canceled_by,
             cancellationReason: o.cancellation_reason,
-            timeline: generateTimelineForOrder(o),
+            timeline: [...generateTimelineForOrder(o), ...(timelineMap[o.id] || [])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
             items: o.order_items.map((i: any) => ({
                 id: i.id,
                 orderId: i.order_id,
@@ -97,8 +118,18 @@ export const ordersApi = {
                 allocatedLotNumber: i.allocated_lot_number,
                 pickStatus: i.pick_status,
                 mappingStatus: i.mapping_status
-            }))
-        })) as Order[];
+            })),
+            tags: []
+        }));
+
+        // Fetch tags for all orders
+        const orderIds = result.map((o: any) => o.id);
+        const tagMap = await tagsApi.getTagsForOrders(orderIds);
+        result.forEach((o: any) => {
+            o.tags = tagMap[o.id] ?? [];
+        });
+
+        return result as Order[];
     },
 
     getOrderById: async (id: string): Promise<Order | undefined> => {
@@ -109,6 +140,28 @@ export const ordersApi = {
             .single();
 
         if (error || !dbOrder) return undefined;
+
+        // Fetch persistent timeline events for this order
+        const { data: timelineRows } = await supabase
+            .from('order_timeline')
+            .select('*')
+            .eq('order_id', dbOrder.id)
+            .order('timestamp', { ascending: true });
+
+        const persistedTimeline = (timelineRows || []).map((row: any) => ({
+            id: row.id,
+            orderId: row.order_id,
+            timestamp: row.timestamp,
+            action: row.action,
+            performedBy: row.performed_by,
+            notes: row.notes
+        }));
+
+        const tagMap = await tagsApi.getTagsForOrders([dbOrder.id]);
+        const tags = tagMap[dbOrder.id] ?? [];
+
+        const mergedTimeline = [...generateTimelineForOrder(dbOrder), ...persistedTimeline]
+            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
         return {
             id: dbOrder.id,
@@ -132,7 +185,8 @@ export const ordersApi = {
             canceledAt: dbOrder.canceled_at,
             canceledBy: dbOrder.canceled_by,
             cancellationReason: dbOrder.cancellation_reason,
-            timeline: generateTimelineForOrder(dbOrder),
+            timeline: mergedTimeline,
+            tags,
             items: dbOrder.order_items.map((i: any) => ({
                 id: i.id,
                 orderId: i.order_id,
@@ -148,28 +202,29 @@ export const ordersApi = {
     },
 
     createB2BOrder: async (data: B2BOrderFormData): Promise<Order> => {
-        const orderId = `ORD-B2B-${Math.floor(Math.random() * 10000)}`;
+        const orderId = data.orderNumber;
+        const shipToAddress = `${data.shipTo.name}${data.shipTo.company ? `, ${data.shipTo.company}` : ''}, ${data.shipTo.address1}${data.shipTo.address2 ? ` ${data.shipTo.address2}` : ''}, ${data.shipTo.city}, ${data.shipTo.state} ${data.shipTo.zip}, ${data.shipTo.country}`;
 
         let subtotal = 0;
-        data.items.forEach(item => {
-            subtotal += item.price * item.quantity;
-        });
-
+        data.items.forEach(item => { subtotal += item.price * item.quantity; });
+        const total = subtotal + data.tax + data.shippingFee;
         const margin = subtotal * 0.4;
-        const total = subtotal;
 
         const orderEntry = {
             id: orderId,
             channel: 'B2B',
-            customer_name: data.customerName,
-            customer_email: data.customerEmail,
-            shipping_address: data.shippingAddress,
-            order_date: new Date().toISOString(),
+            ship_to_name: data.shipTo.name,
+            customer_name: data.shipTo.company || data.shipTo.name,
+            customer_email: data.shipTo.email || '',
+            shipping_address: shipToAddress,
+            order_date: data.orderDate || new Date().toISOString(),
             fulfillment_status: 'New',
             payment_status: 'Unpaid',
+            carrier: data.carrier,
+            requested_service: data.requestedService,
             subtotal,
-            tax: 0,
-            fees: 0,
+            tax: data.tax,
+            fees: data.shippingFee,
             total,
             margin,
             notes: data.notes
@@ -188,6 +243,10 @@ export const ordersApi = {
 
         const { error: itemsError } = await supabase.from('order_items').insert(orderItemsEntries);
         if (itemsError) throw new Error(itemsError.message);
+
+        if (data.tagIds && data.tagIds.length > 0) {
+            await tagsApi.assignTagsToOrder(orderId, data.tagIds);
+        }
 
         const newOrder = await ordersApi.getOrderById(orderId);
         if (!newOrder) throw new Error('Failed to retrieve newly created B2B order');
@@ -292,9 +351,9 @@ export const ordersApi = {
                 // Update specific order item with allocated warehouse/lot
                 await supabase
                     .from('order_items')
-                    .update({ 
+                    .update({
                         allocated_warehouse_id: targetLot.warehouseId,
-                        allocated_lot_number: targetLot.lotNumber 
+                        allocated_lot_number: targetLot.lotNumber
                     })
                     .eq('id', item.id);
             } else {
@@ -308,7 +367,7 @@ export const ordersApi = {
 
         // Only update status if fully allocated without throws
         await ordersApi.updateOrderStatus(orderId, 'Allocated', performedBy);
-        
+
         const finalOrder = await ordersApi.getOrderById(orderId);
         return finalOrder as Order;
     },
@@ -337,5 +396,55 @@ export const ordersApi = {
 
         const updatedOrder = await ordersApi.getOrderById(orderId);
         return updatedOrder as Order;
+    },
+
+    addTimelineEvent: async (orderId: string, action: string, performedBy: string, notes?: string): Promise<void> => {
+        const { error } = await supabase.from('order_timeline').insert([{
+            order_id: orderId,
+            timestamp: new Date().toISOString(),
+            action,
+            performed_by: performedBy,
+            notes: notes || null
+        }]);
+        if (error) throw new Error(error.message);
+    },
+
+    deductInventoryForShippedOrder: async (orderId: string, method: 'FIFO' | 'FEFO', performedBy: string): Promise<void> => {
+        const order = await ordersApi.getOrderById(orderId);
+        if (!order) return;
+
+        for (const item of order.items) {
+            const sortColumn = method === 'FEFO' ? 'expiration_date' : 'lot_number';
+            const { data: lots } = await supabase
+                .from('inventory')
+                .select('*')
+                .eq('product_id', item.sku)
+                .gt('quantity_on_hand', 0)
+                .order(sortColumn, { ascending: true, nullsFirst: false });
+
+            if (!lots || lots.length === 0) continue;
+
+            let remaining = item.quantity;
+            for (const lot of lots) {
+                if (remaining <= 0) break;
+                const deduct = Math.min(lot.quantity_on_hand, remaining);
+                const newQty = Math.max(0, lot.quantity_on_hand - deduct);
+                const newReserved = Math.max(0, (lot.quantity_reserved || 0) - deduct);
+                await supabase.from('inventory').update({
+                    quantity_on_hand: newQty,
+                    quantity_reserved: newReserved,
+                    last_updated: new Date().toISOString(),
+                    updated_by: performedBy
+                }).eq('id', lot.id);
+                remaining -= deduct;
+            }
+        }
+
+        await ordersApi.addTimelineEvent(
+            orderId,
+            `Inventory auto-removed via ${method}`,
+            performedBy,
+            `Stock deducted when order marked as shipped by ShipStation`
+        );
     }
 };

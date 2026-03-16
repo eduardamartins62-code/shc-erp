@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import type { Order } from '../types';
 import StatusBadge from './StatusBadge';
+import TagChip from './ui/TagChip';
 import { Eye, Clock, Printer, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { DataTable, type Column } from './ui/DataTable';
@@ -78,6 +79,17 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
             type: 'number-range',
             filterable: true,
             render: (val) => <span style={{ fontWeight: 600 }}>${Number(val).toFixed(2)}</span>
+        },
+        {
+            key: 'tags',
+            label: 'Tags',
+            type: 'text',
+            filterable: false,
+            render: (_: any, order: Order) => (
+                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                    {(order.tags ?? []).map(t => <TagChip key={t.id} tag={t} />)}
+                </div>
+            )
         }
     ];
 

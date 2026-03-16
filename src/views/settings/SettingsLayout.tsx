@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Users, Warehouse, Link as LinkIcon, Settings as SettingsIcon, Globe } from 'lucide-react';
+import { Users, Warehouse, Link as LinkIcon, Settings as SettingsIcon, Globe, Tag } from 'lucide-react';
 
 interface SettingsLayoutProps {
     children: React.ReactNode;
@@ -87,6 +87,15 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({ children }) => {
                     >
                         <Globe size={18} />
                         Channels & Integrations
+                    </Link>
+
+                    <Link
+                        href="/settings/tags"
+                        className={`nav-link ${pathname.startsWith('/settings/tags') ? 'active' : ''}`}
+                        style={getLinkStyle(pathname.startsWith('/settings/tags'))}
+                    >
+                        <Tag size={18} />
+                        Order Tags
                     </Link>
 
                     <Link

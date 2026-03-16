@@ -218,6 +218,20 @@ export const shipstationApi = {
     },
 
     /**
+     * Fetches orders with shipped status from ShipStation.
+     */
+    fetchShippedOrders: async (apiKey: string, apiSecret: string): Promise<{ orderNumber: string }[]> => {
+        if (!apiKey || !apiSecret) return [];
+        const base64Credentials = btoa(`${apiKey}:${apiSecret}`);
+        const response = await fetch('/api/shipstation/shipped', {
+            headers: { 'Authorization': `Basic ${base64Credentials}` }
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return (data.orders || []).map((o: any) => ({ orderNumber: o.orderNumber }));
+    },
+
+    /**
      * Pushes stock quantities to ShipStation.
      */
     syncInventory: async (apiKey: string, apiSecret: string): Promise<void> => {

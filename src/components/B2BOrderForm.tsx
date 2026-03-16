@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { X, Plus, Trash2 } from 'lucide-react';
 import type { B2BOrderFormData } from '../types';
+import { generateB2BOrderNumber } from '../utils/orderUtils';
 
 interface B2BOrderFormProps {
     onClose: () => void;
@@ -12,9 +13,12 @@ const B2BOrderForm: React.FC<B2BOrderFormProps> = ({ onClose }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [customerName, setCustomerName] = useState('');
-    const [customerEmail, setCustomerEmail] = useState('');
-    const [shippingAddress, setShippingAddress] = useState('');
+    const [shipToName, setShipToName] = useState('');
+    const [shipToEmail, setShipToEmail] = useState('');
+    const [shipToAddress1, setShipToAddress1] = useState('');
+    const [shipToCity, setShipToCity] = useState('');
+    const [shipToState, setShipToState] = useState('');
+    const [shipToZip, setShipToZip] = useState('');
     const [notes, setNotes] = useState('');
 
     const [items, setItems] = useState<B2BOrderFormData['items']>([
@@ -43,8 +47,7 @@ const B2BOrderForm: React.FC<B2BOrderFormProps> = ({ onClose }) => {
         setError(null);
 
         try {
-            // Validation
-            if (!customerName || !shippingAddress || items.length === 0) {
+            if (!shipToName || !shipToAddress1 || items.length === 0) {
                 throw new Error("Please fill in required fields.");
             }
             if (items.some(i => !i.sku || i.quantity <= 0 || i.price <= 0)) {
@@ -52,12 +55,23 @@ const B2BOrderForm: React.FC<B2BOrderFormProps> = ({ onClose }) => {
             }
 
             await createB2BOrder({
-                customerName,
-                customerEmail,
-                shippingAddress,
+                orderNumber: generateB2BOrderNumber(),
+                orderDate: new Date().toISOString(),
+                shipTo: {
+                    name: shipToName,
+                    address1: shipToAddress1,
+                    city: shipToCity,
+                    state: shipToState,
+                    zip: shipToZip,
+                    country: 'US',
+                    email: shipToEmail
+                },
                 notes,
                 items,
-                performedBy: 'System Admin' // Mock current user
+                tax: 0,
+                shippingFee: 0,
+                tagIds: [],
+                performedBy: 'System Admin'
             });
             onClose();
         } catch (err) {
@@ -105,37 +119,50 @@ const B2BOrderForm: React.FC<B2BOrderFormProps> = ({ onClose }) => {
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-                    {/* Customer Information */}
+                    {/* Ship To Information */}
                     <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '1.5rem' }}>
-                        <h3 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '1rem' }}>Customer Information</h3>
+                        <h3 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '1rem' }}>Ship To</h3>
                         <div className="grid-2">
                             <div className="form-group">
-                                <label>Customer / Company Name *</label>
+                                <label>Name *</label>
                                 <input
                                     type="text"
                                     required
-                                    value={customerName}
-                                    onChange={(e) => setCustomerName(e.target.value)}
+                                    value={shipToName}
+                                    onChange={(e) => setShipToName(e.target.value)}
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Contact Email</label>
+                                <label>Email</label>
                                 <input
                                     type="email"
-                                    value={customerEmail}
-                                    onChange={(e) => setCustomerEmail(e.target.value)}
+                                    value={shipToEmail}
+                                    onChange={(e) => setShipToEmail(e.target.value)}
                                 />
                             </div>
                         </div>
                         <div className="form-group" style={{ marginTop: '1rem' }}>
-                            <label>Shipping Address *</label>
-                            <textarea
+                            <label>Address Line 1 *</label>
+                            <input
+                                type="text"
                                 required
-                                rows={3}
-                                value={shippingAddress}
-                                onChange={(e) => setShippingAddress(e.target.value)}
-                                style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '6px' }}
+                                value={shipToAddress1}
+                                onChange={(e) => setShipToAddress1(e.target.value)}
                             />
+                        </div>
+                        <div className="grid-2" style={{ marginTop: '1rem' }}>
+                            <div className="form-group">
+                                <label>City</label>
+                                <input type="text" value={shipToCity} onChange={(e) => setShipToCity(e.target.value)} />
+                            </div>
+                            <div className="form-group">
+                                <label>State</label>
+                                <input type="text" value={shipToState} onChange={(e) => setShipToState(e.target.value)} />
+                            </div>
+                            <div className="form-group">
+                                <label>ZIP</label>
+                                <input type="text" value={shipToZip} onChange={(e) => setShipToZip(e.target.value)} />
+                            </div>
                         </div>
                     </div>
 
