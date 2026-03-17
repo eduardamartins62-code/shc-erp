@@ -7,12 +7,15 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
         }
 
+        // Only fetch orders created on or after Jan 1 2026
+        const dateFrom = '2026-01-01';
+
         // Fetch awaiting_shipment AND shipped orders in parallel
         const [awaitingRes, shippedRes] = await Promise.all([
-            fetch('https://ssapi.shipstation.com/orders?orderStatus=awaiting_shipment&pageSize=500', {
+            fetch(`https://ssapi.shipstation.com/orders?orderStatus=awaiting_shipment&createDateStart=${dateFrom}&pageSize=500`, {
                 headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' }
             }),
-            fetch('https://ssapi.shipstation.com/orders?orderStatus=shipped&pageSize=500', {
+            fetch(`https://ssapi.shipstation.com/orders?orderStatus=shipped&createDateStart=${dateFrom}&pageSize=500`, {
                 headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' }
             })
         ]);
@@ -25,7 +28,7 @@ export async function GET(request: Request) {
             ...(shippedData.orders || [])
         ];
 
-        console.log(`[ShipStation] Fetched ${awaitingData.orders?.length || 0} awaiting + ${shippedData.orders?.length || 0} shipped orders`);
+        console.log(`[ShipStation] Fetched ${awaitingData.orders?.length || 0} awaiting + ${shippedData.orders?.length || 0} shipped orders (since ${dateFrom})`);
         return NextResponse.json({ orders: allOrders, total: allOrders.length });
 
     } catch (error: any) {
