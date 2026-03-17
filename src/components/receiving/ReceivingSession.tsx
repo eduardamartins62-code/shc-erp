@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { PurchaseOrder, ReceiptSession, ReceiptLine, DiscrepancyRecord } from '../../types/receiving';
 import { ArrowLeft, Loader2, Plus } from 'lucide-react';
 import LineItemRow from './LineItemRow';
-import { submitReceipt } from '../../services/receivingApi';
+import { submitReceipt, getLocations } from '../../services/receivingApi';
+import { useSettings } from '../../context/SettingsContext';
 
 interface ReceivingSessionProps {
     mode: 'po' | 'manual' | 'bulk';
@@ -19,20 +20,44 @@ const ReceivingSession: React.FC<ReceivingSessionProps> = ({
     mode,
     selectedPO,
     selectedPOs,
-    locations,
+    locations: _locationsProp,
     onBack,
     onSuccess
 }) => {
+    const { warehouses } = useSettings();
+    const defaultWarehouse = warehouses.find(w => w.isDefault) || warehouses[0];
+
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [dynamicLocations, setDynamicLocations] = useState<string[]>(_locationsProp || []);
 
     const [session, setSession] = useState<ReceiptSession>({
         receiptNumber: generateReceiptNumber(),
         receivedDate: new Date().toISOString().split('T')[0],
+        warehouseId: defaultWarehouse?.id || '',
         location: '',
         notes: '',
         mode,
         poId: selectedPO?.id || null
     });
+
+    // Reload locations when warehouseId changes
+    useEffect(() => {
+        if (!session.warehouseId) return;
+        getLocations(session.warehouseId).then(locs => {
+            setDynamicLocations(locs);
+            setSession(prev => ({ ...prev, location: '' })); // reset location on warehouse change
+        });
+    }, [session.warehouseId]);
+
+    // Seed warehouseId once warehouses load
+    useEffect(() => {
+        if (warehouses.length > 0 && !session.warehouseId) {
+            const dw = warehouses.find(w => w.isDefault) || warehouses[0];
+            setSession(prev => ({ ...prev, warehouseId: dw.id }));
+        }
+    }, [warehouses]);
+
+    const locations = dynamicLocations;
 
     const [lines, setLines] = useState<ReceiptLine[]>(() => {
         if (mode === 'bulk' && selectedPOs) {
@@ -279,7 +304,7 @@ const ReceivingSession: React.FC<ReceivingSessionProps> = ({
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: 'var(--color-border)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px', background: 'var(--color-border)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
                     <div style={{ background: 'var(--color-white)', padding: '16px' }}>
                         <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: '8px' }}>
                             RECEIVED DATE
@@ -293,17 +318,38 @@ const ReceivingSession: React.FC<ReceivingSessionProps> = ({
                     </div>
                     <div style={{ background: 'var(--color-white)', padding: '16px' }}>
                         <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: '8px' }}>
+                            WAREHOUSE <span style={{ color: 'var(--color-shc-red)' }}>*</span>
+                        </label>
+                        <select
+                            value={session.warehouseId}
+                            onChange={(e) => handleSessionChange('warehouseId', e.target.value)}
+                            style={{
+                                width: '100%', border: 'none', background: 'transparent', fontSize: '15px', fontWeight: 500,
+                                color: session.warehouseId ? 'var(--color-text-main)' : 'var(--color-status-expired)', outline: 'none', cursor: 'pointer'
+                            }}
+                        >
+                            <option value="" disabled>Select warehouse...</option>
+                            {warehouses.map(wh => (
+                                <option key={wh.id} value={wh.id}>{wh.warehouseName} ({wh.warehouseCode})</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div style={{ background: 'var(--color-white)', padding: '16px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: '8px' }}>
                             RECEIVING LOCATION <span style={{ color: 'var(--color-shc-red)' }}>*</span>
                         </label>
                         <select
                             value={session.location}
                             onChange={(e) => handleSessionChange('location', e.target.value)}
+                            disabled={!session.warehouseId || locations.length === 0}
                             style={{
                                 width: '100%', border: 'none', background: 'transparent', fontSize: '15px', fontWeight: 500,
                                 color: session.location ? 'var(--color-text-main)' : 'var(--color-status-expired)', outline: 'none', cursor: 'pointer'
                             }}
                         >
-                            <option value="" disabled>Select location...</option>
+                            <option value="" disabled>
+                                {!session.warehouseId ? 'Select warehouse first' : locations.length === 0 ? 'No locations found' : 'Select location...'}
+                            </option>
                             {locations.map(loc => (
                                 <option key={loc} value={loc}>{loc}</option>
                             ))}

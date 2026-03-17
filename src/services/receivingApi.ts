@@ -1,11 +1,16 @@
+import { supabase } from '../lib/supabase';
+import { api } from './api';
 import type { PurchaseOrder, ReceiptSession, ReceiptLine, DiscrepancyRecord } from '../types/receiving';
 
-// Mock POs
-let mockPOs: PurchaseOrder[] = [
+// ---------------------------------------------------------------------------
+// Purchase Orders — Supabase-backed with mock fallback
+// ---------------------------------------------------------------------------
+
+const mockPOs: PurchaseOrder[] = [
     {
         id: 'PO-2024-0041',
         supplier: 'NutriLife Supplements',
-        expectedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+        expectedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'overdue',
         items: [
             { id: 'poi-1', sku: 'NL-WHEY-CHOC', name: 'Whey Protein - Chocolate', expectedQty: 100, unit: 'ea', lotTracked: true },
@@ -16,7 +21,7 @@ let mockPOs: PurchaseOrder[] = [
     {
         id: 'PO-2024-0045',
         supplier: 'Global Health Co.',
-        expectedDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
+        expectedDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'pending',
         items: [
             { id: 'poi-4', sku: 'GH-VITA-C', name: 'Vitamin C 1000mg', expectedQty: 300, unit: 'btl', lotTracked: true },
@@ -26,7 +31,7 @@ let mockPOs: PurchaseOrder[] = [
     {
         id: 'PO-2024-0048',
         supplier: 'EcoPack Solutions',
-        expectedDate: new Date().toISOString(), // Today
+        expectedDate: new Date().toISOString(),
         status: 'partial',
         items: [
             { id: 'poi-6', sku: 'PKG-BOX-M', name: 'Shipping Box - Medium', expectedQty: 500, unit: 'box', lotTracked: false },
@@ -35,56 +40,99 @@ let mockPOs: PurchaseOrder[] = [
     }
 ];
 
-const mockLocations = [
-    'Dock A', 'Dock B', 'Dock C', 'Bay 1-A', 'Bay 1-B', 'Bay 2-A', 'Bay 2-B', 'Staging Area'
-];
-
 export const getPurchaseOrders = async (): Promise<PurchaseOrder[]> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve([...mockPOs]);
-        }, 400);
-    });
+    // Try Supabase purchase_orders table; fall back to mock data
+    const { data, error } = await supabase
+        .from('purchase_orders')
+        .select('*, purchase_order_items(*)')
+        .order('expected_date', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+        return [...mockPOs];
+    }
+
+    return data.map(po => ({
+        id: po.id,
+        supplier: po.supplier,
+        expectedDate: po.expected_date,
+        status: po.status,
+        items: (po.purchase_order_items || []).map((item: any) => ({
+            id: item.id,
+            sku: item.sku,
+            name: item.name,
+            expectedQty: item.expected_qty,
+            unit: item.unit,
+            lotTracked: item.lot_tracked
+        }))
+    }));
 };
 
-export const getLocations = async (): Promise<string[]> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve([...mockLocations]);
-        }, 200);
-    });
+// ---------------------------------------------------------------------------
+// Locations — fetched from Supabase locations table, filtered by warehouse
+// ---------------------------------------------------------------------------
+
+export const getLocations = async (warehouseId?: string): Promise<string[]> => {
+    let query = supabase.from('locations').select('location_code, display_name').eq('is_active', true);
+    if (warehouseId) query = query.eq('warehouse_id', warehouseId);
+    query = query.order('location_code', { ascending: true });
+
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) {
+        return ['Dock A', 'Dock B', 'Dock C', 'Bay 1-A', 'Bay 1-B', 'Bay 2-A', 'Bay 2-B', 'Staging Area'];
+    }
+    return data.map(l => l.display_name || l.location_code);
 };
+
+// ---------------------------------------------------------------------------
+// Submit Receipt — updates PO status AND pushes stock into inventory
+// ---------------------------------------------------------------------------
 
 export const submitReceipt = async (
     session: ReceiptSession,
     lines: ReceiptLine[],
     discrepancies: DiscrepancyRecord[]
 ): Promise<{ success: boolean; poid?: string; newStatus?: string }> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            // Mock update PO status if PO linked
-            if (session.mode === 'po' && session.poId) {
-                const poIndex = mockPOs.findIndex(p => p.id === session.poId);
-                if (poIndex !== -1) {
-                    const po = mockPOs[poIndex];
-                    // Check if fully received
-                    let allFullyReceived = true;
-                    for (const item of po.items) {
-                        const matchingLine = lines.find(l => l.itemId === item.id);
-                        if (!matchingLine || !matchingLine.receivedQty || parseInt(matchingLine.receivedQty) < item.expectedQty) {
-                            allFullyReceived = false;
-                            break;
-                        }
-                    }
 
-                    const newStatus = allFullyReceived ? 'received' : 'partial';
-                    mockPOs[poIndex] = { ...po, status: newStatus };
-                    resolve({ success: true, poid: po.id, newStatus });
-                    return;
-                }
-            }
-
-            resolve({ success: true });
-        }, 800);
+    // 1. Receive each line into inventory via the main api
+    const receivableLines = lines.filter(l => {
+        const qty = parseInt(l.receivedQty);
+        return !isNaN(qty) && qty > 0 && l.sku;
     });
+
+    for (const line of receivableLines) {
+        const qty = parseInt(line.receivedQty);
+        try {
+            await api.receiveStock({
+                sku: line.sku,
+                warehouseId: session.warehouseId || 'WH-MAIN',
+                locationCode: line.locationOverride || session.location || '',
+                quantity: qty,
+                lotNumber: line.lot || undefined,
+                expirationDate: line.expDate || undefined,
+                performedBy: 'Receiving',
+                reason: `Receipt ${session.receiptNumber}${session.poId ? ` / PO ${session.poId}` : ''}`
+            });
+        } catch (err) {
+            console.error(`Failed to receive line ${line.sku}:`, err);
+        }
+    }
+
+    // 2. Update PO status in Supabase if linked to a PO
+    if (session.mode === 'po' && session.poId) {
+        const allReceived = lines.every(l => {
+            if (l.expectedQty === null) return true;
+            const received = parseInt(l.receivedQty) || 0;
+            return received >= l.expectedQty;
+        });
+        const newStatus = allReceived ? 'received' : 'partial';
+
+        await supabase
+            .from('purchase_orders')
+            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .eq('id', session.poId);
+
+        return { success: true, poid: session.poId, newStatus };
+    }
+
+    return { success: true };
 };

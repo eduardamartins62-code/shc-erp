@@ -319,13 +319,49 @@ export const api = {
     },
 
     getAuditLogs: async (): Promise<AuditLog[]> => {
-        await delay(200);
-        return [...auditStore].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        const { data, error } = await supabase
+            .from('audit_logs')
+            .select('*')
+            .order('timestamp', { ascending: false })
+            .limit(500);
+        if (error) return [...auditStore]; // fallback to in-memory if table doesn't exist yet
+        return (data || []).map(r => ({
+            id: r.id,
+            itemId: r.item_id,
+            warehouseId: r.warehouse_id,
+            action: r.action,
+            quantityChange: r.quantity_change,
+            reasonCode: r.reason_code,
+            timestamp: r.timestamp,
+            performedBy: r.performed_by,
+            details: r.details
+        }));
     },
 
     getInventoryMovements: async (): Promise<InventoryMovement[]> => {
-        await delay(200);
-        return [...movementStore].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const { data, error } = await supabase
+            .from('inventory_movements')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(500);
+        if (error) return [...movementStore]; // fallback to in-memory if table doesn't exist yet
+        return (data || []).map(r => ({
+            id: r.id,
+            movementType: r.movement_type,
+            productId: r.product_id,
+            sku: r.sku,
+            warehouseFromId: r.warehouse_from_id,
+            locationFromId: r.location_from_id,
+            warehouseToId: r.warehouse_to_id,
+            locationToId: r.location_to_id,
+            lotNumber: r.lot_number,
+            expirationDate: r.expiration_date,
+            quantity: r.quantity,
+            reason: r.reason,
+            createdAt: r.created_at,
+            createdBy: r.created_by,
+            updatedAt: r.updated_at
+        }));
     },
 
     reserveInventory: async (items: { sku: string, quantity: number }[], performedBy: string): Promise<void> => {
@@ -554,32 +590,32 @@ export const api = {
             finalRecord = insertedLot;
         }
 
-        auditStore.push({
+        const now = new Date().toISOString();
+        await supabase.from('audit_logs').insert([{
             id: uuidv4(),
-            itemId: data.sku,
-            warehouseId: data.warehouseId,
+            item_id: data.sku,
+            warehouse_id: data.warehouseId,
             action: 'RECEIVE',
-            quantityChange: data.quantity,
-            timestamp: new Date().toISOString(),
-            performedBy: data.performedBy,
+            quantity_change: data.quantity,
+            timestamp: now,
+            performed_by: data.performedBy,
             details: `Received lot ${data.lotNumber || 'N/A'}`
-        });
-
-        movementStore.push({
+        }]);
+        await supabase.from('inventory_movements').insert([{
             id: uuidv4(),
-            movementType: 'RECEIVE',
-            productId: data.sku,
+            movement_type: 'RECEIVE',
+            product_id: data.sku,
             sku: data.sku,
-            warehouseToId: data.warehouseId,
-            locationToId: data.locationCode,
-            lotNumber: data.lotNumber,
-            expirationDate: data.expirationDate,
+            warehouse_to_id: data.warehouseId,
+            location_to_id: data.locationCode || null,
+            lot_number: data.lotNumber || null,
+            expiration_date: data.expirationDate || null,
             quantity: data.quantity,
             reason: data.reason || 'Received Stock',
-            createdAt: new Date().toISOString(),
-            createdBy: data.performedBy,
-            updatedAt: new Date().toISOString(),
-        });
+            created_at: now,
+            created_by: data.performedBy,
+            updated_at: now
+        }]);
 
         return {
             id: finalRecord.product_id,
@@ -623,32 +659,32 @@ export const api = {
         
         if (updateError) throw new Error(updateError.message);
 
-        auditStore.push({
+        const nowAdj = new Date().toISOString();
+        await supabase.from('audit_logs').insert([{
             id: uuidv4(),
-            itemId: data.sku,
-            warehouseId: data.warehouseId,
+            item_id: data.sku,
+            warehouse_id: data.warehouseId,
             action: 'ADJUST',
-            quantityChange: diff,
-            reasonCode: data.reasonCode,
-            timestamp: new Date().toISOString(),
-            performedBy: data.performedBy,
-        });
-
-        movementStore.push({
+            quantity_change: diff,
+            reason_code: data.reasonCode || null,
+            timestamp: nowAdj,
+            performed_by: data.performedBy
+        }]);
+        await supabase.from('inventory_movements').insert([{
             id: uuidv4(),
-            movementType: 'ADJUST',
-            productId: data.sku,
+            movement_type: 'ADJUST',
+            product_id: data.sku,
             sku: data.sku,
-            warehouseFromId: data.warehouseId,
-            locationFromId: data.locationCode,
-            lotNumber: data.lotNumber,
-            expirationDate: data.expirationDate,
+            warehouse_from_id: data.warehouseId,
+            location_from_id: data.locationCode || null,
+            lot_number: data.lotNumber || null,
+            expiration_date: data.expirationDate || null,
             quantity: diff,
             reason: data.reasonCode || 'Adjustment',
-            createdAt: new Date().toISOString(),
-            createdBy: data.performedBy,
-            updatedAt: new Date().toISOString(),
-        });
+            created_at: nowAdj,
+            created_by: data.performedBy,
+            updated_at: nowAdj
+        }]);
 
         return {
             id: updatedLot.product_id,
@@ -739,41 +775,34 @@ export const api = {
             remainingToTransfer -= transferQty;
         }
 
-        auditStore.push({
+        const nowTrans = new Date().toISOString();
+        await supabase.from('audit_logs').insert([
+            {
+                id: uuidv4(), item_id: data.sku, warehouse_id: data.fromWarehouseId,
+                action: 'TRANSFER_OUT', quantity_change: -data.quantity,
+                timestamp: nowTrans, performed_by: data.performedBy
+            },
+            {
+                id: uuidv4(), item_id: data.sku, warehouse_id: data.toWarehouseId,
+                action: 'TRANSFER_IN', quantity_change: data.quantity,
+                timestamp: nowTrans, performed_by: data.performedBy
+            }
+        ]);
+        await supabase.from('inventory_movements').insert([{
             id: uuidv4(),
-            itemId: data.sku,
-            warehouseId: data.fromWarehouseId,
-            action: 'TRANSFER_OUT',
-            quantityChange: -data.quantity,
-            timestamp: new Date().toISOString(),
-            performedBy: data.performedBy,
-        });
-
-        auditStore.push({
-            id: uuidv4(),
-            itemId: data.sku,
-            warehouseId: data.toWarehouseId,
-            action: 'TRANSFER_IN',
-            quantityChange: data.quantity,
-            timestamp: new Date().toISOString(),
-            performedBy: data.performedBy,
-        });
-
-        movementStore.push({
-            id: uuidv4(),
-            movementType: 'TRANSFER',
-            productId: data.sku,
+            movement_type: 'TRANSFER',
+            product_id: data.sku,
             sku: data.sku,
-            warehouseFromId: data.fromWarehouseId,
-            locationFromId: data.fromLocationCode,
-            warehouseToId: data.toWarehouseId,
-            locationToId: data.toLocationCode,
+            warehouse_from_id: data.fromWarehouseId,
+            location_from_id: data.fromLocationCode || null,
+            warehouse_to_id: data.toWarehouseId,
+            location_to_id: data.toLocationCode || null,
             quantity: data.quantity,
             reason: data.reason || 'Warehouse Transfer',
-            createdAt: new Date().toISOString(),
-            createdBy: data.performedBy,
-            updatedAt: new Date().toISOString(),
-        });
+            created_at: nowTrans,
+            created_by: data.performedBy,
+            updated_at: nowTrans
+        }]);
 
         return {
             from: lastSourceItem ? {
@@ -802,43 +831,102 @@ export const api = {
     },
 
     getUsers: async (): Promise<User[]> => {
-        await delay(200);
-        return [...userStore];
+        const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: true });
+        if (error) return [...userStore]; // fallback to mock if table missing
+        return (data || []).map(u => ({
+            id: u.id, fullName: u.full_name, email: u.email, role: u.role,
+            isActive: u.is_active, allowedWarehouses: u.allowed_warehouses,
+            createdAt: u.created_at, createdBy: u.created_by,
+            updatedAt: u.updated_at, updatedBy: u.updated_by
+        }));
     },
 
     addUser: async (data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> => {
-        await delay(300);
-        const newUser: User = { ...data, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), createdBy: 'System', updatedBy: 'System' };
-        userStore.push(newUser);
-        return newUser;
+        const now = new Date().toISOString();
+        const { data: row, error } = await supabase.from('users').insert([{
+            id: uuidv4(), full_name: data.fullName, email: data.email, role: data.role,
+            is_active: data.isActive, allowed_warehouses: data.allowedWarehouses,
+            created_at: now, created_by: data.createdBy || 'System',
+            updated_at: now, updated_by: data.updatedBy || 'System'
+        }]).select().single();
+        if (error) throw new Error(error.message);
+        return { id: row.id, fullName: row.full_name, email: row.email, role: row.role,
+            isActive: row.is_active, allowedWarehouses: row.allowed_warehouses,
+            createdAt: row.created_at, createdBy: row.created_by,
+            updatedAt: row.updated_at, updatedBy: row.updated_by };
     },
 
     updateUser: async (id: string, data: Partial<User>): Promise<User> => {
-        await delay(300);
-        const index = userStore.findIndex(u => u.id === id);
-        if (index === -1) throw new Error('User not found');
-        userStore[index] = { ...userStore[index], ...data, updatedAt: new Date().toISOString() };
-        return userStore[index];
+        const now = new Date().toISOString();
+        const updates: any = { updated_at: now };
+        if (data.fullName !== undefined) updates.full_name = data.fullName;
+        if (data.email !== undefined) updates.email = data.email;
+        if (data.role !== undefined) updates.role = data.role;
+        if (data.isActive !== undefined) updates.is_active = data.isActive;
+        if (data.allowedWarehouses !== undefined) updates.allowed_warehouses = data.allowedWarehouses;
+        const { data: row, error } = await supabase.from('users').update(updates).eq('id', id).select().single();
+        if (error) throw new Error(error.message);
+        return { id: row.id, fullName: row.full_name, email: row.email, role: row.role,
+            isActive: row.is_active, allowedWarehouses: row.allowed_warehouses,
+            createdAt: row.created_at, createdBy: row.created_by,
+            updatedAt: row.updated_at, updatedBy: row.updated_by };
     },
 
     getWarehouses: async (): Promise<Warehouse[]> => {
-        await delay(200);
-        return [...warehouseStore];
+        const { data, error } = await supabase.from('warehouses').select('*').order('is_default', { ascending: false });
+        if (error) return [...warehouseStore]; // fallback to mock if table missing
+        if (!data || data.length === 0) return [...warehouseStore]; // seed data still useful
+        return data.map(w => ({
+            id: w.id, warehouseName: w.warehouse_name, warehouseCode: w.warehouse_code,
+            description: w.description, addressLine1: w.address_line1, city: w.city,
+            state: w.state, postalCode: w.postal_code, country: w.country,
+            timeZone: w.time_zone, isActive: w.is_active, isDefault: w.is_default,
+            createdAt: w.created_at, createdBy: w.created_by,
+            updatedAt: w.updated_at, updatedBy: w.updated_by
+        }));
     },
 
     addWarehouse: async (data: Omit<Warehouse, 'id' | 'createdAt' | 'updatedAt'>): Promise<Warehouse> => {
-        await delay(300);
-        const newWh: Warehouse = { ...data, id: data.warehouseCode, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), createdBy: 'System', updatedBy: 'System' };
-        warehouseStore.push(newWh);
-        return newWh;
+        const now = new Date().toISOString();
+        const { data: row, error } = await supabase.from('warehouses').insert([{
+            id: data.warehouseCode, warehouse_name: data.warehouseName,
+            warehouse_code: data.warehouseCode, description: data.description,
+            address_line1: data.addressLine1, city: data.city, state: data.state,
+            postal_code: data.postalCode, country: data.country, time_zone: data.timeZone,
+            is_active: data.isActive, is_default: data.isDefault,
+            created_at: now, created_by: data.createdBy || 'System',
+            updated_at: now, updated_by: data.updatedBy || 'System'
+        }]).select().single();
+        if (error) throw new Error(error.message);
+        return { id: row.id, warehouseName: row.warehouse_name, warehouseCode: row.warehouse_code,
+            description: row.description, addressLine1: row.address_line1, city: row.city,
+            state: row.state, postalCode: row.postal_code, country: row.country,
+            timeZone: row.time_zone, isActive: row.is_active, isDefault: row.is_default,
+            createdAt: row.created_at, createdBy: row.created_by,
+            updatedAt: row.updated_at, updatedBy: row.updated_by };
     },
 
     updateWarehouse: async (id: string, data: Partial<Warehouse>): Promise<Warehouse> => {
-        await delay(300);
-        const index = warehouseStore.findIndex(w => w.id === id);
-        if (index === -1) throw new Error('Warehouse not found');
-        warehouseStore[index] = { ...warehouseStore[index], ...data, updatedAt: new Date().toISOString() };
-        return warehouseStore[index];
+        const now = new Date().toISOString();
+        const updates: any = { updated_at: now };
+        if (data.warehouseName !== undefined) updates.warehouse_name = data.warehouseName;
+        if (data.description !== undefined) updates.description = data.description;
+        if (data.addressLine1 !== undefined) updates.address_line1 = data.addressLine1;
+        if (data.city !== undefined) updates.city = data.city;
+        if (data.state !== undefined) updates.state = data.state;
+        if (data.postalCode !== undefined) updates.postal_code = data.postalCode;
+        if (data.country !== undefined) updates.country = data.country;
+        if (data.timeZone !== undefined) updates.time_zone = data.timeZone;
+        if (data.isActive !== undefined) updates.is_active = data.isActive;
+        if (data.isDefault !== undefined) updates.is_default = data.isDefault;
+        const { data: row, error } = await supabase.from('warehouses').update(updates).eq('id', id).select().single();
+        if (error) throw new Error(error.message);
+        return { id: row.id, warehouseName: row.warehouse_name, warehouseCode: row.warehouse_code,
+            description: row.description, addressLine1: row.address_line1, city: row.city,
+            state: row.state, postalCode: row.postal_code, country: row.country,
+            timeZone: row.time_zone, isActive: row.is_active, isDefault: row.is_default,
+            createdAt: row.created_at, createdBy: row.created_by,
+            updatedAt: row.updated_at, updatedBy: row.updated_by };
     },
 
     getChannels: async (): Promise<ChannelConfig[]> => {

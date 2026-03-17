@@ -42,6 +42,7 @@ export interface ReceiptLine {
 export interface ReceiptSession {
     receiptNumber: string;
     receivedDate: string;
+    warehouseId: string;
     location: string;
     notes: string;
     mode: 'po' | 'manual' | 'bulk';
