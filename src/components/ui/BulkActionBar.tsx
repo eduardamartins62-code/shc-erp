@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Download, Archive, Edit2, ArrowRightLeft, CheckCircle, Printer, CloudOff, RefreshCw, XCircle, Tag, ChevronDown } from 'lucide-react';
+import { X, Download, Archive, Edit2, ArrowRightLeft, CheckCircle, Printer, CloudOff, RefreshCw, XCircle, Tag, ChevronDown, Package } from 'lucide-react';
 import type { OrderTag } from '../../types/tags';
 
 export type BulkModuleType = 'products' | 'inventory' | 'orders' | 'locations' | 'movements' | 'purchase_orders' | 'integrations';
@@ -15,6 +15,7 @@ interface BulkActionBarProps {
     availableTags?: OrderTag[];
     onBulkAddTag?: (tagId: string) => Promise<void>;
     onBulkRemoveTag?: (tagId: string) => Promise<void>;
+    onBulkPickPack?: () => void;
 }
 
 // Dropdown that closes on outside click
@@ -129,7 +130,7 @@ const TagDropdown: React.FC<{
 
 export const BulkActionBar: React.FC<BulkActionBarProps> = ({
     selectedCount, module, onClearSelection, onAction,
-    availableTags, onBulkAddTag, onBulkRemoveTag
+    availableTags, onBulkAddTag, onBulkRemoveTag, onBulkPickPack
 }) => {
     if (selectedCount === 0) return null;
 
@@ -166,6 +167,15 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
             case 'orders':
                 return (
                     <>
+                        {onBulkPickPack && (
+                            <button
+                                className="btn-primary"
+                                style={{ padding: '0.25rem 0.65rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                                onClick={onBulkPickPack}
+                            >
+                                <Package size={14} /> Pick &amp; Pack
+                            </button>
+                        )}
                         {availableTags && onBulkAddTag && onBulkRemoveTag && (
                             <TagDropdown
                                 tags={availableTags}

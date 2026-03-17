@@ -38,6 +38,9 @@ export interface Order {
     paymentStatus: PaymentStatus;
     carrier?: string;
     requestedService?: string;
+    trackingNumber?: string;
+    carrierCode?: string;
+    shippedAt?: string;
     items: OrderItem[];
     timeline: OrderHistoryEvent[];
     subtotal: number;

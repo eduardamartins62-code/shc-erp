@@ -9,6 +9,7 @@ import { DataTable, type Column } from './ui/DataTable';
 import { BulkActionBar } from './ui/BulkActionBar';
 import OrderModal from './orders/OrderModal';
 import OrderFilterBar, { applyOrderFilters, EMPTY_FILTERS, type OrderFilters } from './orders/OrderFilterBar';
+import BulkPicklistModal from './orders/BulkPicklistModal';
 import { useTags } from '../context/TagsContext';
 import { useOrders } from '../context/OrderContext';
 import { tagsApi } from '../services/tagsApi';
@@ -25,6 +26,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
     const [filters, setFilters] = useState<OrderFilters>(EMPTY_FILTERS);
+    const [showPicklist, setShowPicklist] = useState(false);
 
     const filteredOrders = useMemo(() => applyOrderFilters(orders, filters), [orders, filters]);
 
@@ -151,6 +153,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
                 availableTags={tags}
                 onBulkAddTag={handleBulkAddTag}
                 onBulkRemoveTag={handleBulkRemoveTag}
+                onBulkPickPack={() => setShowPicklist(true)}
             />
 
             <DataTable
@@ -172,6 +175,18 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
                 onClose={() => setSelectedIndex(null)}
                 onNavigate={(newIdx) => setSelectedIndex(newIdx)}
             />
+
+            {showPicklist && (
+                <BulkPicklistModal
+                    orders={filteredOrders.filter(o => selectedKeys.has(o.id))}
+                    onClose={() => setShowPicklist(false)}
+                    onComplete={async () => {
+                        setShowPicklist(false);
+                        setSelectedKeys(new Set());
+                        await fetchOrders();
+                    }}
+                />
+            )}
         </div>
     );
 };

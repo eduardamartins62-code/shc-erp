@@ -98,6 +98,9 @@ export const ordersApi = {
             paymentStatus: o.payment_status,
             carrier: o.carrier,
             requestedService: o.requested_service,
+            trackingNumber: o.tracking_number,
+            carrierCode: o.carrier_code,
+            shippedAt: o.shipped_at,
             subtotal: o.subtotal,
             tax: o.tax,
             fees: o.fees,
@@ -446,5 +449,62 @@ export const ordersApi = {
             performedBy,
             `Stock deducted when order marked as shipped by ShipStation`
         );
+    },
+
+    /**
+     * Mark an order as shipped with carrier + tracking info from ShipStation.
+     */
+    markOrderShippedWithTracking: async (
+        orderId: string,
+        trackingNumber: string | undefined,
+        carrierCode: string | undefined,
+        shippedAt: string | undefined,
+        performedBy: string
+    ): Promise<void> => {
+        const updateData: any = {
+            fulfillment_status: 'Shipped',
+            updated_at: new Date().toISOString()
+        };
+        if (trackingNumber) updateData.tracking_number = trackingNumber;
+        if (carrierCode) updateData.carrier_code = carrierCode;
+        if (shippedAt) updateData.shipped_at = shippedAt;
+
+        const { error } = await supabase.from('orders').update(updateData).eq('id', orderId);
+        if (error) throw new Error(error.message);
+
+        // Mark all items as Picked
+        await supabase.from('order_items').update({ pick_status: 'Picked' }).eq('order_id', orderId);
+
+        const trackingNote = [
+            trackingNumber ? `Tracking: ${trackingNumber}` : null,
+            carrierCode ? `Carrier: ${carrierCode}` : null
+        ].filter(Boolean).join(' | ');
+
+        await ordersApi.addTimelineEvent(orderId, 'Order Shipped', performedBy,
+            trackingNote || 'Marked shipped via ShipStation sync');
+    },
+
+    /**
+     * Bulk update fulfillment status for a set of orders (used for bulk pick/pack).
+     */
+    bulkUpdateOrderStatus: async (orderIds: string[], status: OrderStatus, performedBy: string): Promise<void> => {
+        const updateData: any = { fulfillment_status: status, updated_at: new Date().toISOString() };
+
+        const { error } = await supabase.from('orders').update(updateData).in('id', orderIds);
+        if (error) throw new Error(error.message);
+
+        if (status === 'Picking' || status === 'Packed') {
+            const { error: itemsError } = await supabase
+                .from('order_items')
+                .update({ pick_status: status === 'Packed' ? 'Picked' : 'Pending' })
+                .in('order_id', orderIds);
+            if (itemsError) throw new Error(itemsError.message);
+        }
+
+        // Add timeline events
+        await Promise.all(orderIds.map(id =>
+            ordersApi.addTimelineEvent(id, `Status updated to ${status}`, performedBy,
+                `Bulk action — ${orderIds.length} orders updated`)
+        ));
     }
 };

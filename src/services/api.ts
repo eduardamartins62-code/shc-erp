@@ -190,7 +190,8 @@ const systemSettingsStore: SystemSettings = {
     lowStockThresholdDefault: 20,
     enableLotTracking: true,
     enableExpirationTracking: true,
-    inventoryDeductionMethod: 'FEFO'
+    inventoryDeductionMethod: 'FEFO',
+    autoDeductInventoryOnShipped: true
 };
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

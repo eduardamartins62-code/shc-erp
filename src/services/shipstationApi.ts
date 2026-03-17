@@ -218,9 +218,14 @@ export const shipstationApi = {
     },
 
     /**
-     * Fetches orders with shipped status from ShipStation.
+     * Fetches orders with shipped status from ShipStation, including tracking info.
      */
-    fetchShippedOrders: async (apiKey: string, apiSecret: string): Promise<{ orderNumber: string }[]> => {
+    fetchShippedOrders: async (apiKey: string, apiSecret: string): Promise<{
+        orderNumber: string;
+        trackingNumber?: string;
+        carrierCode?: string;
+        shippedAt?: string;
+    }[]> => {
         if (!apiKey || !apiSecret) return [];
         const base64Credentials = btoa(`${apiKey}:${apiSecret}`);
         const response = await fetch('/api/shipstation/shipped', {
@@ -228,7 +233,17 @@ export const shipstationApi = {
         });
         if (!response.ok) return [];
         const data = await response.json();
-        return (data.orders || []).map((o: any) => ({ orderNumber: o.orderNumber }));
+        return (data.orders || []).map((o: any) => {
+            // ShipStation returns shipments array; grab the first/latest shipment tracking
+            const shipments: any[] = o.shipments || [];
+            const latest = shipments.length > 0 ? shipments[shipments.length - 1] : null;
+            return {
+                orderNumber: o.orderNumber,
+                trackingNumber: latest?.trackingNumber || o.trackingNumber || undefined,
+                carrierCode: latest?.carrierCode || o.carrierCode || undefined,
+                shippedAt: latest?.shipDate || o.shipDate || undefined
+            };
+        });
     },
 
     /**

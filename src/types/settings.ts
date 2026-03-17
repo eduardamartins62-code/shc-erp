@@ -57,4 +57,5 @@ export interface SystemSettings {
     enableLotTracking: boolean;
     enableExpirationTracking: boolean;
     inventoryDeductionMethod: 'FIFO' | 'FEFO';
+    autoDeductInventoryOnShipped: boolean;
 }

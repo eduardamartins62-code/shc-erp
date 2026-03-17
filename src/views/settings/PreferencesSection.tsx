@@ -11,7 +11,8 @@ export const PreferencesSection: React.FC = () => {
         lowStockThresholdDefault: 20,
         enableLotTracking: true,
         enableExpirationTracking: true,
-        inventoryDeductionMethod: 'FEFO' as 'FIFO' | 'FEFO'
+        inventoryDeductionMethod: 'FEFO' as 'FIFO' | 'FEFO',
+        autoDeductInventoryOnShipped: true
     });
 
     useEffect(() => {
@@ -148,21 +149,48 @@ export const PreferencesSection: React.FC = () => {
                 {/* Order Fulfillment */}
                 <div>
                     <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--color-primary-dark)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>Order Fulfillment</h4>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.875rem' }}>
-                            Inventory Deduction Method
-                        </label>
-                        <select
-                            value={formData.inventoryDeductionMethod}
-                            onChange={e => setFormData({ ...formData, inventoryDeductionMethod: e.target.value as 'FIFO' | 'FEFO' })}
-                            style={{ width: '200px', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-                        >
-                            <option value="FEFO">FEFO (First Expired, First Out)</option>
-                            <option value="FIFO">FIFO (First In, First Out)</option>
-                        </select>
-                        <p style={{ margin: '0.25rem 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                            Determines the order in which inventory lots are deducted when an order ships.
-                        </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.875rem' }}>
+                                Inventory Deduction Method
+                            </label>
+                            <select
+                                value={formData.inventoryDeductionMethod}
+                                onChange={e => setFormData({ ...formData, inventoryDeductionMethod: e.target.value as 'FIFO' | 'FEFO' })}
+                                style={{ width: '200px', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                            >
+                                <option value="FEFO">FEFO (First Expired, First Out)</option>
+                                <option value="FIFO">FIFO (First In, First Out)</option>
+                            </select>
+                            <p style={{ margin: '0.25rem 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                Determines the order in which inventory lots are deducted when an order ships.
+                            </p>
+                        </div>
+
+                        <div style={{
+                            display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+                            padding: '0.875rem 1rem', backgroundColor: '#f8fafc',
+                            border: '1px solid var(--color-border)', borderRadius: '8px'
+                        }}>
+                            <div style={{ paddingTop: '0.1rem' }}>
+                                <input
+                                    type="checkbox"
+                                    id="auto-deduct"
+                                    checked={(formData as any).autoDeductInventoryOnShipped !== false}
+                                    onChange={e => setFormData({ ...formData, autoDeductInventoryOnShipped: e.target.checked } as any)}
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--color-shc-red)' }}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="auto-deduct" style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', color: 'var(--color-primary-dark)' }}>
+                                    Auto-deduct inventory when order is shipped in ShipStation
+                                </label>
+                                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                                    When enabled, stock is automatically removed using the {formData.inventoryDeductionMethod} method when ShipStation marks an order as shipped.
+                                    Disable this if you prefer to manually pick &amp; pack orders before they ship.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

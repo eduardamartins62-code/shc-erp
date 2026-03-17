@@ -171,19 +171,34 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             if (!ssChannel || !ssChannel.isEnabled || !ssChannel.apiKey || !ssChannel.apiSecret) return;
 
             const method = (systemSettings as any)?.inventoryDeductionMethod || 'FEFO';
+            const autoDeduct = (systemSettings as any)?.autoDeductInventoryOnShipped !== false; // default true
 
             const shippedFromSS = await shipstationApi.fetchShippedOrders(ssChannel.apiKey, ssChannel.apiSecret);
-            const shippedOrderNumbers = new Set(shippedFromSS.map(o => o.orderNumber));
+            // Build a lookup map: orderNumber → tracking info
+            const shippedMap = new Map(shippedFromSS.map(o => [o.orderNumber, o]));
 
             const ordersToMarkShipped = orders.filter(o =>
-                shippedOrderNumbers.has(o.id) &&
+                shippedMap.has(o.id) &&
                 o.fulfillmentStatus !== 'Shipped' &&
                 o.fulfillmentStatus !== 'Cancelled'
             );
 
             for (const order of ordersToMarkShipped) {
-                await ordersApi.deductInventoryForShippedOrder(order.id, method, 'ShipStation Sync');
-                await ordersApi.updateOrderStatus(order.id, 'Shipped', 'ShipStation Sync');
+                const trackingInfo = shippedMap.get(order.id)!;
+
+                // Auto-deduct inventory only if the toggle is on
+                if (autoDeduct) {
+                    await ordersApi.deductInventoryForShippedOrder(order.id, method, 'ShipStation Sync');
+                }
+
+                // Mark as shipped and save tracking info
+                await ordersApi.markOrderShippedWithTracking(
+                    order.id,
+                    trackingInfo.trackingNumber,
+                    trackingInfo.carrierCode,
+                    trackingInfo.shippedAt,
+                    'ShipStation Sync'
+                );
             }
 
             if (ordersToMarkShipped.length > 0) {
