@@ -55,6 +55,7 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
     let columns: Column<InventoryItem>[] = [
         { key: 'id', label: 'SKU', type: 'text', filterable: true, render: (val) => <SkuLink sku={val as string} /> },
         { key: 'warehouseId', label: 'Warehouse', type: 'text', filterable: true },
+        { key: 'locationCode', label: 'Location', type: 'text', filterable: true, render: (val) => val ? <code style={{ background: 'var(--color-bg-light)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>{val}</code> : <span style={{ color: 'var(--color-text-muted)' }}>—</span> },
         {
             key: 'status',
             label: 'Status',
@@ -242,8 +243,14 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
                                 <span style={{ color: 'var(--color-text-muted)' }}>Expiration Date</span>
                                 <span>{new Date(detailItem.expirationDate).toLocaleDateString()}</span>
 
-                                <span style={{ color: 'var(--color-text-muted)' }}>Location/Warehouse</span>
+                                <span style={{ color: 'var(--color-text-muted)' }}>Warehouse</span>
                                 <span>{detailItem.warehouseId || '—'}</span>
+
+                                <span style={{ color: 'var(--color-text-muted)' }}>Location</span>
+                                <span>{detailItem.locationCode
+                                    ? <code style={{ background: 'var(--color-bg-light)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>{detailItem.locationCode}</code>
+                                    : '—'}
+                                </span>
 
                                 <span style={{ color: 'var(--color-text-muted)' }}>Last Updated</span>
                                 <span>{new Date(detailItem.lastUpdated).toLocaleString()} by {detailItem.updatedBy}</span>

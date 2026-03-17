@@ -307,6 +307,7 @@ export const api = {
             id: dbItem.product_id, // For backward compatibility with InventoryItem 'id' being SKU
             sku: dbItem.product_id,
             warehouseId: dbItem.warehouse_id,
+            locationCode: dbItem.location_code || undefined,
             quantityOnHand: dbItem.quantity_on_hand,
             quantityReserved: dbItem.quantity_reserved,
             lotNumber: dbItem.lot_number,
@@ -539,6 +540,7 @@ export const api = {
                 .insert([{
                     product_id: data.sku,
                     warehouse_id: data.warehouseId,
+                    location_code: data.locationCode || null,
                     quantity_on_hand: data.quantity,
                     quantity_reserved: 0,
                     lot_number: data.lotNumber || '',

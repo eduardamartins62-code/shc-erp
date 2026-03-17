@@ -1,6 +1,7 @@
 export interface InventoryItem {
   id: string; // SKU
   warehouseId: string;
+  locationCode?: string; // specific location within the warehouse
   quantityOnHand: number;
   quantityReserved: number;
   // quantityAvailable is calculated: quantityOnHand - quantityReserved
