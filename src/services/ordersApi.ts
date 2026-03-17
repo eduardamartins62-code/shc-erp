@@ -524,6 +524,34 @@ export const ordersApi = {
     },
 
     /**
+     * Fix stale Unmapped order_items whose SKU now exists in the products catalog.
+     * Run once on app load to repair historical imports.
+     */
+    refreshMappingStatus: async (): Promise<void> => {
+        const { data: unmapped } = await supabase
+            .from('order_items')
+            .select('id, sku')
+            .eq('mapping_status', 'Unmapped');
+
+        if (!unmapped || !unmapped.length) return;
+
+        const { data: catalogProducts } = await supabase
+            .from('products')
+            .select('sku');
+
+        if (!catalogProducts || !catalogProducts.length) return;
+
+        const catalogSkus = new Set(catalogProducts.map((p: any) => p.sku));
+        const toFix = unmapped.filter((item: any) => catalogSkus.has(item.sku));
+        if (!toFix.length) return;
+
+        await supabase
+            .from('order_items')
+            .update({ mapping_status: 'Mapped' })
+            .in('id', toFix.map((i: any) => i.id));
+    },
+
+    /**
      * Permanently delete orders and all related records.
      */
     deleteOrders: async (orderIds: string[]): Promise<void> => {

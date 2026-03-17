@@ -4,6 +4,7 @@ import { ordersApi } from '../services/ordersApi';
 import { useSettings } from './SettingsContext';
 import { shipstationApi } from '../services/shipstationApi';
 import { useInventory } from './InventoryContext';
+import { useProducts } from './ProductContext';
 
 interface OrderContextProps {
     orders: Order[];
@@ -40,6 +41,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
     const { channels, systemSettings } = useSettings();
     const { reserveInventory, releaseInventory, inventory } = useInventory();
+    const { products } = useProducts();
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -148,8 +150,9 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const toAdd = newOrders.filter(o => !existingIds.has(o.id));
 
             if (toAdd.length > 0) {
-                // Cross-reference with inventory to set mappingStatus
-                const existingSkus = new Set(inventory.map(inv => inv.id));
+                // Cross-reference with product catalog (not inventory) to set mappingStatus
+                // A product can be registered with 0 stock and should still be "Mapped"
+                const existingSkus = new Set(products.map(p => p.sku));
                 toAdd.forEach(order => {
                     order.items.forEach(item => {
                         item.mappingStatus = existingSkus.has(item.sku) ? 'Mapped' : 'Unmapped';
@@ -227,7 +230,10 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     useEffect(() => {
-        fetchOrders();
+        fetchOrders().then(() => {
+            // Silently fix any Unmapped items whose SKU is now in the product catalog
+            ordersApi.refreshMappingStatus().then(() => fetchOrders()).catch(() => {});
+        });
     }, []);
 
     // 15-min auto-sync interval
