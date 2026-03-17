@@ -67,27 +67,31 @@ export const ordersApi = {
         if (ordersError) throw new Error(ordersError.message);
 
         // Short-circuit if no orders
-        if (!dbOrders.length) return [];
+        if (!dbOrders || !dbOrders.length) return [];
 
-        // Fetch persistent timeline events
-        const { data: timelineRows } = await supabase
-            .from('order_timeline')
-            .select('*')
-            .in('order_id', dbOrders.map((o: any) => o.id))
-            .order('timestamp', { ascending: true });
+        // Fetch persistent timeline events (non-fatal — fall back to generated timeline)
+        let timelineMap: Record<string, any[]> = {};
+        try {
+            const { data: timelineRows } = await supabase
+                .from('order_timeline')
+                .select('*')
+                .in('order_id', dbOrders.map((o: any) => o.id))
+                .order('timestamp', { ascending: true });
 
-        const timelineMap: Record<string, any[]> = {};
-        (timelineRows || []).forEach((row: any) => {
-            if (!timelineMap[row.order_id]) timelineMap[row.order_id] = [];
-            timelineMap[row.order_id].push({
-                id: row.id,
-                orderId: row.order_id,
-                timestamp: row.timestamp,
-                action: row.action,
-                performedBy: row.performed_by,
-                notes: row.notes
+            (timelineRows || []).forEach((row: any) => {
+                if (!timelineMap[row.order_id]) timelineMap[row.order_id] = [];
+                timelineMap[row.order_id].push({
+                    id: row.id,
+                    orderId: row.order_id,
+                    timestamp: row.timestamp,
+                    action: row.action,
+                    performedBy: row.performed_by,
+                    notes: row.notes
+                });
             });
-        });
+        } catch {
+            // Timeline is non-critical; continue with generated timeline only
+        }
 
         const result = dbOrders.map((o: any) => ({
             id: o.id,
@@ -129,12 +133,16 @@ export const ordersApi = {
             tags: []
         }));
 
-        // Fetch tags for all orders
-        const orderIds = result.map((o: any) => o.id);
-        const tagMap = await tagsApi.getTagsForOrders(orderIds);
-        result.forEach((o: any) => {
-            o.tags = tagMap[o.id] ?? [];
-        });
+        // Fetch tags for all orders (non-fatal)
+        try {
+            const orderIds = result.map((o: any) => o.id);
+            const tagMap = await tagsApi.getTagsForOrders(orderIds);
+            result.forEach((o: any) => {
+                o.tags = tagMap[o.id] ?? [];
+            });
+        } catch {
+            // Tags are non-critical; orders still load without them
+        }
 
         return result as Order[];
     },
