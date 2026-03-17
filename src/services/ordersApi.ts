@@ -61,9 +61,13 @@ export const ordersApi = {
                 *,
                 order_items (*)
             `)
+            .gte('order_date', '2026-01-01')
             .order('order_date', { ascending: false });
 
         if (ordersError) throw new Error(ordersError.message);
+
+        // Short-circuit if no orders
+        if (!dbOrders.length) return [];
 
         // Fetch persistent timeline events
         const { data: timelineRows } = await supabase
@@ -520,7 +524,7 @@ export const ordersApi = {
         // Delete child records first (in case FK cascade is not configured)
         await supabase.from('order_timeline').delete().in('order_id', orderIds);
         await supabase.from('order_items').delete().in('order_id', orderIds);
-        await supabase.from('order_tags').delete().in('order_id', orderIds);
+        await supabase.from('order_tag_assignments').delete().in('order_id', orderIds);
 
         const { error } = await supabase.from('orders').delete().in('id', orderIds);
         if (error) throw new Error(error.message);
