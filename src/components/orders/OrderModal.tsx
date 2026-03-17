@@ -11,10 +11,11 @@ import { DataTable, type Column } from '../ui/DataTable';
 import { SkuLink } from '../ui/SkuLink';
 import CancelOrderModal from './CancelOrderModal';
 import PrintPackingSlipModal from './PrintPackingSlipModal';
+import QuickAddProductModal from './QuickAddProductModal';
 import {
     X, ChevronLeft, ChevronRight,
     MapPin, Package, CheckCircle, Clock,
-    AlertTriangle, Tag, Printer, XCircle
+    AlertTriangle, Tag, Printer, XCircle, PlusCircle
 } from 'lucide-react';
 
 interface OrderModalProps {
@@ -32,13 +33,14 @@ const OrderModal: React.FC<OrderModalProps> = ({
     const { assignTagToOrder, removeTagFromOrder } = useTags();
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showPrintModal, setShowPrintModal] = useState(false);
+    const [quickAddSku, setQuickAddSku] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
 
     useEffect(() => {
         if (!order) return;
 
         const handleKey = (e: KeyboardEvent) => {
-            if (showCancelModal || showPrintModal) return;
+            if (showCancelModal || showPrintModal || quickAddSku) return;
             if (e.key === 'Escape') onClose();
             if (e.key === 'ArrowLeft' && currentIndex > 0) onNavigate(currentIndex - 1);
             if (e.key === 'ArrowRight' && currentIndex < orders.length - 1) onNavigate(currentIndex + 1);
@@ -50,7 +52,7 @@ const OrderModal: React.FC<OrderModalProps> = ({
             window.removeEventListener('keydown', handleKey);
             document.body.style.overflow = 'unset';
         };
-    }, [order, currentIndex, orders.length, showCancelModal, showPrintModal, onClose, onNavigate]);
+    }, [order, currentIndex, orders.length, showCancelModal, showPrintModal, quickAddSku, onClose, onNavigate]);
 
     if (!order) return null;
 
@@ -75,9 +77,27 @@ const OrderModal: React.FC<OrderModalProps> = ({
             key: 'sku', label: 'SKU', type: 'text', filterable: false,
             render: (val, item) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <SkuLink sku={val as string} />
+                    {item.mappingStatus === 'Unmapped' ? (
+                        <span style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: 'var(--color-primary-dark)', fontWeight: 600 }}>
+                            {val as string}
+                        </span>
+                    ) : (
+                        <SkuLink sku={val as string} />
+                    )}
                     {item.mappingStatus === 'Unmapped' && (
-                        <span title="Unmapped SKU"><AlertTriangle size={13} color="var(--color-shc-red)" /></span>
+                        <button
+                            title="This SKU is not in the system — click to add it"
+                            onClick={() => setQuickAddSku(val as string)}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                                background: 'none', border: '1px solid var(--color-shc-red)',
+                                color: 'var(--color-shc-red)', borderRadius: '4px',
+                                padding: '0.1rem 0.4rem', fontSize: '0.7rem', fontWeight: 600,
+                                cursor: 'pointer', whiteSpace: 'nowrap'
+                            }}
+                        >
+                            <PlusCircle size={11} /> Add
+                        </button>
                     )}
                 </div>
             )
@@ -258,14 +278,31 @@ const OrderModal: React.FC<OrderModalProps> = ({
                                     backgroundColor: 'var(--color-bg-warning)',
                                     border: '1px solid var(--color-status-reserved)',
                                     color: '#92400e', padding: '0.875rem 1rem',
-                                    borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.875rem'
+                                    borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.875rem'
                                 }}>
-                                    <AlertTriangle size={20} style={{ flexShrink: 0 }} />
-                                    <div>
-                                        <h4 style={{ margin: '0 0 0.2rem 0', fontWeight: 600, fontSize: '0.9rem' }}>Unmapped SKUs Detected</h4>
-                                        <p style={{ margin: 0, fontSize: '0.8rem' }}>
-                                            Some items don't match any known SKU. Create or map them before fulfilling this order.
+                                    <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+                                    <div style={{ flex: 1 }}>
+                                        <h4 style={{ margin: '0 0 0.25rem 0', fontWeight: 700, fontSize: '0.875rem' }}>Unregistered SKUs Found</h4>
+                                        <p style={{ margin: '0 0 0.6rem 0', fontSize: '0.8rem' }}>
+                                            The following items are not in your product catalog. Click <strong>Add</strong> next to each SKU to register it before fulfilling.
                                         </p>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                            {order.items.filter(i => i.mappingStatus === 'Unmapped').map(i => (
+                                                <button
+                                                    key={i.sku}
+                                                    onClick={() => setQuickAddSku(i.sku)}
+                                                    style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                                                        backgroundColor: '#fff', border: '1px solid #d97706',
+                                                        color: '#92400e', borderRadius: '5px',
+                                                        padding: '0.2rem 0.6rem', fontSize: '0.78rem',
+                                                        fontWeight: 600, cursor: 'pointer', fontFamily: 'monospace'
+                                                    }}
+                                                >
+                                                    <PlusCircle size={12} /> {i.sku}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -473,6 +510,16 @@ const OrderModal: React.FC<OrderModalProps> = ({
                 isOpen={showPrintModal}
                 onClose={() => setShowPrintModal(false)}
             />
+            {quickAddSku && (
+                <QuickAddProductModal
+                    sku={quickAddSku}
+                    onClose={() => setQuickAddSku(null)}
+                    onAdded={async () => {
+                        setQuickAddSku(null);
+                        await fetchOrders();
+                    }}
+                />
+            )}
         </>
     );
 };

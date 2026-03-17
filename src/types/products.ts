@@ -1,7 +1,7 @@
 export interface Product {
     id: string;
     sku: string;
-    type: 'simple' | 'bundle';
+    type: 'simple' | 'bundle' | 'kit';
     name: string;
     upc?: string;
     brand?: string;
