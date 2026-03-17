@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Order } from '../types';
 import StatusBadge from './StatusBadge';
 import TagChip from './ui/TagChip';
@@ -8,6 +8,10 @@ import { Clock } from 'lucide-react';
 import { DataTable, type Column } from './ui/DataTable';
 import { BulkActionBar } from './ui/BulkActionBar';
 import OrderModal from './orders/OrderModal';
+import OrderFilterBar, { applyOrderFilters, EMPTY_FILTERS, type OrderFilters } from './orders/OrderFilterBar';
+import { useTags } from '../context/TagsContext';
+import { useOrders } from '../context/OrderContext';
+import { tagsApi } from '../services/tagsApi';
 
 interface OrderTableProps {
     orders: Order[];
@@ -15,8 +19,31 @@ interface OrderTableProps {
 }
 
 const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
+    const { tags } = useTags();
+    const { fetchOrders } = useOrders();
+
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+    const [filters, setFilters] = useState<OrderFilters>(EMPTY_FILTERS);
+
+    const filteredOrders = useMemo(() => applyOrderFilters(orders, filters), [orders, filters]);
+
+    const handleFilterChange = (f: OrderFilters) => {
+        setFilters(f);
+        setSelectedKeys(new Set());
+    };
+
+    const handleBulkAddTag = async (tagId: string) => {
+        const ids = Array.from(selectedKeys);
+        await Promise.all(ids.map(orderId => tagsApi.assignTagToOrder(orderId, tagId)));
+        await fetchOrders();
+    };
+
+    const handleBulkRemoveTag = async (tagId: string) => {
+        const ids = Array.from(selectedKeys);
+        await Promise.all(ids.map(orderId => tagsApi.removeTagFromOrder(orderId, tagId)));
+        await fetchOrders();
+    };
 
     const columns: Column<Order>[] = [
         {
@@ -36,7 +63,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
         { key: 'customerName', label: 'Customer', type: 'text', filterable: true },
         {
             key: 'channel',
-            label: 'Channel',
+            label: 'Store',
             type: 'select',
             filterable: true,
             options: Array.from(new Set(orders.map(o => o.channel))),
@@ -53,7 +80,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
         },
         {
             key: 'fulfillmentStatus',
-            label: 'Fulfillment Status',
+            label: 'Fulfillment',
             type: 'select',
             filterable: true,
             options: ['New', 'Allocated', 'Picking', 'Packed', 'Shipped'],
@@ -61,7 +88,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
         },
         {
             key: 'paymentStatus',
-            label: 'Payment Status',
+            label: 'Payment',
             type: 'select',
             filterable: true,
             options: ['Paid', 'Pending', 'Failed'],
@@ -96,18 +123,41 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
         );
     }
 
+    const isFiltered = filters.tagIds.length > 0 || filters.channels.length > 0 ||
+        filters.statuses.length > 0 || !!filters.dateFrom || !!filters.dateTo;
+
     return (
         <div>
+            {/* ShipStation-style filter bar */}
+            <OrderFilterBar
+                orders={orders}
+                tags={tags}
+                filters={filters}
+                onChange={handleFilterChange}
+            />
+
+            {/* Results count when filters active */}
+            {isFiltered && (
+                <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '0 0 0.75rem 0' }}>
+                    Showing {filteredOrders.length} of {orders.length} orders
+                </p>
+            )}
+
+            {/* Bulk action bar (visible when rows selected) */}
             <BulkActionBar
                 selectedCount={selectedKeys.size}
                 module="orders"
                 onClearSelection={() => setSelectedKeys(new Set())}
+                availableTags={tags}
+                onBulkAddTag={handleBulkAddTag}
+                onBulkRemoveTag={handleBulkRemoveTag}
             />
+
             <DataTable
-                data={orders}
+                data={filteredOrders}
                 columns={columns}
                 onRowClick={(order) => {
-                    const idx = orders.findIndex(o => o.id === order.id);
+                    const idx = filteredOrders.findIndex(o => o.id === order.id);
                     setSelectedIndex(idx >= 0 ? idx : null);
                 }}
                 selectable
@@ -116,8 +166,8 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
             />
 
             <OrderModal
-                order={selectedIndex !== null ? orders[selectedIndex] : null}
-                orders={orders}
+                order={selectedIndex !== null ? filteredOrders[selectedIndex] : null}
+                orders={filteredOrders}
                 currentIndex={selectedIndex ?? 0}
                 onClose={() => setSelectedIndex(null)}
                 onNavigate={(newIdx) => setSelectedIndex(newIdx)}
