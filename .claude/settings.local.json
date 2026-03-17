@@ -63,7 +63,17 @@
       "Bash(curl -s \"http://localhost:8081/node_modules/expo-router/entry.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app\")",
       "Bash(mkdir -p /Users/eduardapantaleao/the-caddy/apps/mobile/node_modules)",
       "Bash(ln -sf /Users/eduardapantaleao/the-caddy/node_modules/expo-router /Users/eduardapantaleao/the-caddy/apps/mobile/node_modules/expo-router)",
-      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''message'''',''''''''\\)[:500]\\)\")"
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''message'''',''''''''\\)[:500]\\)\")",
+      "Bash(git -C /Users/eduardapantaleao/ERP status)",
+      "Bash(git -C /Users/eduardapantaleao/ERP diff --stat)",
+      "Bash(git -C /Users/eduardapantaleao/ERP diff HEAD -- src/components/ReceiveForm.tsx src/services/api.ts src/types/index.ts src/components/InventoryTable.tsx src/context/OrderContext.tsx)",
+      "Bash(git -C /Users/eduardapantaleao/ERP rev-parse --show-toplevel)",
+      "Bash(git -C /Users/eduardapantaleao/ERP log --oneline -5)",
+      "Bash(git -C /Users/eduardapantaleao/ERP show --stat HEAD)",
+      "Bash(git -C /Users/eduardapantaleao/ERP diff HEAD -- src/context/OrderContext.tsx src/components/orders/QuickAddProductModal.tsx)",
+      "Bash(git -C /Users/eduardapantaleao/ERP show HEAD -- src/context/OrderContext.tsx)",
+      "Bash(git -C /Users/eduardapantaleao/ERP add src/components/ReceiveForm.tsx src/context/OrderContext.tsx)",
+      "Bash(git -C:*)"
     ]
   }
 }
