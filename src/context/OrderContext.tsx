@@ -17,6 +17,7 @@ interface OrderContextProps {
     syncShipStationOrders: () => Promise<void>;
     syncShippedOrders: () => Promise<void>;
     cancelOrder: (orderId: string, reason: string, performedBy: string) => Promise<void>;
+    deleteOrders: (orderIds: string[]) => Promise<void>;
 }
 
 const OrderContext = createContext<OrderContextProps | undefined>(undefined);
@@ -109,6 +110,20 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             await fetchOrders();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to cancel order');
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const deleteOrders = async (orderIds: string[]) => {
+        setLoading(true);
+        setError(null);
+        try {
+            await ordersApi.deleteOrders(orderIds);
+            await fetchOrders();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to delete orders');
             throw err;
         } finally {
             setLoading(false);
@@ -245,6 +260,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 syncShipStationOrders,
                 syncShippedOrders,
                 cancelOrder,
+                deleteOrders,
             }}
         >
             {children}

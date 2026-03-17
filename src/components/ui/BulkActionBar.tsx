@@ -16,6 +16,7 @@ interface BulkActionBarProps {
     onBulkAddTag?: (tagId: string) => Promise<void>;
     onBulkRemoveTag?: (tagId: string) => Promise<void>;
     onBulkPickPack?: () => void;
+    onBulkDelete?: () => void;
 }
 
 // Dropdown that closes on outside click
@@ -130,7 +131,7 @@ const TagDropdown: React.FC<{
 
 export const BulkActionBar: React.FC<BulkActionBarProps> = ({
     selectedCount, module, onClearSelection, onAction,
-    availableTags, onBulkAddTag, onBulkRemoveTag, onBulkPickPack
+    availableTags, onBulkAddTag, onBulkRemoveTag, onBulkPickPack, onBulkDelete
 }) => {
     if (selectedCount === 0) return null;
 
@@ -189,6 +190,15 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                         <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', color: 'var(--color-shc-red)' }} onClick={() => onAction?.('cancel')}>
                             <XCircle size={14} /> Cancel Selected
                         </button>
+                        {onBulkDelete && (
+                            <button
+                                className="btn-secondary"
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', color: 'var(--color-shc-red)', fontWeight: 700, borderColor: 'var(--color-shc-red)' }}
+                                onClick={onBulkDelete}
+                            >
+                                <XCircle size={14} /> Delete Selected
+                            </button>
+                        )}
                     </>
                 );
             case 'locations':

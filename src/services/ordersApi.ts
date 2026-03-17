@@ -509,5 +509,20 @@ export const ordersApi = {
             ordersApi.addTimelineEvent(id, `Status updated to ${status}`, performedBy,
                 `Bulk action — ${orderIds.length} orders updated`)
         ));
+    },
+
+    /**
+     * Permanently delete orders and all related records.
+     */
+    deleteOrders: async (orderIds: string[]): Promise<void> => {
+        if (!orderIds.length) return;
+
+        // Delete child records first (in case FK cascade is not configured)
+        await supabase.from('order_timeline').delete().in('order_id', orderIds);
+        await supabase.from('order_items').delete().in('order_id', orderIds);
+        await supabase.from('order_tags').delete().in('order_id', orderIds);
+
+        const { error } = await supabase.from('orders').delete().in('id', orderIds);
+        if (error) throw new Error(error.message);
     }
 };

@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import type { Order } from '../types';
 import StatusBadge from './StatusBadge';
 import TagChip from './ui/TagChip';
-import { Clock } from 'lucide-react';
+import { Clock, Trash2 } from 'lucide-react';
 import { DataTable, type Column } from './ui/DataTable';
 import { BulkActionBar } from './ui/BulkActionBar';
 import OrderModal from './orders/OrderModal';
@@ -21,12 +21,14 @@ interface OrderTableProps {
 
 const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
     const { tags } = useTags();
-    const { fetchOrders } = useOrders();
+    const { fetchOrders, deleteOrders } = useOrders();
 
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
     const [filters, setFilters] = useState<OrderFilters>(EMPTY_FILTERS);
     const [showPicklist, setShowPicklist] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     const filteredOrders = useMemo(() => applyOrderFilters(orders, filters), [orders, filters]);
 
@@ -46,6 +48,18 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
         await Promise.all(ids.map(orderId => tagsApi.removeTagFromOrder(orderId, tagId)));
         await fetchOrders();
     };
+
+    const handleConfirmDelete = useCallback(async () => {
+        const ids = Array.from(selectedKeys);
+        setDeleting(true);
+        try {
+            await deleteOrders(ids);
+            setSelectedKeys(new Set());
+            setConfirmDelete(false);
+        } finally {
+            setDeleting(false);
+        }
+    }, [selectedKeys, deleteOrders]);
 
     const columns: Column<Order>[] = [
         {
@@ -149,12 +163,51 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
             <BulkActionBar
                 selectedCount={selectedKeys.size}
                 module="orders"
-                onClearSelection={() => setSelectedKeys(new Set())}
+                onClearSelection={() => { setSelectedKeys(new Set()); setConfirmDelete(false); }}
                 availableTags={tags}
                 onBulkAddTag={handleBulkAddTag}
                 onBulkRemoveTag={handleBulkRemoveTag}
                 onBulkPickPack={() => setShowPicklist(true)}
+                onBulkDelete={() => setConfirmDelete(true)}
             />
+
+            {/* Delete confirmation banner */}
+            {confirmDelete && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fca5a5',
+                    borderTop: 'none',
+                    borderRadius: '0 0 8px 8px',
+                    marginBottom: '0.75rem'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <Trash2 size={16} color="var(--color-shc-red)" />
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-shc-red)' }}>
+                            Permanently delete {selectedKeys.size} order{selectedKeys.size !== 1 ? 's' : ''}? This cannot be undone.
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                            className="btn-secondary"
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem' }}
+                            onClick={() => setConfirmDelete(false)}
+                            disabled={deleting}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            className="btn-primary"
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', backgroundColor: 'var(--color-shc-red)', borderColor: 'var(--color-shc-red)' }}
+                            onClick={handleConfirmDelete}
+                            disabled={deleting}
+                        >
+                            {deleting ? 'Deleting…' : 'Yes, Delete'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <DataTable
                 data={filteredOrders}
