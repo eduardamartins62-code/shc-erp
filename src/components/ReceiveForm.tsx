@@ -1,8 +1,7 @@
-"use client";
-
 import React, { useState, useEffect } from 'react';
 import { useInventory } from '../context/InventoryContext';
 import { useSettings } from '../context/SettingsContext';
+import { useProducts } from '../context/ProductContext';
 import { supabase } from '../lib/supabase';
 import { X, CheckCircle, MapPin } from 'lucide-react';
 import type { WarehouseLocation } from '../types/locations';
@@ -14,6 +13,7 @@ interface Props {
 const ReceiveForm: React.FC<Props> = ({ onClose }) => {
     const { receiveStock, loading, error } = useInventory();
     const { warehouses } = useSettings();
+    const { products } = useProducts();
 
     const defaultWarehouse = warehouses.find(w => w.isDefault) || warehouses[0];
 
@@ -134,14 +134,20 @@ const ReceiveForm: React.FC<Props> = ({ onClose }) => {
                         <div className="form-group">
                             <label className="form-label">SKU *</label>
                             <input
-                                type="text"
+                                list="receive-sku-list"
                                 className="form-control"
                                 required
                                 value={formData.sku}
                                 onChange={e => setFormData({ ...formData, sku: e.target.value })}
-                                placeholder="e.g. MRI021-90"
+                                placeholder="Type or select SKU…"
                                 autoFocus
+                                autoComplete="off"
                             />
+                            <datalist id="receive-sku-list">
+                                {products.map(p => (
+                                    <option key={p.id} value={p.sku}>{p.name}</option>
+                                ))}
+                            </datalist>
                         </div>
 
                         {/* Warehouse + Location in a row */}

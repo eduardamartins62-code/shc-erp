@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, Plus } from 'lucide-react';
 import LineItemRow from './LineItemRow';
 import { submitReceipt, getLocations } from '../../services/receivingApi';
 import { useSettings } from '../../context/SettingsContext';
+import { useProducts } from '../../context/ProductContext';
 
 interface ReceivingSessionProps {
     mode: 'po' | 'manual' | 'bulk';
@@ -25,6 +26,7 @@ const ReceivingSession: React.FC<ReceivingSessionProps> = ({
     onSuccess
 }) => {
     const { warehouses } = useSettings();
+    const { products } = useProducts();
     const defaultWarehouse = warehouses.find(w => w.isDefault) || warehouses[0];
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -416,6 +418,7 @@ const ReceivingSession: React.FC<ReceivingSessionProps> = ({
                                                             index={i}
                                                             locations={locations}
                                                             sessionLocation={session.location}
+                                                            products={products}
                                                             onChange={handleLineChange}
                                                         />
                                                     ))}
@@ -431,6 +434,7 @@ const ReceivingSession: React.FC<ReceivingSessionProps> = ({
                                                 index={index}
                                                 locations={locations}
                                                 sessionLocation={session.location}
+                                                products={products}
                                                 onChange={handleLineChange}
                                                 onRemove={mode === 'manual' && lines.length > 1 ? handleRemoveLine : undefined}
                                             />

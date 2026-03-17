@@ -180,6 +180,12 @@ export const shipstationApi = {
             const subtotal = mappedItems.reduce((acc, item) => acc + (item.quantity * item.price), 0);
             const mockMargin = subtotal * 0.3; // Basic 30% mock margin since SS doesn't provide COGS natively
 
+            // Map SS orderStatus to internal fulfillmentStatus
+            const fulfillmentStatus: Order['fulfillmentStatus'] =
+                ssOrder.orderStatus === 'shipped' ? 'Shipped'
+                : ssOrder.orderStatus === 'cancelled' ? 'Cancelled'
+                : 'New';
+
             return {
                 id: orderId,
                 channel: 'ShipStation',
@@ -189,11 +195,12 @@ export const shipstationApi = {
                 customerEmail: ssOrder.customerEmail || 'no-email@shc.com',
                 shippingAddress: formatAddress(ssOrder.shipTo),
                 orderDate: ssOrder.orderDate,
-                // Map SS status to our internal
-                fulfillmentStatus: 'New',
+                fulfillmentStatus,
                 paymentStatus: 'Paid',
                 carrier: ssOrder.carrierCode,
                 requestedService: ssOrder.requestedShippingService,
+                trackingNumber: ssOrder.trackingNumber || undefined,
+                shippedAt: ssOrder.shipDate || undefined,
                 items: mappedItems,
                 timeline: [
                     {

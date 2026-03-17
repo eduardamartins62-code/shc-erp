@@ -8,11 +8,12 @@ interface LineItemRowProps {
     index: number;
     locations: string[];
     sessionLocation: string;
+    products?: Array<{ id: string; sku: string; name: string }>;
     onChange: (index: number, field: keyof ReceiptLine, value: any) => void;
     onRemove?: (index: number) => void;
 }
 
-const LineItemRow: React.FC<LineItemRowProps> = ({ line, mode, index, locations, sessionLocation, onChange, onRemove }) => {
+const LineItemRow: React.FC<LineItemRowProps> = ({ line, mode, index, locations, sessionLocation, products = [], onChange, onRemove }) => {
     const parsedQty = parseInt(line.receivedQty) || 0;
     const isValidQty = !isNaN(parseInt(line.receivedQty));
 
@@ -69,13 +70,28 @@ const LineItemRow: React.FC<LineItemRowProps> = ({ line, mode, index, locations,
                 {/* SKU */}
                 <td style={{ padding: '8px 10px', verticalAlign: 'middle', overflow: 'hidden' }}>
                     {mode === 'manual' ? (
-                        <input
-                            type="text"
-                            placeholder="SKU..."
-                            value={line.sku}
-                            onChange={(e) => onChange(index, 'sku', e.target.value)}
-                            style={{ width: '100%', fontSize: '13px', padding: '6px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
-                        />
+                        <>
+                            <input
+                                list={`line-sku-list-${index}`}
+                                placeholder="Type or select SKU…"
+                                value={line.sku}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    onChange(index, 'sku', val);
+                                    const match = products.find(p => p.sku === val);
+                                    if (match && !line.name) {
+                                        onChange(index, 'name', match.name);
+                                    }
+                                }}
+                                autoComplete="off"
+                                style={{ width: '100%', fontSize: '13px', padding: '6px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
+                            />
+                            <datalist id={`line-sku-list-${index}`}>
+                                {products.map(p => (
+                                    <option key={p.id} value={p.sku}>{p.name}</option>
+                                ))}
+                            </datalist>
+                        </>
                     ) : (
                         <span style={{ fontFamily: "'DM Mono', 'Courier New', monospace", color: '#3b82f6', fontSize: '12px', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', userSelect: 'all', cursor: 'text' }}>
                             {line.sku || 'N/A'}

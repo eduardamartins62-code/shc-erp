@@ -141,9 +141,11 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     });
                 });
 
-                // Reserve inventory for valid items automatically
+                // Reserve inventory only for orders that are NOT already shipped/cancelled
                 const itemsToReserve = toAdd.flatMap(o =>
-                    o.items.filter(i => i.mappingStatus === 'Mapped').map(i => ({ sku: i.sku, quantity: i.quantity }))
+                    (o.fulfillmentStatus === 'Shipped' || o.fulfillmentStatus === 'Cancelled')
+                        ? []
+                        : o.items.filter(i => i.mappingStatus === 'Mapped').map(i => ({ sku: i.sku, quantity: i.quantity }))
                 );
 
                 if (itemsToReserve.length > 0) {

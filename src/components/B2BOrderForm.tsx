@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useOrders } from '../context/OrderContext';
+import { useProducts } from '../context/ProductContext';
 import { X, Plus, Trash2 } from 'lucide-react';
 import type { B2BOrderFormData } from '../types';
 import { generateB2BOrderNumber } from '../utils/orderUtils';
@@ -10,6 +11,7 @@ interface B2BOrderFormProps {
 
 const B2BOrderForm: React.FC<B2BOrderFormProps> = ({ onClose }) => {
     const { createB2BOrder } = useOrders();
+    const { products } = useProducts();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -181,12 +183,18 @@ const B2BOrderForm: React.FC<B2BOrderFormProps> = ({ onClose }) => {
                                     <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
                                         <label>SKU</label>
                                         <input
-                                            type="text"
+                                            list={`b2b-sku-list-${index}`}
                                             required
                                             value={item.sku}
                                             onChange={(e) => handleItemChange(index, 'sku', e.target.value)}
-                                            placeholder="e.g. SKU-1001"
+                                            placeholder="Type or select SKU…"
+                                            autoComplete="off"
                                         />
+                                        <datalist id={`b2b-sku-list-${index}`}>
+                                            {products.map(p => (
+                                                <option key={p.id} value={p.sku}>{p.name}</option>
+                                            ))}
+                                        </datalist>
                                     </div>
                                     <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                                         <label>Quantity</label>
