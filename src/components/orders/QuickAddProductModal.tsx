@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Package, Layers, Box, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useProducts } from '../../context/ProductContext';
+import { supabase } from '../../lib/supabase';
 import type { Product } from '../../types';
 
 type ProductType = 'simple' | 'bundle' | 'kit';
@@ -62,6 +63,14 @@ const QuickAddProductModal: React.FC<QuickAddProductModalProps> = ({ sku, onClos
                 status: 'Active'
             };
             await addProduct(payload);
+
+            // Update all existing order_items with this SKU from Unmapped → Mapped
+            await supabase
+                .from('order_items')
+                .update({ mapping_status: 'Mapped' })
+                .eq('sku', sku.trim())
+                .eq('mapping_status', 'Unmapped');
+
             setDone(true);
             setTimeout(() => {
                 onAdded();
