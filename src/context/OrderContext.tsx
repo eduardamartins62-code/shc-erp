@@ -178,13 +178,13 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const shippedMap = new Map(shippedFromSS.map(o => [o.orderNumber, o]));
 
             const ordersToMarkShipped = orders.filter(o =>
-                shippedMap.has(o.orderNumber) &&
+                shippedMap.has(o.id) &&
                 o.fulfillmentStatus !== 'Shipped' &&
                 o.fulfillmentStatus !== 'Cancelled'
             );
 
             for (const order of ordersToMarkShipped) {
-                const trackingInfo = shippedMap.get(order.orderNumber)!;
+                const trackingInfo = shippedMap.get(order.id)!;
 
                 // Auto-deduct inventory only if the toggle is on
                 if (autoDeduct) {

@@ -61,8 +61,10 @@ const ReceiveForm: React.FC<Props> = ({ onClose }) => {
                         bin: l.bin,
                         barcodeValue: l.barcode_value || l.location_code,
                         isActive: l.is_active,
-                        createdAt: l.created_at,
-                        updatedAt: l.updated_at,
+                        createdAt: l.created_at || '',
+                        createdBy: l.created_by || '',
+                        updatedAt: l.updated_at || '',
+                        updatedBy: l.updated_by || '',
                     })));
                 } else {
                     setLocations([]);
