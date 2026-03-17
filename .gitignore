@@ -31,3 +31,4 @@ out/
 *.sln
 *.sw?
 .vercel
+.claude/worktrees/
