@@ -13,7 +13,6 @@ import {
     Activity,
     MapPin,
     Settings as SettingsIcon,
-    AlertTriangle,
     ArrowDownToLine,
     ArrowLeftRight,
     ChevronLeft,
@@ -37,7 +36,6 @@ const NAV_ITEMS: NavItem[] = [
     { to: '/locations', icon: MapPin, label: 'Locations' },
     { to: '/orders', icon: ShoppingCart, label: 'Orders' },
     { to: '/data-management', icon: ArrowLeftRight, label: 'Imports & Exports' },
-    { to: '/expiration', icon: AlertTriangle, label: 'Expiration Dashboard' },
 ];
 
 const BOTTOM_NAV: NavItem[] = [
