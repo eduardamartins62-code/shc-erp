@@ -12,6 +12,8 @@ import { BulkActionBar } from './ui/BulkActionBar';
 import { SkuLink } from './ui/SkuLink';
 import MovementHistorySlideOver from './movements/MovementHistorySlideOver';
 import ExportInventoryModal from './inventory/ExportInventoryModal';
+import BulkAdjustModal from './inventory/BulkAdjustModal';
+import BulkMoveModal from './inventory/BulkMoveModal';
 
 interface Props {
     data?: InventoryItem[];
@@ -29,6 +31,8 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
     const [showHistory, setShowHistory] = useState(false);
     const [showExport, setShowExport] = useState(false);
+    const [showBulkAdjust, setShowBulkAdjust] = useState(false);
+    const [showBulkMove, setShowBulkMove] = useState(false);
 
     const calculateAvailable = (item: InventoryItem) => item.quantityOnHand - item.quantityReserved;
 
@@ -59,11 +63,12 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
         const selectedItems = displayData.filter(row => selectedKeys.has(inventoryRowKey(row)));
         if (action === 'adjust') {
             if (selectedItems.length > 0) {
-                setSelectedItem(selectedItems[0]);
-                setActiveModal('adjust');
+                setShowBulkAdjust(true);
             }
         } else if (action === 'move') {
-            setActiveModal('transfer');
+            if (selectedItems.length > 0) {
+                setShowBulkMove(true);
+            }
         } else if (action === 'export') {
             const headers = ['SKU', 'Warehouse', 'Location', 'Lot Number', 'QOH', 'Reserved', 'Available', 'Expiration Date', 'Last Updated'];
             const dataRows = selectedItems.map(item => [
@@ -356,6 +361,18 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
                 item={detailItem}
                 isOpen={showExport}
                 onClose={() => setShowExport(false)}
+            />
+
+            <BulkAdjustModal
+                items={displayData.filter(row => selectedKeys.has(inventoryRowKey(row)))}
+                isOpen={showBulkAdjust}
+                onClose={() => { setShowBulkAdjust(false); setSelectedKeys(new Set()); }}
+            />
+
+            <BulkMoveModal
+                items={displayData.filter(row => selectedKeys.has(inventoryRowKey(row)))}
+                isOpen={showBulkMove}
+                onClose={() => { setShowBulkMove(false); setSelectedKeys(new Set()); }}
             />
         </>
     );
