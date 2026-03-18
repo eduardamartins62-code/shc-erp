@@ -215,9 +215,9 @@ const DataManagement: React.FC = () => {
 
                         // Validate all component SKUs exist in the product catalog
                         const existingSkus = new Set(products.map(p => p.sku));
-                        const missingComponentSkus = [...new Set(
+                        const missingComponentSkus = Array.from(new Set(
                             rows.map((r: any) => r.componentSku?.trim()).filter((sku: string) => sku && !existingSkus.has(sku))
-                        )];
+                        ));
                         if (missingComponentSkus.length > 0) {
                             throw new Error(
                                 `Component SKU(s) not found in the product catalog: ${missingComponentSkus.join(', ')}. ` +
