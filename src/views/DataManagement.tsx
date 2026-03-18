@@ -241,7 +241,7 @@ const DataManagement: React.FC = () => {
                     </label>
 
                     <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
-                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => downloadImportTemplate(activeTab, warehouses[0] ? { id: warehouses[0].id, name: warehouses[0].name } : undefined)}>Download Template</button>
+                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => downloadImportTemplate(activeTab, warehouses[0] ? { id: warehouses[0].id, name: warehouses[0].warehouseName } : undefined)}>Download Template</button>
                         <button 
                             className="btn btn-primary" 
                             style={{ flex: 1 }} 
