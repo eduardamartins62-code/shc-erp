@@ -123,6 +123,39 @@ export const exportOrdersToCSV = (orders: Order[], filename: string = 'orders_ex
 
 import type { WarehouseLocation } from '../types/locations';
 
+// Template CSV downloads — headers match what the importer expects (camelCase)
+export const downloadImportTemplate = (tab: 'products' | 'inventory' | 'locations' | 'orders') => {
+    let headers: string[];
+    let sampleRow: string[];
+    let filename: string;
+
+    switch (tab) {
+        case 'products':
+            headers = ['sku', 'name', 'type', 'brand', 'category', 'subcategory', 'status', 'upc', 'costOfGoods', 'mapPrice', 'msrpPrice', 'weight', 'length', 'width', 'height', 'reorderPoint', 'preferredSupplier', 'description'];
+            sampleRow = ['SKU-001', 'Sample Product', 'simple', 'Acme', 'Electronics', 'Audio', 'Active', '012345678901', '10.00', '14.99', '19.99', '1.5', '10', '5', '3', '10', 'Supplier Co', 'A sample product description'];
+            filename = 'products_import_template.csv';
+            break;
+        case 'locations':
+            headers = ['warehouseId', 'locationCode', 'warehouseName', 'displayName', 'type', 'description', 'aisle', 'section', 'shelf', 'bin', 'barcodeValue', 'isActive'];
+            sampleRow = ['WH-001', 'A-01-01-A', 'Main Warehouse', 'Aisle A Shelf 1 Bin A', 'SHELF', 'Primary shelf location', 'A', '01', '01', 'A', 'A-01-01-A', 'true'];
+            filename = 'locations_import_template.csv';
+            break;
+        case 'inventory':
+            headers = ['sku', 'warehouseId', 'locationCode', 'quantityOnHand', 'lotNumber', 'expirationDate', 'lotReceiveCost'];
+            sampleRow = ['SKU-001', 'WH-001', 'A-01-01-A', '100', 'LOT-2024-001', '2025-12-31', '10.00'];
+            filename = 'inventory_import_template.csv';
+            break;
+        case 'orders':
+            headers = ['orderId', 'channel', 'customerName', 'customerEmail', 'sku', 'quantity', 'unitPrice'];
+            sampleRow = ['ORD-001', 'Shopify', 'John Doe', 'john@example.com', 'SKU-001', '2', '19.99'];
+            filename = 'orders_import_template.csv';
+            break;
+    }
+
+    const csvContent = [headers.join(','), sampleRow.map(escapeCSVField).join(',')].join('\n');
+    triggerDownload(csvContent, filename);
+};
+
 export const exportLocationsToCSV = (locations: WarehouseLocation[], filename: string = 'locations_export.csv') => {
     const headers = [
         'ID', 'Warehouse ID', 'Warehouse Code', 'Location Code', 'Display Name', 'Type',

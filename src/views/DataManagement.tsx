@@ -5,7 +5,7 @@ import { useInventory } from '../context/InventoryContext';
 import { useLocations } from '../context/LocationContext';
 import { useOrders } from '../context/OrderContext';
 import Papa from 'papaparse';
-import { exportProductsToCSV, exportInventoryToCSV, exportOrdersToCSV, exportLocationsToCSV } from '../utils/csvExport';
+import { exportProductsToCSV, exportInventoryToCSV, exportOrdersToCSV, exportLocationsToCSV, downloadImportTemplate } from '../utils/csvExport';
 
 type TabType = 'products' | 'inventory' | 'locations' | 'orders';
 
@@ -223,7 +223,7 @@ const DataManagement: React.FC = () => {
                     </label>
 
                     <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
-                        <button className="btn btn-secondary" style={{ flex: 1 }}>Download Template</button>
+                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => downloadImportTemplate(activeTab)}>Download Template</button>
                         <button 
                             className="btn btn-primary" 
                             style={{ flex: 1 }} 
