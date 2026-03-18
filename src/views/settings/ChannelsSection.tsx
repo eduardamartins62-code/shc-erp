@@ -411,6 +411,34 @@ export const ChannelsSection: React.FC = () => {
                                                 />
                                             </label>
                                         </div>
+
+                                        {/* Sync Shipped Order Status Toggle */}
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>Sync Shipped Order Status</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Auto-update orders marked shipped in ShipStation</div>
+                                            </div>
+                                            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                                <div style={{
+                                                    position: 'relative', width: '36px', height: '20px',
+                                                    backgroundColor: detailChannel.syncShippedOrders !== false ? 'var(--color-shc-red)' : '#e5e7eb',
+                                                    borderRadius: '999px', transition: 'background-color 0.2s',
+                                                }}>
+                                                    <div style={{
+                                                        position: 'absolute', top: '2px', left: detailChannel.syncShippedOrders !== false ? '18px' : '2px',
+                                                        width: '16px', height: '16px', backgroundColor: 'white', borderRadius: '50%',
+                                                        transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                                    }} />
+                                                </div>
+                                                <input type="checkbox" style={{ display: 'none' }} checked={detailChannel.syncShippedOrders !== false}
+                                                    onChange={async (e) => {
+                                                        const val = e.target.checked;
+                                                        setDetailChannel(prev => prev ? { ...prev, syncShippedOrders: val } : null);
+                                                        await updateChannel(detailChannel.id, { syncShippedOrders: val });
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -47,6 +47,7 @@ export interface ChannelConfig {
     autoImportOrders?: boolean;
     syncInventory?: boolean;
     syncTracking?: boolean;
+    syncShippedOrders?: boolean;
 }
 
 export interface SystemSettings {

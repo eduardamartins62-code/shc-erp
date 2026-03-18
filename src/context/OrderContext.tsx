@@ -194,6 +194,8 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const syncShippedOrders = async () => {
         const ssChannel = channels.find(c => c.channel === 'ShipStation');
         if (!ssChannel || !ssChannel.isEnabled || !ssChannel.apiKey || !ssChannel.apiSecret) return;
+        // Respect the "Sync Shipped Order Status" toggle — defaults ON if never explicitly set
+        if (ssChannel.syncShippedOrders === false) return;
 
         const method = (systemSettings as any)?.inventoryDeductionMethod || 'FEFO';
         const autoDeduct = (systemSettings as any)?.autoDeductInventoryOnShipped !== false; // default true
