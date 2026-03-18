@@ -80,7 +80,8 @@
       "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db \"SELECT email, name, role FROM User LIMIT 10;\")",
       "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db \"SELECT email, otp, otpExpiry FROM User WHERE otp IS NOT NULL;\")",
       "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db '.schema User')",
-      "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db \"SELECT email, otpCode FROM User WHERE otpCode IS NOT NULL;\")"
+      "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db \"SELECT email, otpCode FROM User WHERE otpCode IS NOT NULL;\")",
+      "Bash(gh run:*)"
     ]
   }
 }
