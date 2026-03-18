@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useProducts } from '../context/ProductContext';
 import { useInventory } from '../context/InventoryContext';
+import { useSettings } from '../context/SettingsContext';
+import type { InventoryLocation } from '../types/products';
 import { Edit2, MoreHorizontal, Camera, Image as ImageIcon } from 'lucide-react';
 import ImageUploadModal from '../components/products/ImageUploadModal';
 import EditProductModal from '../components/products/EditProductModal';
@@ -33,6 +35,7 @@ const ProductDetail: React.FC = () => {
         updateProduct
     } = useProducts();
     const { inventory } = useInventory();
+    const { warehouses } = useSettings();
 
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -61,10 +64,46 @@ const ProductDetail: React.FC = () => {
     }
 
     const isBundle = product.type === 'bundle';
-    const locations = isBundle ? [] : getInventoryLocations(product.id);
-    const totalInventoryData = isBundle ? null : calculateSimpleInventory(product.id);
     const components = isBundle ? getBundleComponents(product.id) : [];
     const autoCalculatedBundleInventory = isBundle ? calculateBundleInventory(product.id) : 0;
+
+    // Build real inventory locations from Supabase inventory records for this SKU
+    const realInventoryLocations: InventoryLocation[] = isBundle ? [] : inventory
+        .filter(i => i.id === product.sku)
+        .map(i => {
+            const wh = warehouses.find(w => w.id === i.warehouseId);
+            const qtyAvailable = Math.max(0, i.quantityOnHand - i.quantityReserved);
+            // Only include expiration date if it's a real date (not empty/epoch)
+            const hasRealExp = i.expirationDate && new Date(i.expirationDate).getFullYear() > 1970;
+            return {
+                id: `${i.warehouseId}-${i.locationCode || 'default'}-${i.lotNumber || 'nolot'}`,
+                productId: product.id,
+                warehouseName: wh ? wh.warehouseName : i.warehouseId,
+                locationCode: i.locationCode || '',
+                lotNumber: i.lotNumber || undefined,
+                expirationDate: hasRealExp ? i.expirationDate : undefined,
+                lotReceiveCost: i.lotReceiveCost,
+                qtyOnHand: i.quantityOnHand,
+                qtyReserved: i.quantityReserved,
+                qtyAvailable,
+                lastUpdatedAt: i.lastUpdated,
+            } as InventoryLocation;
+        });
+
+    // Fall back to mock data only if no real records exist
+    const locations = isBundle ? [] : (realInventoryLocations.length > 0 ? realInventoryLocations : getInventoryLocations(product.id));
+
+    // Real totals: sum from actual Supabase data when available
+    const totalInventoryData = isBundle ? null : (realInventoryLocations.length > 0
+        ? realInventoryLocations.reduce(
+            (acc, loc) => ({
+                qtyOnHand: acc.qtyOnHand + loc.qtyOnHand,
+                qtyReserved: acc.qtyReserved + loc.qtyReserved,
+                qtyAvailable: acc.qtyAvailable + loc.qtyAvailable,
+            }),
+            { qtyOnHand: 0, qtyReserved: 0, qtyAvailable: 0 }
+        )
+        : calculateSimpleInventory(product.id));
 
     const sortedLocations = [...locations].sort((a, b) => {
         if (!a.expirationDate) return 1;
@@ -375,7 +414,7 @@ const ProductDetail: React.FC = () => {
                     <ProductInventoryTab
                         product={product}
                         sortedLocations={sortedLocations}
-                        movements={movements}
+                        movements={[]}
                         navigate={navigate}
                     />
                 )}
