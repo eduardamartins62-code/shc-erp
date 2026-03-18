@@ -552,6 +552,26 @@ export const ordersApi = {
     },
 
     /**
+     * Returns the set of order IDs already in the DB — used by sync to avoid stale React state.
+     */
+    getExistingOrderIds: async (): Promise<Set<string>> => {
+        const { data } = await supabase.from('orders').select('id');
+        return new Set((data || []).map((o: any) => o.id));
+    },
+
+    /**
+     * Returns all orders that are NOT yet Shipped or Cancelled — used by syncShippedOrders
+     * to avoid depending on stale React state in the auto-sync interval.
+     */
+    getNonShippedOrders: async (): Promise<{ id: string }[]> => {
+        const { data } = await supabase
+            .from('orders')
+            .select('id, fulfillment_status')
+            .not('fulfillment_status', 'in', '("Shipped","Cancelled")');
+        return data || [];
+    },
+
+    /**
      * Permanently delete orders and all related records.
      */
     deleteOrders: async (orderIds: string[]): Promise<void> => {

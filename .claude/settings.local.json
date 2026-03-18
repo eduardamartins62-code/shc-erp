@@ -82,7 +82,9 @@
       "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db '.schema User')",
       "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db \"SELECT email, otpCode FROM User WHERE otpCode IS NOT NULL;\")",
       "Bash(gh run:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(find /Users/eduardapantaleao/ERP -name schema.sql -o -name migration* -o -name init*.sql)",
+      "Bash(find /Users/eduardapantaleao/ERP -name *.sql -o -name *schema* -o -name *migration*)"
     ]
   }
 }

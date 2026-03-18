@@ -133,10 +133,34 @@ const DataManagement: React.FC = () => {
                         if (!rows[0].sku || !rows[0].warehouseId) {
                             throw new Error("Invalid format. Must contain 'sku' and 'warehouseId' header columns.");
                         }
+                        // Validate warehouse IDs
                         const validWarehouseIds = new Set(warehouses.map(w => w.id));
                         const badIds = Array.from(new Set(rows.map((r: any) => r.warehouseId).filter((id: string) => !validWarehouseIds.has(id))));
                         if (badIds.length > 0) {
                             throw new Error(`Unrecognised warehouse ID(s): ${badIds.join(', ')}. Only warehouses registered in Settings can be used.`);
+                        }
+                        // Validate location codes — any locationCode in the CSV must exist
+                        // in the locations table for that warehouse. Rows without a locationCode are fine.
+                        const rowsWithLocation = rows.filter((r: any) => r.locationCode && String(r.locationCode).trim());
+                        if (rowsWithLocation.length > 0) {
+                            const badLocations: string[] = [];
+                            rowsWithLocation.forEach((r: any) => {
+                                const exists = locations.some(
+                                    l => l.warehouseId === r.warehouseId &&
+                                         l.locationCode === String(r.locationCode).trim() &&
+                                         l.isActive
+                                );
+                                if (!exists) {
+                                    const label = `"${r.locationCode}" in warehouse ${r.warehouseId}`;
+                                    if (!badLocations.includes(label)) badLocations.push(label);
+                                }
+                            });
+                            if (badLocations.length > 0) {
+                                throw new Error(
+                                    `Location code(s) not found in the system: ${badLocations.join(', ')}. ` +
+                                    `Add these locations under Settings > Locations before importing, or remove the locationCode column from your sheet.`
+                                );
+                            }
                         }
                         const mappedInventory = rows.map(r => ({
                             sku: r.sku,

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react';
 import type { Order, OrderStatus, B2BOrderFormData } from '../types';
 import { ordersApi } from '../services/ordersApi';
 import { useSettings } from './SettingsContext';
@@ -146,7 +146,8 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
             const newOrders = await shipstationApi.fetchOrders(ssChannel.apiKey, ssChannel.apiSecret);
 
-            const existingIds = new Set(orders.map(o => o.id)); // Use current orders snapshot
+            // Query DB directly so we never use stale React state — prevents double-reserving
+            const existingIds = await ordersApi.getExistingOrderIds();
             const toAdd = newOrders.filter(o => !existingIds.has(o.id));
 
             if (toAdd.length > 0) {
@@ -172,10 +173,15 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
                 // Persist the newly fetched external orders into our Supabase database permanently
                 await ordersApi.batchCreateOrders(toAdd);
-
-                // Fetch orders directly from DB to refresh UI with truth
-                await fetchOrders();
             }
+
+            // Always check for shipped status updates — not just when new orders exist.
+            // This runs inside syncShipStationOrders so the manual "Import Orders" button
+            // also picks up shipped status changes, not just the 15-min auto-sync.
+            await syncShippedOrders();
+
+            // Fetch orders directly from DB to refresh UI with truth
+            await fetchOrders();
 
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to sync with ShipStation');
@@ -194,14 +200,16 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const autoDeduct = (systemSettings as any)?.autoDeductInventoryOnShipped !== false; // default true
 
             const shippedFromSS = await shipstationApi.fetchShippedOrders(ssChannel.apiKey, ssChannel.apiSecret);
+            if (shippedFromSS.length === 0) return;
+
             // Build a lookup map: orderNumber → tracking info
             const shippedMap = new Map(shippedFromSS.map(o => [o.orderNumber, o]));
 
-            const ordersToMarkShipped = orders.filter(o =>
-                shippedMap.has(o.id) &&
-                o.fulfillmentStatus !== 'Shipped' &&
-                o.fulfillmentStatus !== 'Cancelled'
-            );
+            // Query the DB directly — never use React state here to avoid stale closure bugs.
+            // The auto-sync runs on a 15-min interval that captures function refs from an old render,
+            // so `orders` state would be stale. Querying the DB always gives the truth.
+            const nonShipped = await ordersApi.getNonShippedOrders();
+            const ordersToMarkShipped = nonShipped.filter(o => shippedMap.has(o.id));
 
             for (const order of ordersToMarkShipped) {
                 const trackingInfo = shippedMap.get(order.id)!;
@@ -236,14 +244,23 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         });
     }, []);
 
-    // 15-min auto-sync interval
+    // Keep refs to the latest sync functions so the interval never closes over stale versions
+    const syncShipStationOrdersRef = useRef(syncShipStationOrders);
+    const syncShippedOrdersRef = useRef(syncShippedOrders);
+    useEffect(() => {
+        syncShipStationOrdersRef.current = syncShipStationOrders;
+        syncShippedOrdersRef.current = syncShippedOrders;
+    });
+
+    // 15-min auto-sync interval — uses refs to always call the latest function version
     useEffect(() => {
         const ssChannel = channels.find(c => c.channel === 'ShipStation');
         if (!ssChannel || !ssChannel.isEnabled || !ssChannel.autoImportOrders) return;
 
         const interval = setInterval(async () => {
-            await syncShipStationOrders();
-            await syncShippedOrders();
+            // syncShipStationOrders already calls syncShippedOrders internally,
+            // so one call here is sufficient for the full sync cycle.
+            await syncShipStationOrdersRef.current();
             const now = new Date().toISOString();
             setLastOrderSyncedAt(now);
             sessionStorage.setItem('orders_last_synced', now);
