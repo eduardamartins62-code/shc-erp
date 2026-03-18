@@ -303,7 +303,7 @@ export const api = {
             quantity_required_per_bundle: c.quantityRequiredPerBundle,
         }));
         // Delete existing components for these bundles first, then re-insert (clean replace)
-        const bundleIds = [...new Set(components.map(c => c.bundleProductId))];
+        const bundleIds = Array.from(new Set(components.map(c => c.bundleProductId)));
         await supabase.from('bundle_components').delete().in('bundle_product_id', bundleIds);
         const { error } = await supabase.from('bundle_components').insert(rows);
         if (error) throw new Error(error.message);
