@@ -83,7 +83,7 @@ const DataManagement: React.FC = () => {
                             throw new Error("Invalid format. Must contain 'sku' and 'warehouseId' header columns.");
                         }
                         const validWarehouseIds = new Set(warehouses.map(w => w.id));
-                        const badIds = [...new Set(rows.map((r: any) => r.warehouseId).filter((id: string) => !validWarehouseIds.has(id)))];
+                        const badIds = Array.from(new Set(rows.map((r: any) => r.warehouseId).filter((id: string) => !validWarehouseIds.has(id))));
                         if (badIds.length > 0) {
                             throw new Error(`Unrecognised warehouse ID(s): ${badIds.join(', ')}. Only warehouses registered in Settings can be used.`);
                         }
@@ -105,7 +105,7 @@ const DataManagement: React.FC = () => {
                             throw new Error("Invalid format. Must contain 'warehouseId' and 'locationCode' header columns.");
                         }
                         const validWarehouseIds = new Set(warehouses.map(w => w.id));
-                        const badIds = [...new Set(rows.map((r: any) => r.warehouseId).filter((id: string) => !validWarehouseIds.has(id)))];
+                        const badIds = Array.from(new Set(rows.map((r: any) => r.warehouseId).filter((id: string) => !validWarehouseIds.has(id))));
                         if (badIds.length > 0) {
                             throw new Error(`Unrecognised warehouse ID(s): ${badIds.join(', ')}. Only warehouses registered in Settings can be used.`);
                         }
