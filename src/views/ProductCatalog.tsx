@@ -57,7 +57,15 @@ const ProductCatalog: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'all' | 'simple' | 'bundle' | 'kit'>('all');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [categoryFilter, setCategoryFilter] = useState('All');
+    const [inStockOnly, setInStockOnly] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+    // Unique categories for the dropdown
+    const categoryOptions = useMemo(() => {
+        const cats = Array.from(new Set(products.map(p => p.category).filter(Boolean))) as string[];
+        return cats.sort();
+    }, [products]);
 
     const getStatusBadge = (status: string, inventoryData?: { qtyAvailable: number }, reorderPoint?: number) => {
         if (typeof reorderPoint === 'number' && inventoryData && inventoryData.qtyAvailable <= reorderPoint) {
@@ -120,12 +128,12 @@ const ProductCatalog: React.FC = () => {
         { key: 'brand', label: 'Brand', type: 'text', filterable: false, render: (val) => val || '—' },
         { key: 'category', label: 'Category', type: 'text', filterable: false, render: (val) => val || '—' },
         {
-            key: 'inventory',
+            key: '_inventory',
             label: selectedWarehouseId ? 'Warehouse Stock' : 'Total Inventory',
             type: 'number-range',
             filterable: false,
-            render: (_, row: Product) => {
-                const totalInventory = getProductQty(row.sku, row.id, row.type);
+            render: (val: any, row: Product) => {
+                const totalInventory = val as number ?? 0;
                 const isLowStock = typeof row.reorderPoint === 'number' && totalInventory <= row.reorderPoint;
                 return (
                     <span style={{ fontWeight: 600, color: isLowStock ? 'var(--color-status-low)' : 'inherit', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -160,16 +168,15 @@ const ProductCatalog: React.FC = () => {
     const bundleCount = products.filter(p => p.type === 'bundle').length;
     const kitCount = products.filter(p => (p.type as string) === 'kit').length;
 
-    // Filtering: search (SKU, name, brand, category) + tab + status
+    // Filtering: search + tab + status + category + in-stock
     const filteredProducts = products.filter(p => {
-        // 1. Search across SKU, name, brand, category
+        // 1. Search across SKU, name, brand
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             const matches =
                 p.sku.toLowerCase().includes(q) ||
                 p.name.toLowerCase().includes(q) ||
-                (p.brand || '').toLowerCase().includes(q) ||
-                (p.category || '').toLowerCase().includes(q);
+                (p.brand || '').toLowerCase().includes(q);
             if (!matches) return false;
         }
 
@@ -183,13 +190,30 @@ const ProductCatalog: React.FC = () => {
             if (statusFilter === 'Low Stock') {
                 const total = getProductQty(p.sku, p.id, p.type);
                 if (typeof p.reorderPoint !== 'number' || total > p.reorderPoint) return false;
-            } else if (p.status !== statusFilter) {
+            } else if (p.status.toLowerCase() !== statusFilter.toLowerCase()) {
                 return false;
             }
         }
 
+        // 4. Category filter
+        if (categoryFilter !== 'All') {
+            if ((p.category || '') !== categoryFilter) return false;
+        }
+
+        // 5. In-stock only (when a warehouse is selected)
+        if (inStockOnly) {
+            const qty = getProductQty(p.sku, p.id, p.type);
+            if (qty <= 0) return false;
+        }
+
         return true;
     });
+
+    // Enrich filtered products with computed _inventory so DataTable can sort by it
+    const tableData = filteredProducts.map(p => ({
+        ...p,
+        _inventory: getProductQty(p.sku, p.id, p.type),
+    }));
 
     // Tab button style
     const tabStyle = (tab: typeof activeTab): React.CSSProperties => ({
@@ -295,7 +319,7 @@ const ProductCatalog: React.FC = () => {
                             outline: 'none',
                         }}
                     >
-                        <option value="All">All</option>
+                        <option value="All">All Statuses</option>
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
                         <option value="Discontinued">Discontinued</option>
@@ -303,11 +327,47 @@ const ProductCatalog: React.FC = () => {
                     </select>
                 </div>
 
-                {searchQuery && (
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                        {filteredProducts.length} result{filteredProducts.length !== 1 ? 's' : ''}
-                    </span>
+                {/* Category filter */}
+                {categoryOptions.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>Category:</span>
+                        <select
+                            value={categoryFilter}
+                            onChange={e => setCategoryFilter(e.target.value)}
+                            style={{
+                                padding: '0.45rem 1.75rem 0.45rem 0.6rem',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '6px',
+                                fontSize: '0.875rem',
+                                background: 'var(--color-bg-light)',
+                                cursor: 'pointer',
+                                outline: 'none',
+                            }}
+                        >
+                            <option value="All">All Categories</option>
+                            {categoryOptions.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
+                    </div>
                 )}
+
+                {/* In-stock only toggle (visible when a warehouse is selected) */}
+                {selectedWarehouseId && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                        <input
+                            type="checkbox"
+                            checked={inStockOnly}
+                            onChange={e => setInStockOnly(e.target.checked)}
+                            style={{ cursor: 'pointer' }}
+                        />
+                        In stock only
+                    </label>
+                )}
+
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                    {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
+                </span>
             </div>
 
             {/* TAB BAR */}
@@ -348,8 +408,8 @@ const ProductCatalog: React.FC = () => {
                 />
                 <DataTable
                     columns={columns}
-                    data={filteredProducts}
-                    onRowClick={setSelectedProduct}
+                    data={tableData}
+                    onRowClick={(row) => setSelectedProduct(row as unknown as Product)}
                     selectable
                     selectedKeys={selectedKeys}
                     onSelectionChange={setSelectedKeys}
