@@ -535,9 +535,7 @@ export const api = {
             shelf: data.shelf,
             bin: data.bin,
             barcode_value: data.barcodeValue,
-            is_active: data.isActive,
-            created_by: data.createdBy,
-            updated_by: data.updatedBy
+            is_active: data.isActive
         }));
 
         const { error } = await supabase.from('locations').upsert(locationsToAdd, { onConflict: 'warehouse_id,location_code', ignoreDuplicates: true });
