@@ -74,7 +74,13 @@
       "Bash(git -C /Users/eduardapantaleao/ERP show HEAD -- src/context/OrderContext.tsx)",
       "Bash(git -C /Users/eduardapantaleao/ERP add src/components/ReceiveForm.tsx src/context/OrderContext.tsx)",
       "Bash(git -C:*)",
-      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({**d.get\\(''''dependencies'''',{}\\), **d.get\\(''''devDependencies'''',{}\\)}, indent=2\\)\\)\")"
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({**d.get\\(''''dependencies'''',{}\\), **d.get\\(''''devDependencies'''',{}\\)}, indent=2\\)\\)\")",
+      "Bash(ln -sf /Users/eduardapantaleao/the-caddy/node_modules/expo-router expo-router)",
+      "Bash(ln -sf /Users/eduardapantaleao/the-caddy/node_modules/react-native-svg react-native-svg)",
+      "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db \"SELECT email, name, role FROM User LIMIT 10;\")",
+      "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db \"SELECT email, otp, otpExpiry FROM User WHERE otp IS NOT NULL;\")",
+      "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db '.schema User')",
+      "Bash(sqlite3 /Users/eduardapantaleao/the-caddy/apps/api/prisma/dev.db \"SELECT email, otpCode FROM User WHERE otpCode IS NOT NULL;\")"
     ]
   }
 }
