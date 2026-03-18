@@ -154,13 +154,13 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
             case 'inventory':
                 return (
                     <>
-                        <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>
+                        <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} onClick={() => onAction?.('adjust')}>
                             <Edit2 size={14} /> Adjust Selected
                         </button>
-                        <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>
+                        <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} onClick={() => onAction?.('export')}>
                             <Download size={14} /> Export
                         </button>
-                        <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>
+                        <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} onClick={() => onAction?.('move')}>
                             <ArrowRightLeft size={14} /> Move Stock
                         </button>
                     </>

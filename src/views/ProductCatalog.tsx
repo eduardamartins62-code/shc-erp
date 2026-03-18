@@ -20,7 +20,7 @@ const typeLabel = (type: string): string => {
 };
 
 const ProductCatalog: React.FC = () => {
-    const { products, calculateSimpleInventory, calculateBundleInventory } = useProducts();
+    const { products, calculateSimpleInventory, calculateBundleInventory, updateProduct } = useProducts();
     const { inventory } = useInventory();
     const { selectedWarehouseId } = useSettings();
     const navigate = useRouter();
@@ -215,6 +215,55 @@ const ProductCatalog: React.FC = () => {
         _inventory: getProductQty(p.sku, p.id, p.type),
     }));
 
+    const downloadCSV = (rows: string[][], filename: string) => {
+        const content = rows
+            .map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const buildProductCSVRows = (prods: Product[]) => {
+        const headers = ['SKU', 'Name', 'Type', 'Brand', 'Category', 'UPC', 'Status', 'Cost of Goods', 'MSRP', 'Reorder Point', 'Inventory'];
+        const rows = prods.map(p => [
+            p.sku,
+            p.name,
+            p.type,
+            p.brand || '',
+            p.category || '',
+            p.upc || '',
+            p.status,
+            String(p.costOfGoods ?? ''),
+            String(p.msrpPrice ?? ''),
+            String(p.reorderPoint ?? ''),
+            String(getProductQty(p.sku, p.id, p.type)),
+        ]);
+        return [headers, ...rows];
+    };
+
+    const handleExportAll = () => {
+        downloadCSV(buildProductCSVRows(filteredProducts), `products-export-${new Date().toISOString().split('T')[0]}.csv`);
+    };
+
+    const handleBulkAction = async (action: string) => {
+        if (action === 'delete') {
+            setIsDeleteModalOpen(true);
+        } else if (action === 'deactivate') {
+            const ids = Array.from(selectedKeys);
+            await Promise.all(ids.map(id => updateProduct(id, { status: 'Inactive' })));
+            setSelectedKeys(new Set());
+        } else if (action === 'export') {
+            const selectedProds = tableData.filter(p => selectedKeys.has(p.id));
+            downloadCSV(buildProductCSVRows(selectedProds), `products-selected-${new Date().toISOString().split('T')[0]}.csv`);
+            setSelectedKeys(new Set());
+        }
+    };
+
     // Tab button style
     const tabStyle = (tab: typeof activeTab): React.CSSProperties => ({
         background: 'none',
@@ -258,7 +307,7 @@ const ProductCatalog: React.FC = () => {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexShrink: 0, flexWrap: 'wrap' }}>
-                    <button className="btn-secondary">
+                    <button className="btn-secondary" onClick={handleExportAll}>
                         <Download size={16} />
                         Export
                     </button>
@@ -402,9 +451,7 @@ const ProductCatalog: React.FC = () => {
                     selectedCount={selectedKeys.size}
                     module="products"
                     onClearSelection={() => setSelectedKeys(new Set())}
-                    onAction={(action) => {
-                        if (action === 'delete') setIsDeleteModalOpen(true);
-                    }}
+                    onAction={handleBulkAction}
                 />
                 <DataTable
                     columns={columns}

@@ -102,18 +102,24 @@ const DashboardInventoryWidget: React.FC<DashboardInventoryWidgetProps> = ({ use
     // or aggregate them if desired. The prompt asks to "display ONLY the user's chosen 10 SKUs in their chosen order"
     // To match order, we must sort the flattened items by the order of `selectedSkus`.
 
-    // Actually, InventoryTable expects `InventoryItem[]` where ID is SKU. Let's aggregate.
-    const aggregatedInventory: InventoryItem[] = selectedSkus.reduce((acc: InventoryItem[], sku) => {
+    // Aggregate inventory by SKU and pre-compute sortable fields so DataTable can sort on them.
+    // DataTable sorts by row[col.key], so computed columns (available, cogs, name) must be real fields.
+    const aggregatedInventory = selectedSkus.reduce((acc: (InventoryItem & { available: number; cogs: number; name: string })[],  sku) => {
         const productInv = inventory.filter(i => i.id === sku);
         if (productInv.length > 0) {
+            const product = products.find(p => p.sku === sku);
             const totalQOH = productInv.reduce((sum, item) => sum + item.quantityOnHand, 0);
             const totalRes = productInv.reduce((sum, item) => sum + item.quantityReserved, 0);
-            // Create a fake aggregated item for display
+            const available = Math.max(0, totalQOH - totalRes);
+            const cogs = (product?.costOfGoods ?? 0) * totalQOH;
             acc.push({
                 ...productInv[0],
                 warehouseId: 'All Warehouses',
                 quantityOnHand: totalQOH,
                 quantityReserved: totalRes,
+                available,
+                cogs,
+                name: product?.name ?? sku,
             });
         }
         return acc;

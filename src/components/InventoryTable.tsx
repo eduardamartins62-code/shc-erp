@@ -39,6 +39,49 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
         return !isNaN(d.getTime()) && d.getFullYear() > 1970;
     };
 
+    const inventoryRowKey = (row: InventoryItem) =>
+        `${row.id}|${row.warehouseId}|${row.locationCode || ''}|${row.lotNumber || ''}`;
+
+    const downloadCSV = (rows: string[][], filename: string) => {
+        const content = rows
+            .map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleBulkAction = (action: string) => {
+        const selectedItems = displayData.filter(row => selectedKeys.has(inventoryRowKey(row)));
+        if (action === 'adjust') {
+            if (selectedItems.length > 0) {
+                setSelectedItem(selectedItems[0]);
+                setActiveModal('adjust');
+            }
+        } else if (action === 'move') {
+            setActiveModal('transfer');
+        } else if (action === 'export') {
+            const headers = ['SKU', 'Warehouse', 'Location', 'Lot Number', 'QOH', 'Reserved', 'Available', 'Expiration Date', 'Last Updated'];
+            const dataRows = selectedItems.map(item => [
+                item.id,
+                item.warehouseId,
+                item.locationCode || '',
+                item.lotNumber || '',
+                String(item.quantityOnHand),
+                String(item.quantityReserved),
+                String(calculateAvailable(item)),
+                hasExpiration(item.expirationDate) ? new Date(item.expirationDate).toISOString().split('T')[0] : '',
+                new Date(item.lastUpdated).toLocaleDateString(),
+            ]);
+            downloadCSV([headers, ...dataRows], `inventory-export-${new Date().toISOString().split('T')[0]}.csv`);
+            setSelectedKeys(new Set());
+        }
+    };
+
     const getStatusStr = (item: InventoryItem) => {
         const available = calculateAvailable(item);
         const isExpired = hasExpiration(item.expirationDate) && new Date(item.expirationDate) < new Date();
@@ -124,16 +167,14 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
     if (isDashboard) {
         columns = [
             { key: 'id', label: 'SKU', type: 'text', filterable: true, render: (val) => <SkuLink sku={val as string} /> },
-            { key: 'name', label: 'Product Name', type: 'text', filterable: false, render: (_, row) => <span style={{ fontWeight: 500 }}>{getProductName(row.id)}</span> },
-            { key: 'quantityOnHand', label: 'Total On Hand', type: 'number-range', filterable: true, render: (val) => <span style={{ fontWeight: 500 }}>{val}</span> },
-            { key: 'available', label: 'Total Available', type: 'number-range', filterable: true, render: (_, row) => <span style={{ fontWeight: 600, color: 'var(--color-primary-dark)' }}>{calculateAvailable(row)}</span> },
+            // 'name' is pre-computed on the row in DashboardInventoryWidget so DataTable can sort by it
+            { key: 'name', label: 'Product Name', type: 'text', filterable: false, render: (val) => <span style={{ fontWeight: 500 }}>{(val as string) || '—'}</span> },
+            { key: 'quantityOnHand', label: 'Total On Hand', type: 'number-range', filterable: true, render: (val) => <span style={{ fontWeight: 500 }}>{(val as number).toLocaleString()}</span> },
+            // 'available' and 'cogs' are pre-computed on the row so DataTable can sort by them
+            { key: 'available', label: 'Total Available', type: 'number-range', filterable: true, render: (val) => <span style={{ fontWeight: 600, color: 'var(--color-primary-dark)' }}>{(val as number).toLocaleString()}</span> },
             {
                 key: 'cogs', label: 'Total COGS', type: 'number-range', filterable: false,
-                render: (_, row) => {
-                    const product = products.find(p => p.sku === row.id);
-                    const cogsValue = (product?.costOfGoods ?? 0) * row.quantityOnHand;
-                    return <span title="Cost of Goods Sold: unit cost × quantity on hand">${cogsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
-                }
+                render: (val) => <span title="Cost of Goods Sold: unit cost × quantity on hand">${(val as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             },
             { key: 'status', label: 'Status', type: 'select', filterable: true, options: ['Good', 'Low Stock', 'Reserved', 'Expired'], render: (_, row) => getStatusBadge(getStatusStr(row)) }
         ];
@@ -164,6 +205,7 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
                 selectedCount={selectedKeys.size}
                 module="inventory"
                 onClearSelection={() => setSelectedKeys(new Set())}
+                onAction={handleBulkAction}
             />
             <DataTable
                 columns={columns}
@@ -172,15 +214,13 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
                 selectable
                 selectedKeys={selectedKeys}
                 onSelectionChange={setSelectedKeys}
+                rowKey={inventoryRowKey}
             />
             {isDashboard && (
                 <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem' }}>
                     <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--color-text-muted)' }}>Grand Total COGS (Displayed SKUs):</span>
                     <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-primary-dark)' }}>
-                        ${displayData.reduce((sum, item) => {
-                            const product = products.find(p => p.sku === item.id);
-                            return sum + (product?.costOfGoods ?? 0) * item.quantityOnHand;
-                        }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${displayData.reduce((sum, item) => sum + ((item as any).cogs ?? 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
             )}
