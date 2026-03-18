@@ -28,6 +28,10 @@ interface SettingsContextType {
 
     // System Actions
     updateSystemSettings: (data: Partial<SystemSettings>) => Promise<void>;
+
+    // Global warehouse selector
+    selectedWarehouseId: string;
+    setSelectedWarehouseId: (id: string) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -39,6 +43,14 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedWarehouseId, setSelectedWarehouseIdState] = useState<string>(() => {
+        try { return sessionStorage.getItem('selected-warehouse-id') || ''; } catch { return ''; }
+    });
+
+    const setSelectedWarehouseId = (id: string) => {
+        setSelectedWarehouseIdState(id);
+        try { sessionStorage.setItem('selected-warehouse-id', id); } catch { /* ignore */ }
+    };
 
     const refreshSettings = async () => {
         try {
@@ -245,7 +257,9 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
                 addChannel,
                 updateChannel,
                 deleteChannel,
-                updateSystemSettings
+                updateSystemSettings,
+                selectedWarehouseId,
+                setSelectedWarehouseId
             }}
         >
             {children}

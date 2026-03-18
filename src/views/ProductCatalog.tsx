@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useProducts } from '../context/ProductContext';
+import { useInventory } from '../context/InventoryContext';
+import { useSettings } from '../context/SettingsContext';
 import { Plus, Download, Edit2, Box, ShoppingCart, Share2, XCircle, Search } from 'lucide-react';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { SlideOverPanel } from '../components/ui/SlideOverPanel';
@@ -19,7 +21,36 @@ const typeLabel = (type: string): string => {
 
 const ProductCatalog: React.FC = () => {
     const { products, calculateSimpleInventory, calculateBundleInventory } = useProducts();
+    const { inventory } = useInventory();
+    const { selectedWarehouseId } = useSettings();
     const navigate = useRouter();
+
+    // Real inventory from Supabase, keyed by SKU, filtered by selected warehouse
+    const realInventoryBySku = useMemo(() => {
+        const filtered = selectedWarehouseId
+            ? inventory.filter(i => i.warehouseId === selectedWarehouseId)
+            : inventory;
+        const map = new Map<string, { qtyOnHand: number; qtyReserved: number; qtyAvailable: number }>();
+        filtered.forEach(item => {
+            const prev = map.get(item.id) || { qtyOnHand: 0, qtyReserved: 0, qtyAvailable: 0 };
+            map.set(item.id, {
+                qtyOnHand: prev.qtyOnHand + item.quantityOnHand,
+                qtyReserved: prev.qtyReserved + item.quantityReserved,
+                qtyAvailable: prev.qtyAvailable + (item.quantityOnHand - item.quantityReserved),
+            });
+        });
+        return map;
+    }, [inventory, selectedWarehouseId]);
+
+    const getProductQty = (sku: string, productId: string, type: string): number => {
+        if (realInventoryBySku.size > 0) {
+            return realInventoryBySku.get(sku)?.qtyAvailable ?? 0;
+        }
+        // fallback to mock data when no real inventory loaded yet
+        return (type === 'simple' || type === 'kit')
+            ? calculateSimpleInventory(productId).qtyAvailable
+            : calculateBundleInventory(productId);
+    };
 
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
@@ -90,13 +121,11 @@ const ProductCatalog: React.FC = () => {
         { key: 'category', label: 'Category', type: 'text', filterable: false, render: (val) => val || '—' },
         {
             key: 'inventory',
-            label: 'Total Inventory',
+            label: selectedWarehouseId ? 'Warehouse Stock' : 'Total Inventory',
             type: 'number-range',
             filterable: false,
             render: (_, row: Product) => {
-                const totalInventory = (row.type === 'simple' || (row.type as string) === 'kit')
-                    ? calculateSimpleInventory(row.id).qtyAvailable
-                    : calculateBundleInventory(row.id);
+                const totalInventory = getProductQty(row.sku, row.id, row.type);
                 const isLowStock = typeof row.reorderPoint === 'number' && totalInventory <= row.reorderPoint;
                 return (
                     <span style={{ fontWeight: 600, color: isLowStock ? 'var(--color-status-low)' : 'inherit', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -120,10 +149,8 @@ const ProductCatalog: React.FC = () => {
             filterable: false,
             options: ['Active', 'Inactive', 'Discontinued'],
             render: (val, row: Product) => {
-                const inv = (row.type === 'simple' || (row.type as string) === 'kit')
-                    ? calculateSimpleInventory(row.id)
-                    : { qtyAvailable: calculateBundleInventory(row.id), qtyOnHand: 0, qtyReserved: 0 };
-                return getStatusBadge(val as string, inv, row.reorderPoint);
+                const qty = getProductQty(row.sku, row.id, row.type);
+                return getStatusBadge(val as string, { qtyAvailable: qty }, row.reorderPoint);
             }
         }
     ];
@@ -154,9 +181,7 @@ const ProductCatalog: React.FC = () => {
         // 3. Status filter
         if (statusFilter !== 'All') {
             if (statusFilter === 'Low Stock') {
-                const total = (p.type === 'simple' || (p.type as string) === 'kit')
-                    ? calculateSimpleInventory(p.id).qtyAvailable
-                    : calculateBundleInventory(p.id);
+                const total = getProductQty(p.sku, p.id, p.type);
                 if (typeof p.reorderPoint !== 'number' || total > p.reorderPoint) return false;
             } else if (p.status !== statusFilter) {
                 return false;
@@ -390,11 +415,9 @@ const ProductCatalog: React.FC = () => {
                         {/* Quick Stats */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                             <div className="card">
-                                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Total Inventory</p>
+                                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{selectedWarehouseId ? 'Warehouse Stock' : 'Total Inventory'}</p>
                                 <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>
-                                    {(selectedProduct.type === 'simple' || (selectedProduct.type as string) === 'kit')
-                                        ? calculateSimpleInventory(selectedProduct.id).qtyAvailable.toLocaleString()
-                                        : calculateBundleInventory(selectedProduct.id).toLocaleString()}
+                                    {getProductQty(selectedProduct.sku, selectedProduct.id, selectedProduct.type).toLocaleString()}
                                 </p>
                             </div>
                             <div className="card">

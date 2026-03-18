@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLocations } from '../context/LocationContext';
 import { useProducts } from '../context/ProductContext';
+import { useSettings } from '../context/SettingsContext';
 import { Plus, Printer, Edit, CheckSquare, AlertTriangle, AlertCircle, Box, MapPin } from 'lucide-react';
 import LocationFormModal from '../components/locations/LocationFormModal';
 import PrintLabelView from '../components/locations/PrintLabelView';
@@ -12,6 +13,14 @@ import { BulkActionBar } from '../components/ui/BulkActionBar';
 const Locations: React.FC = () => {
     const { locations, loading, updateLocation } = useLocations();
     const { inventoryLocations } = useProducts();
+    const { selectedWarehouseId } = useSettings();
+
+    const filteredLocations = useMemo(() =>
+        selectedWarehouseId
+            ? locations.filter(l => l.warehouseId === selectedWarehouseId)
+            : locations,
+        [locations, selectedWarehouseId]
+    );
 
     const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [bulkWarning, setBulkWarning] = useState('');
@@ -99,7 +108,7 @@ const Locations: React.FC = () => {
     };
 
     const columns: Column<WarehouseLocation>[] = [
-        { key: 'warehouseCode', label: 'Warehouse', type: 'select', filterable: true, options: Array.from(new Set(locations.map(l => l.warehouseCode || l.warehouseName))).filter(Boolean) as string[] },
+        { key: 'warehouseCode', label: 'Warehouse', type: 'select', filterable: true, options: Array.from(new Set(filteredLocations.map(l => l.warehouseCode || l.warehouseName))).filter(Boolean) as string[] },
         {
             key: 'locationCode',
             label: 'Location Code',
@@ -124,7 +133,7 @@ const Locations: React.FC = () => {
             label: 'Type',
             type: 'select',
             filterable: true,
-            options: Array.from(new Set(locations.map(l => l.type))),
+            options: Array.from(new Set(filteredLocations.map(l => l.type))),
             render: (val) => (
                 <span style={{ padding: '0.2rem 0.5rem', backgroundColor: '#f1f5f9', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 500 }}>
                     {val || '—'}
@@ -278,7 +287,7 @@ const Locations: React.FC = () => {
                     onClearSelection={() => setSelectedRows(new Set())}
                 />
                 <DataTable
-                    data={locations}
+                    data={filteredLocations}
                     columns={columns}
                     selectable={true}
                     rowKey="id"

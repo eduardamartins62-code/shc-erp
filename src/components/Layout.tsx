@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSettings } from '../context/SettingsContext';
 import {
     Package,
     Warehouse,
@@ -49,6 +50,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
     const pathname = usePathname();
+    const { warehouses, selectedWarehouseId, setSelectedWarehouseId } = useSettings();
     const [collapsed, setCollapsed] = useState<boolean>(() => {
         try {
             return sessionStorage.getItem('sidebar-collapsed') === 'true';
@@ -174,7 +176,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                         <div className="topbar-location">
                             <span className="topbar-label">Location</span>
-                            <div className="topbar-value">All Warehouses</div>
+                            <select
+                                value={selectedWarehouseId}
+                                onChange={e => setSelectedWarehouseId(e.target.value)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    fontWeight: 600,
+                                    fontSize: '0.9rem',
+                                    cursor: 'pointer',
+                                    color: 'var(--color-text-main)',
+                                    padding: 0,
+                                    outline: 'none',
+                                    maxWidth: '200px',
+                                }}
+                            >
+                                <option value="">All Warehouses</option>
+                                {warehouses.map(w => (
+                                    <option key={w.id} value={w.id}>{w.warehouseName}</option>
+                                ))}
+                            </select>
                         </div>
 
                         <div className="topbar-user">

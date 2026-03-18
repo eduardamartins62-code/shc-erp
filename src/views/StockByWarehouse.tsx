@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react'; // useState kept for searchQuery
 import { useInventory } from '../context/InventoryContext';
 import { useSettings } from '../context/SettingsContext';
 import { useProducts } from '../context/ProductContext';
@@ -7,23 +7,16 @@ import { MapPin, Search, X } from 'lucide-react';
 
 const StockByWarehouse: React.FC = () => {
     const { inventory } = useInventory();
-    const { warehouses } = useSettings();
+    const { warehouses, selectedWarehouseId, setSelectedWarehouseId } = useSettings();
     const { products } = useProducts();
 
-    const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
-
-    // Set default selection when warehouses load
-    React.useEffect(() => {
-        if (warehouses.length > 0 && !selectedWarehouseId) {
-            const defaultWh = warehouses.find(w => w.isDefault);
-            setSelectedWarehouseId(defaultWh ? defaultWh.id : warehouses[0].id);
-        }
-    }, [warehouses, selectedWarehouseId]);
 
     // Filter inventory based on selected warehouse + search query
     const filteredInventory = useMemo(() => {
-        let items = inventory.filter(item => item.warehouseId === selectedWarehouseId);
+        let items = selectedWarehouseId
+            ? inventory.filter(item => item.warehouseId === selectedWarehouseId)
+            : inventory;
 
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase().trim();
@@ -78,6 +71,7 @@ const StockByWarehouse: React.FC = () => {
                         value={selectedWarehouseId}
                         onChange={(e) => setSelectedWarehouseId(e.target.value)}
                     >
+                        <option value="">All Warehouses</option>
                         {warehouses.map(wh => (
                             <option key={wh.id} value={wh.id}>{wh.warehouseName} ({wh.warehouseCode})</option>
                         ))}
