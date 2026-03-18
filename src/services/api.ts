@@ -994,5 +994,65 @@ export const api = {
     reverseMovement: async (movementId: string): Promise<void> => {
         await delay(500);
         console.log(`Reversing movement ${movementId}`);
-    }
+    },
+
+    // ── Import Job Logging ──────────────────────────────────────────────────
+    logImportJob: async (job: {
+        jobType: 'import' | 'export';
+        entity: string;
+        status: 'completed' | 'failed';
+        recordsProcessed: number;
+        totalRecords: number;
+        errorMessage?: string;
+        fileName?: string;
+        fileContent?: string;
+        performedBy?: string;
+    }): Promise<void> => {
+        const { error } = await supabase.from('import_jobs').insert({
+            job_type: job.jobType,
+            entity: job.entity,
+            status: job.status,
+            records_processed: job.recordsProcessed,
+            total_records: job.totalRecords,
+            error_message: job.errorMessage || null,
+            file_name: job.fileName || null,
+            file_content: job.fileContent || null,
+            performed_by: job.performedBy || 'System Admin',
+        });
+        if (error) console.error('Failed to log import job:', error.message);
+    },
+
+    fetchImportJobs: async (): Promise<Array<{
+        id: string;
+        createdAt: string;
+        jobType: string;
+        entity: string;
+        status: string;
+        recordsProcessed: number;
+        totalRecords: number;
+        errorMessage: string | null;
+        fileName: string | null;
+        fileContent: string | null;
+        performedBy: string;
+    }>> => {
+        const { data, error } = await supabase
+            .from('import_jobs')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(100);
+        if (error) throw new Error(error.message);
+        return (data || []).map(r => ({
+            id: r.id,
+            createdAt: r.created_at,
+            jobType: r.job_type,
+            entity: r.entity,
+            status: r.status,
+            recordsProcessed: r.records_processed,
+            totalRecords: r.total_records,
+            errorMessage: r.error_message,
+            fileName: r.file_name,
+            fileContent: r.file_content,
+            performedBy: r.performed_by,
+        }));
+    },
 };

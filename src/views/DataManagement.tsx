@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Upload, Download, FileText, Database, Package, ShoppingCart, MapPin, Activity } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Upload, Download, FileText, Database, Package, ShoppingCart, MapPin, X, AlertCircle, RefreshCw } from 'lucide-react';
 import { useProducts } from '../context/ProductContext';
 import { useInventory } from '../context/InventoryContext';
 import { useLocations } from '../context/LocationContext';
@@ -7,14 +7,33 @@ import { useOrders } from '../context/OrderContext';
 import { useSettings } from '../context/SettingsContext';
 import Papa from 'papaparse';
 import { exportProductsToCSV, exportInventoryToCSV, exportOrdersToCSV, exportLocationsToCSV, downloadImportTemplate } from '../utils/csvExport';
+import { api } from '../services/api';
 
 type TabType = 'products' | 'inventory' | 'locations' | 'orders';
+
+interface ImportJob {
+    id: string;
+    createdAt: string;
+    jobType: string;
+    entity: string;
+    status: string;
+    recordsProcessed: number;
+    totalRecords: number;
+    errorMessage: string | null;
+    fileName: string | null;
+    fileContent: string | null;
+    performedBy: string;
+}
 
 const DataManagement: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('products');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedFileContent, setSelectedFileContent] = useState<string | null>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [importResult, setImportResult] = useState<{ success: boolean; message: string; rowsProcessed?: number } | null>(null);
+    const [jobs, setJobs] = useState<ImportJob[]>([]);
+    const [jobsLoading, setJobsLoading] = useState(true);
+    const [logModal, setLogModal] = useState<ImportJob | null>(null);
 
     // Bring in data contexts
     const { products, bulkImportProducts } = useProducts();
@@ -30,10 +49,39 @@ const DataManagement: React.FC = () => {
         { id: 'orders', label: 'Orders', icon: <ShoppingCart size={18} /> },
     ];
 
-    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files.length > 0) {
-            setSelectedFile(event.target.files[0]);
+    const loadJobs = useCallback(async () => {
+        try {
+            setJobsLoading(true);
+            const data = await api.fetchImportJobs();
+            setJobs(data);
+        } catch (e) {
+            console.error('Failed to load import jobs', e);
+        } finally {
+            setJobsLoading(false);
         }
+    }, []);
+
+    useEffect(() => { loadJobs(); }, [loadJobs]);
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        setSelectedFile(file);
+        // Read content so we can store it for re-download later
+        const reader = new FileReader();
+        reader.onload = (e) => setSelectedFileContent(e.target?.result as string ?? null);
+        reader.readAsText(file);
+    };
+
+    const downloadFileContent = (job: ImportJob) => {
+        if (!job.fileContent) return;
+        const blob = new Blob([job.fileContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = job.fileName || `${job.entity}-import.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     const handleImport = async () => {
@@ -49,20 +97,22 @@ const DataManagement: React.FC = () => {
             header: true,
             skipEmptyLines: true,
             complete: async (results) => {
+                const rows = results.data as any[];
+                const fileName = selectedFile.name;
+                const fileContent = selectedFileContent || '';
+                let success = false;
+                let errorMessage: string | undefined;
+                let rowsProcessed = 0;
+
                 try {
-                    const rows = results.data as any[];
                     if (rows.length === 0) {
-                        setImportResult({ success: false, message: 'The uploaded file is empty.' });
-                        return;
+                        throw new Error('The uploaded file is empty.');
                     }
 
                     if (activeTab === 'products') {
-                        // Quick structural validation for Products
                         if (!rows[0].sku || !rows[0].name) {
                             throw new Error("Invalid format. Must contain 'sku' and 'name' header columns.");
                         }
-
-                        // Map CSV rows to Product schema interface
                         const mappedProducts = rows.map(r => ({
                             sku: r.sku,
                             name: r.name,
@@ -74,9 +124,10 @@ const DataManagement: React.FC = () => {
                             msrpPrice: r.msrpPrice ? parseFloat(r.msrpPrice) : undefined,
                             description: r.description || ''
                         }));
-
                         await bulkImportProducts(mappedProducts);
-                        setImportResult({ success: true, message: 'Products successfully imported into catalog.', rowsProcessed: rows.length });
+                        rowsProcessed = rows.length;
+                        success = true;
+                        setImportResult({ success: true, message: 'Products successfully imported into catalog.', rowsProcessed });
                     }
                     else if (activeTab === 'inventory') {
                         if (!rows[0].sku || !rows[0].warehouseId) {
@@ -97,10 +148,11 @@ const DataManagement: React.FC = () => {
                             lotReceiveCost: r.lotReceiveCost ? parseFloat(r.lotReceiveCost) : undefined,
                         }));
                         await bulkImportInventory(mappedInventory);
-                        setImportResult({ success: true, message: 'Inventory records successfully imported.', rowsProcessed: rows.length });
+                        rowsProcessed = rows.length;
+                        success = true;
+                        setImportResult({ success: true, message: 'Inventory records successfully imported.', rowsProcessed });
                     }
                     else if (activeTab === 'locations') {
-                        // Quick structural validation for Locations
                         if (!rows[0].warehouseId || !rows[0].locationCode) {
                             throw new Error("Invalid format. Must contain 'warehouseId' and 'locationCode' header columns.");
                         }
@@ -109,12 +161,11 @@ const DataManagement: React.FC = () => {
                         if (badIds.length > 0) {
                             throw new Error(`Unrecognised warehouse ID(s): ${badIds.join(', ')}. Only warehouses registered in Settings can be used.`);
                         }
-
                         const mappedLocations = rows.map(r => ({
                             warehouseId: r.warehouseId,
                             locationCode: r.locationCode,
                             warehouseCode: r.warehouseId,
-                            warehouseName: r.warehouseName || r.warehouseId, // Fallback
+                            warehouseName: r.warehouseName || r.warehouseId,
                             displayName: r.displayName || r.locationCode,
                             type: r.type || 'SHELF',
                             description: r.description || '',
@@ -127,24 +178,47 @@ const DataManagement: React.FC = () => {
                             createdBy: 'System CSV Import',
                             updatedBy: 'System CSV Import'
                         }));
-
                         await bulkImportLocations(mappedLocations);
-                        setImportResult({ success: true, message: 'Locations successfully generated.', rowsProcessed: rows.length });
+                        rowsProcessed = rows.length;
+                        success = true;
+                        setImportResult({ success: true, message: 'Locations successfully imported.', rowsProcessed });
                     }
                     else {
-                        setImportResult({ success: false, message: `Bulk import is not yet visually configured for ${activeTab}.` });
+                        throw new Error(`Import for '${activeTab}' is not yet configured.`);
                     }
                 } catch (err: any) {
-                    console.error("Import Parsing Error:", err);
-                    setImportResult({ success: false, message: err.message || 'Failed to parse file mappings.' });
+                    console.error('Import Error:', err);
+                    errorMessage = err.message || 'Unknown error occurred.';
+                    setImportResult({ success: false, message: errorMessage! });
                 } finally {
+                    // Log every attempt to Supabase
+                    await api.logImportJob({
+                        jobType: 'import',
+                        entity: activeTab,
+                        status: success ? 'completed' : 'failed',
+                        recordsProcessed: rowsProcessed,
+                        totalRecords: rows.length,
+                        errorMessage,
+                        fileName,
+                        fileContent,
+                        performedBy: 'System Admin',
+                    });
+                    await loadJobs(); // Refresh the jobs list
                     setIsImporting(false);
-                    setSelectedFile(null); // Reset after import attempt
+                    setSelectedFile(null);
+                    setSelectedFileContent(null);
                 }
             },
             error: (error) => {
-                console.error("PapaParse Error:", error);
-                setImportResult({ success: false, message: 'Failed to read the raw CSV file.' });
+                console.error('PapaParse Error:', error);
+                setImportResult({ success: false, message: 'Failed to read the CSV file.' });
+                api.logImportJob({
+                    jobType: 'import', entity: activeTab, status: 'failed',
+                    recordsProcessed: 0, totalRecords: 0,
+                    errorMessage: 'Failed to read the CSV file: ' + error.message,
+                    fileName: selectedFile?.name,
+                    fileContent: selectedFileContent || undefined,
+                });
                 setIsImporting(false);
             }
         });
@@ -313,58 +387,148 @@ const DataManagement: React.FC = () => {
 
             {/* Recent Jobs History */}
             <div className="card">
-                <h2 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Recent Data Jobs</h2>
-                <div className="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date & Time</th>
-                                <th>Job Type</th>
-                                <th>Entity</th>
-                                <th>Status</th>
-                                <th>Records Processed</th>
-                                <th>User</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>{new Date().toLocaleString()}</td>
-                                <td><span className="badge" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>Import</span></td>
-                                <td>Products</td>
-                                <td><span className="badge" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>Completed</span></td>
-                                <td>1,245</td>
-                                <td>System Admin</td>
-                                <td>
-                                    <button className="btn btn-secondary btn-sm">View Log</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>{new Date(Date.now() - 86400000).toLocaleString()}</td>
-                                <td><span className="badge" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>Export</span></td>
-                                <td>Inventory</td>
-                                <td><span className="badge" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>Completed</span></td>
-                                <td>8,432</td>
-                                <td>Manager User</td>
-                                <td>
-                                    <button className="btn btn-secondary btn-sm">Download File</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>{new Date(Date.now() - 172800000).toLocaleString()}</td>
-                                <td><span className="badge" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>Import</span></td>
-                                <td>Locations</td>
-                                <td><span className="badge" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>Failed</span></td>
-                                <td>0 / 150</td>
-                                <td>System Admin</td>
-                                <td>
-                                    <button className="btn btn-secondary btn-sm" style={{ color: '#ef4444', borderColor: '#ef4444' }}>View Errors</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Import / Export History</h2>
+                    <button
+                        className="btn-secondary"
+                        onClick={loadJobs}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', padding: '0.4rem 0.8rem' }}
+                    >
+                        <RefreshCw size={14} /> Refresh
+                    </button>
                 </div>
+
+                {jobsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Loading job history…</div>
+                ) : jobs.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                        No import/export jobs recorded yet. Run an import above to see history here.
+                    </div>
+                ) : (
+                    <div className="table-container">
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <thead>
+                                <tr>
+                                    {['Date & Time', 'Type', 'Entity', 'Status', 'Records', 'User', 'Actions'].map(h => (
+                                        <th key={h} style={{ backgroundColor: 'var(--color-primary-dark)', color: '#fff', padding: '0.75rem 1rem', fontSize: '0.8rem', fontWeight: 500, whiteSpace: 'nowrap' }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {jobs.map(job => {
+                                    const isFailed = job.status === 'failed';
+                                    const isImport = job.jobType === 'import';
+                                    return (
+                                        <tr key={job.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                                            <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+                                                {new Date(job.createdAt).toLocaleString()}
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem' }}>
+                                                <span style={{
+                                                    padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                                                    backgroundColor: isImport ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)',
+                                                    color: isImport ? '#3b82f6' : '#10b981',
+                                                    textTransform: 'capitalize'
+                                                }}>
+                                                    {job.jobType}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', textTransform: 'capitalize' }}>
+                                                {job.entity}
+                                                {job.fileName && <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{job.fileName}</div>}
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem' }}>
+                                                <span style={{
+                                                    padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
+                                                    backgroundColor: isFailed ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
+                                                    color: isFailed ? '#ef4444' : '#10b981',
+                                                    textTransform: 'capitalize'
+                                                }}>
+                                                    {job.status}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>
+                                                {isFailed
+                                                    ? <span style={{ color: '#ef4444' }}>0 / {job.totalRecords}</span>
+                                                    : job.recordsProcessed.toLocaleString()
+                                                }
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>{job.performedBy}</td>
+                                            <td style={{ padding: '0.75rem 1rem' }}>
+                                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                    {(isFailed || job.errorMessage) && (
+                                                        <button
+                                                            onClick={() => setLogModal(job)}
+                                                            style={{
+                                                                padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: '4px', cursor: 'pointer',
+                                                                border: '1px solid #ef4444', color: '#ef4444', background: 'none',
+                                                                display: 'flex', alignItems: 'center', gap: '0.3rem'
+                                                            }}
+                                                        >
+                                                            <AlertCircle size={12} /> View Error
+                                                        </button>
+                                                    )}
+                                                    {job.fileContent && (
+                                                        <button
+                                                            onClick={() => downloadFileContent(job)}
+                                                            style={{
+                                                                padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: '4px', cursor: 'pointer',
+                                                                border: '1px solid var(--color-border)', color: 'var(--color-text-main)', background: 'none',
+                                                                display: 'flex', alignItems: 'center', gap: '0.3rem'
+                                                            }}
+                                                        >
+                                                            <Download size={12} /> Download File
+                                                        </button>
+                                                    )}
+                                                    {!isFailed && !job.fileContent && (
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>—</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
+
+            {/* Error Log Modal */}
+            {logModal && (
+                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '560px', padding: 0, overflow: 'hidden' }}>
+                        <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <AlertCircle size={18} color="#ef4444" />
+                                Import Error — {logModal.entity} · {new Date(logModal.createdAt).toLocaleString()}
+                            </h3>
+                            <button onClick={() => setLogModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', lineHeight: 1, color: 'var(--color-text-muted)' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div style={{ padding: '1.5rem' }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>File: {logModal.fileName || '—'}</div>
+                            <pre style={{
+                                backgroundColor: 'var(--color-bg-light)', border: '1px solid var(--color-border)',
+                                borderRadius: '6px', padding: '1rem', fontSize: '0.8rem', whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word', maxHeight: '300px', overflowY: 'auto',
+                                color: '#b91c1c', margin: 0
+                            }}>
+                                {logModal.errorMessage || 'No error details available.'}
+                            </pre>
+                        </div>
+                        <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: 'var(--color-bg-light)' }}>
+                            {logModal.fileContent && (
+                                <button className="btn-secondary" onClick={() => downloadFileContent(logModal)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Download size={14} /> Download Original File
+                                </button>
+                            )}
+                            <button className="btn-primary" onClick={() => setLogModal(null)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
