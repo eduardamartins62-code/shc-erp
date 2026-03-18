@@ -4,6 +4,7 @@ import { useProducts } from '../context/ProductContext';
 import { useInventory } from '../context/InventoryContext';
 import { useLocations } from '../context/LocationContext';
 import { useOrders } from '../context/OrderContext';
+import { useSettings } from '../context/SettingsContext';
 import Papa from 'papaparse';
 import { exportProductsToCSV, exportInventoryToCSV, exportOrdersToCSV, exportLocationsToCSV, downloadImportTemplate } from '../utils/csvExport';
 
@@ -20,6 +21,7 @@ const DataManagement: React.FC = () => {
     const { inventory } = useInventory();
     const { locations, bulkImportLocations } = useLocations();
     const { orders } = useOrders();
+    const { warehouses } = useSettings();
 
     const tabs = [
         { id: 'products', label: 'Products', icon: <Package size={18} /> },
@@ -223,7 +225,7 @@ const DataManagement: React.FC = () => {
                     </label>
 
                     <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
-                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => downloadImportTemplate(activeTab)}>Download Template</button>
+                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => downloadImportTemplate(activeTab, warehouses[0] ? { id: warehouses[0].id, name: warehouses[0].name } : undefined)}>Download Template</button>
                         <button 
                             className="btn btn-primary" 
                             style={{ flex: 1 }} 

@@ -538,7 +538,7 @@ export const api = {
             is_active: data.isActive
         }));
 
-        const { error } = await supabase.from('locations').upsert(locationsToAdd, { onConflict: 'warehouse_id,location_code', ignoreDuplicates: true });
+        const { error } = await supabase.from('locations').insert(locationsToAdd);
         if (error) throw new Error(error.message);
     },
 

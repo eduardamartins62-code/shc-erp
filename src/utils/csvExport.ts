@@ -124,7 +124,10 @@ export const exportOrdersToCSV = (orders: Order[], filename: string = 'orders_ex
 import type { WarehouseLocation } from '../types/locations';
 
 // Template CSV downloads — headers match what the importer expects (camelCase)
-export const downloadImportTemplate = (tab: 'products' | 'inventory' | 'locations' | 'orders') => {
+export const downloadImportTemplate = (
+    tab: 'products' | 'inventory' | 'locations' | 'orders',
+    sampleWarehouse?: { id: string; name: string }
+) => {
     let headers: string[];
     let sampleRow: string[];
     let filename: string;
@@ -135,11 +138,14 @@ export const downloadImportTemplate = (tab: 'products' | 'inventory' | 'location
             sampleRow = ['SKU-001', 'Sample Product', 'simple', 'Acme', 'Electronics', 'Audio', 'Active', '012345678901', '10.00', '14.99', '19.99', '1.5', '10', '5', '3', '10', 'Supplier Co', 'A sample product description'];
             filename = 'products_import_template.csv';
             break;
-        case 'locations':
+        case 'locations': {
+            const whId = sampleWarehouse?.id ?? 'REPLACE_WITH_WAREHOUSE_ID';
+            const whName = sampleWarehouse?.name ?? 'Your Warehouse Name';
             headers = ['warehouseId', 'locationCode', 'warehouseName', 'displayName', 'type', 'description', 'aisle', 'section', 'shelf', 'bin', 'barcodeValue', 'isActive'];
-            sampleRow = ['WH-001', 'A-01-01-A', 'Main Warehouse', 'Aisle A Shelf 1 Bin A', 'SHELF', 'Primary shelf location', 'A', '01', '01', 'A', 'A-01-01-A', 'true'];
+            sampleRow = [whId, 'A-01-01-A', whName, 'Aisle A Shelf 1 Bin A', 'SHELF', 'Primary shelf location', 'A', '01', '01', 'A', 'A-01-01-A', 'true'];
             filename = 'locations_import_template.csv';
             break;
+        }
         case 'inventory':
             headers = ['sku', 'warehouseId', 'locationCode', 'quantityOnHand', 'lotNumber', 'expirationDate', 'lotReceiveCost'];
             sampleRow = ['SKU-001', 'WH-001', 'A-01-01-A', '100', 'LOT-2024-001', '2025-12-31', '10.00'];
