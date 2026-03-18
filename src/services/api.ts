@@ -542,6 +542,30 @@ export const api = {
         if (error) throw new Error(error.message);
     },
 
+    bulkImportInventory: async (entries: Array<{
+        sku: string;
+        warehouseId: string;
+        locationCode?: string;
+        quantityOnHand: number;
+        lotNumber?: string;
+        expirationDate?: string;
+        lotReceiveCost?: number;
+    }>): Promise<void> => {
+        const rows = entries.map(e => ({
+            product_id: e.sku,
+            warehouse_id: e.warehouseId,
+            location_code: e.locationCode || null,
+            quantity_on_hand: e.quantityOnHand,
+            quantity_reserved: 0,
+            lot_number: e.lotNumber || '',
+            expiration_date: e.expirationDate || null,
+            lot_receive_cost: e.lotReceiveCost || 0,
+            updated_by: 'CSV Import',
+        }));
+        const { error } = await supabase.from('inventory').insert(rows);
+        if (error) throw new Error(error.message);
+    },
+
     receiveStock: async (data: ReceiptFormData): Promise<InventoryItem> => {
         const { data: existingLots, error: selectError } = await supabase
             .from('inventory')

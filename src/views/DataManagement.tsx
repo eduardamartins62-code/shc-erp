@@ -18,7 +18,7 @@ const DataManagement: React.FC = () => {
 
     // Bring in data contexts
     const { products, bulkImportProducts } = useProducts();
-    const { inventory } = useInventory();
+    const { inventory, bulkImportInventory } = useInventory();
     const { locations, bulkImportLocations } = useLocations();
     const { orders } = useOrders();
     const { warehouses } = useSettings();
@@ -77,6 +77,22 @@ const DataManagement: React.FC = () => {
 
                         await bulkImportProducts(mappedProducts);
                         setImportResult({ success: true, message: 'Products successfully imported into catalog.', rowsProcessed: rows.length });
+                    }
+                    else if (activeTab === 'inventory') {
+                        if (!rows[0].sku || !rows[0].warehouseId) {
+                            throw new Error("Invalid format. Must contain 'sku' and 'warehouseId' header columns.");
+                        }
+                        const mappedInventory = rows.map(r => ({
+                            sku: r.sku,
+                            warehouseId: r.warehouseId,
+                            locationCode: r.locationCode || undefined,
+                            quantityOnHand: r.quantityOnHand ? parseFloat(r.quantityOnHand) : 0,
+                            lotNumber: r.lotNumber || undefined,
+                            expirationDate: r.expirationDate || undefined,
+                            lotReceiveCost: r.lotReceiveCost ? parseFloat(r.lotReceiveCost) : undefined,
+                        }));
+                        await bulkImportInventory(mappedInventory);
+                        setImportResult({ success: true, message: 'Inventory records successfully imported.', rowsProcessed: rows.length });
                     }
                     else if (activeTab === 'locations') {
                         // Quick structural validation for Locations

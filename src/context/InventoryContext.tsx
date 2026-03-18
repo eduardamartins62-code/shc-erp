@@ -17,6 +17,7 @@ interface InventoryContextType {
     reverseMovement: (movementId: string) => Promise<void>;
     reserveInventory: (items: { sku: string, quantity: number }[], performedBy: string) => Promise<void>;
     releaseInventory: (items: { sku: string, quantity: number }[], performedBy: string) => Promise<void>;
+    bulkImportInventory: (entries: Array<{ sku: string; warehouseId: string; locationCode?: string; quantityOnHand: number; lotNumber?: string; expirationDate?: string; lotReceiveCost?: number; }>) => Promise<void>;
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
@@ -134,6 +135,20 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
         }
     };
 
+    const bulkImportInventory = async (entries: Array<{ sku: string; warehouseId: string; locationCode?: string; quantityOnHand: number; lotNumber?: string; expirationDate?: string; lotReceiveCost?: number; }>) => {
+        try {
+            setLoading(true);
+            setError(null);
+            await api.bulkImportInventory(entries);
+            await refreshInventory();
+        } catch (err: any) {
+            setError(err.message || 'Failed to bulk import inventory');
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <InventoryContext.Provider
             value={{
@@ -149,7 +164,8 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
                 transferStock,
                 reverseMovement,
                 reserveInventory,
-                releaseInventory
+                releaseInventory,
+                bulkImportInventory
             }}
         >
             {children}
