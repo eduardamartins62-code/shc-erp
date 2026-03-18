@@ -20,7 +20,6 @@ interface Props {
 
 const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
     const { inventory } = useInventory();
-    const { calculateCOGS } = useProducts();
     const { products } = useProducts();
     const displayData = data || inventory;
 
@@ -128,7 +127,14 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
             { key: 'name', label: 'Product Name', type: 'text', filterable: false, render: (_, row) => <span style={{ fontWeight: 500 }}>{getProductName(row.id)}</span> },
             { key: 'quantityOnHand', label: 'Total On Hand', type: 'number-range', filterable: true, render: (val) => <span style={{ fontWeight: 500 }}>{val}</span> },
             { key: 'available', label: 'Total Available', type: 'number-range', filterable: true, render: (_, row) => <span style={{ fontWeight: 600, color: 'var(--color-primary-dark)' }}>{calculateAvailable(row)}</span> },
-            { key: 'cogs', label: 'Total COGS', type: 'number-range', filterable: false, render: (_, row) => <span title="Cost of Goods Sold value based on current inventory quantity × unit cost per SKU">{"$" + calculateCOGS(row.id).toFixed(2)}</span> },
+            {
+                key: 'cogs', label: 'Total COGS', type: 'number-range', filterable: false,
+                render: (_, row) => {
+                    const product = products.find(p => p.sku === row.id);
+                    const cogsValue = (product?.costOfGoods ?? 0) * row.quantityOnHand;
+                    return <span title="Cost of Goods Sold: unit cost × quantity on hand">${cogsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
+                }
+            },
             { key: 'status', label: 'Status', type: 'select', filterable: true, options: ['Good', 'Low Stock', 'Reserved', 'Expired'], render: (_, row) => getStatusBadge(getStatusStr(row)) }
         ];
     } else {
@@ -171,7 +177,10 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
                 <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem' }}>
                     <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--color-text-muted)' }}>Grand Total COGS (Displayed SKUs):</span>
                     <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-primary-dark)' }}>
-                        ${displayData.reduce((sum, item) => sum + calculateCOGS(item.id), 0).toFixed(2)}
+                        ${displayData.reduce((sum, item) => {
+                            const product = products.find(p => p.sku === item.id);
+                            return sum + (product?.costOfGoods ?? 0) * item.quantityOnHand;
+                        }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
             )}

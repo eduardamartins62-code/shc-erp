@@ -1,18 +1,25 @@
-import React, { useState, useMemo } from 'react'; // useState kept for searchQuery
+import React, { useState, useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useInventory } from '../context/InventoryContext';
 import { useSettings } from '../context/SettingsContext';
 import { useProducts } from '../context/ProductContext';
 import InventoryTable from '../components/InventoryTable';
-import { MapPin, Search, X } from 'lucide-react';
+import { MapPin, Search, X, AlertTriangle } from 'lucide-react';
 
 const StockByWarehouse: React.FC = () => {
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const { inventory } = useInventory();
     const { warehouses, selectedWarehouseId, setSelectedWarehouseId } = useSettings();
     const { products } = useProducts();
 
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Filter inventory based on selected warehouse + search query
+    // Read ?filter=lowstock from URL
+    const filterParam = searchParams.get('filter');
+    const isLowStockFilter = filterParam === 'lowstock';
+
+    // Filter inventory based on selected warehouse + search query + low stock flag
     const filteredInventory = useMemo(() => {
         let items = selectedWarehouseId
             ? inventory.filter(item => item.warehouseId === selectedWarehouseId)
@@ -32,8 +39,17 @@ const StockByWarehouse: React.FC = () => {
             });
         }
 
+        if (isLowStockFilter) {
+            items = items.filter(item => {
+                const product = products.find(p => p.sku === item.id);
+                const threshold = product?.reorderPoint ?? 50;
+                const qtyAvailable = Math.max(0, item.quantityOnHand - item.quantityReserved);
+                return qtyAvailable < threshold;
+            });
+        }
+
         return items;
-    }, [inventory, selectedWarehouseId, searchQuery, products]);
+    }, [inventory, selectedWarehouseId, searchQuery, products, isLowStockFilter]);
 
     const targetWarehouse = warehouses.find(w => w.id === selectedWarehouseId);
 
@@ -79,6 +95,32 @@ const StockByWarehouse: React.FC = () => {
                     </select>
                 </div>
             </div>
+
+            {/* Low Stock Filter Banner */}
+            {isLowStockFilter && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    padding: '0.75rem 1rem', marginBottom: '1rem',
+                    backgroundColor: '#fffbeb', border: '1px solid #f59e0b',
+                    borderRadius: '8px', fontSize: '0.875rem', color: '#92400e'
+                }}>
+                    <AlertTriangle size={16} color="#f59e0b" style={{ flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>
+                        <strong>Low Stock Filter Active</strong> — showing items below their reorder point.
+                    </span>
+                    <button
+                        onClick={() => router.push('/stock')}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '0.25rem',
+                            background: 'none', border: '1px solid #f59e0b', borderRadius: '6px',
+                            padding: '0.25rem 0.5rem', cursor: 'pointer',
+                            fontSize: '0.75rem', color: '#92400e', fontWeight: 600
+                        }}
+                    >
+                        <X size={12} /> Clear Filter
+                    </button>
+                </div>
+            )}
 
             {/* Search Bar */}
             <div style={{ marginBottom: '1.5rem', position: 'relative' }}>

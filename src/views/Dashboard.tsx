@@ -1,23 +1,37 @@
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardInventoryWidget from '../components/DashboardInventoryWidget';
 import { useInventory } from '../context/InventoryContext';
 import { useProducts } from '../context/ProductContext';
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 const Dashboard: React.FC = () => {
+    const router = useRouter();
     const { inventory, auditLogs, snapshots } = useInventory();
-    const { calculateCOGS } = useProducts();
+    const { products } = useProducts();
 
-    // Quick Stats
-
+    // Quick Stats — computed from real Supabase inventory data
     const totalQoH = inventory.reduce((sum, item) => sum + item.quantityOnHand, 0);
     const totalReserved = inventory.reduce((sum, item) => sum + item.quantityReserved, 0);
     const totalAvailable = totalQoH - totalReserved;
-    const lowStockCount = inventory.filter(item => (item.quantityOnHand - item.quantityReserved) < 50).length;
 
-    // Use current product costs to calculate COGS
+    // Low stock: count unique SKUs where total available < their product's reorderPoint (or < 50 if none set)
+    const availablePerSku = inventory.reduce<Record<string, number>>((acc, item) => {
+        acc[item.id] = (acc[item.id] || 0) + Math.max(0, item.quantityOnHand - item.quantityReserved);
+        return acc;
+    }, {});
+    const lowStockCount = Object.entries(availablePerSku).filter(([sku, avail]) => {
+        const product = products.find(p => p.sku === sku);
+        const threshold = product?.reorderPoint ?? 50;
+        return avail < threshold;
+    }).length;
+
+    // Compute COGS directly from real Supabase inventory × product unit cost
+    // (calculateCOGS from ProductContext uses mock inventoryLocations, so QOH is always 0 there)
     const totalCogs = inventory.reduce((sum, item) => {
-        return sum + calculateCOGS(item.id);
+        const product = products.find(p => p.sku === item.id);
+        const unitCost = product?.costOfGoods ?? 0;
+        return sum + unitCost * item.quantityOnHand;
     }, 0);
 
     // Trend Calculations
@@ -116,8 +130,15 @@ const Dashboard: React.FC = () => {
 
             {/* Metrics Row */}
             <div className="grid-3" style={{ marginBottom: '2rem' }}>
-                {/* Total Available Card */}
-                <div className="card" style={cardStyle}>
+                {/* Total Available Card — clickable → Stock page */}
+                <div
+                    className="card"
+                    style={{ ...cardStyle, cursor: 'pointer', transition: 'box-shadow 0.15s ease, border-color 0.15s ease' }}
+                    onClick={() => router.push('/stock')}
+                    onMouseOver={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-primary)'; }}
+                    onMouseOut={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = ''; (e.currentTarget as HTMLDivElement).style.borderColor = ''; }}
+                    title="View Stock by Warehouse"
+                >
                     <h3 style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0 0 0.5rem 0', fontWeight: 500 }}>Total Available</h3>
                     <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-primary-dark)' }}>{totalAvailable.toLocaleString()}</div>
                     {renderSparkline('totalAvailable', availableDiff >= 0 ? '#10b981' : '#ef4444')}
@@ -138,8 +159,15 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Low Stock Items Card */}
-                <div className="card" style={cardStyle}>
+                {/* Low Stock Items Card — clickable → Stock page filtered to low stock */}
+                <div
+                    className="card"
+                    style={{ ...cardStyle, cursor: 'pointer', transition: 'box-shadow 0.15s ease, border-color 0.15s ease' }}
+                    onClick={() => router.push('/stock?filter=lowstock')}
+                    onMouseOver={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)'; (e.currentTarget as HTMLDivElement).style.borderColor = '#f59e0b'; }}
+                    onMouseOut={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = ''; (e.currentTarget as HTMLDivElement).style.borderColor = ''; }}
+                    title="View low stock items in Stock by Warehouse"
+                >
                     <h3 style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0 0 0.5rem 0', fontWeight: 500 }}>Low Stock Items</h3>
                     <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-status-low)' }}>{lowStockCount}</div>
                     {renderSparkline('lowStockCount', lowStockDiff <= 0 ? '#10b981' : '#ef4444')}

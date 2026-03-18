@@ -20,22 +20,8 @@ import type {
 const auditStore: AuditLog[] = [];
 const movementStore: InventoryMovement[] = [];
 
-const snapshotStore: DailySnapshot[] = Array.from({ length: 30 }).map((_, i) => {
-    const daysAgo = 30 - i;
-    const date = new Date(Date.now() - 1000 * 60 * 60 * 24 * daysAgo).toISOString();
-    const baseAvailable = 800;
-    const availableVariance = Math.floor(Math.sin(daysAgo) * 50) + (i * 2);
-    const baseCogs = 12000;
-    const cogsVariance = Math.floor(Math.cos(daysAgo) * 500) + (i * 50);
-    const baseLowStock = 10;
-    const lowStockVariance = Math.floor(Math.sin(daysAgo / 2) * 3) - Math.floor(i / 10);
-    return {
-        date,
-        totalAvailable: baseAvailable + availableVariance,
-        totalCogs: baseCogs + cogsVariance,
-        lowStockCount: Math.max(0, baseLowStock + lowStockVariance)
-    };
-});
+// Snapshots are not yet persisted to Supabase — return empty so the UI shows "Not enough data yet" instead of fake numbers
+const snapshotStore: DailySnapshot[] = [];
 
 const userStore: User[] = [
     {
