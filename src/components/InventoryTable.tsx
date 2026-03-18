@@ -33,9 +33,16 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
 
     const calculateAvailable = (item: InventoryItem) => item.quantityOnHand - item.quantityReserved;
 
+    const hasExpiration = (val: string | null | undefined): boolean => {
+        if (!val) return false;
+        const d = new Date(val);
+        // Treat epoch (1970-01-01) as no expiration — happens when DB stores null as 0
+        return !isNaN(d.getTime()) && d.getFullYear() > 1970;
+    };
+
     const getStatusStr = (item: InventoryItem) => {
         const available = calculateAvailable(item);
-        const isExpired = new Date(item.expirationDate) < new Date();
+        const isExpired = hasExpiration(item.expirationDate) && new Date(item.expirationDate) < new Date();
         if (isExpired) return 'Expired';
         if (available < 50) return 'Low Stock';
         if (item.quantityReserved > 0 && available > 50) return 'Reserved';
@@ -92,8 +99,9 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
             type: 'date-range',
             filterable: true,
             render: (val) => {
-                const isExpired = new Date(val) < new Date();
-                return <span style={{ color: isExpired ? 'var(--color-shc-red)' : 'inherit' }}>{new Date(val).toISOString().split('T')[0]}</span>;
+                if (!hasExpiration(val as string)) return <span style={{ color: 'var(--color-text-muted)' }}>—</span>;
+                const isExpired = new Date(val as string) < new Date();
+                return <span style={{ color: isExpired ? 'var(--color-shc-red)' : 'inherit' }}>{new Date(val as string).toISOString().split('T')[0]}</span>;
             }
         },
         {
@@ -241,7 +249,7 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
                                 <code>{detailItem.lotNumber}</code>
 
                                 <span style={{ color: 'var(--color-text-muted)' }}>Expiration Date</span>
-                                <span>{new Date(detailItem.expirationDate).toLocaleDateString()}</span>
+                                <span>{hasExpiration(detailItem.expirationDate) ? new Date(detailItem.expirationDate).toLocaleDateString() : '—'}</span>
 
                                 <span style={{ color: 'var(--color-text-muted)' }}>Warehouse</span>
                                 <span>{detailItem.warehouseId || '—'}</span>
