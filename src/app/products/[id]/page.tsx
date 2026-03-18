@@ -1,7 +1,12 @@
 "use client";
 
+import { Suspense } from 'react';
 import ProductDetail from '../../../views/ProductDetail';
 
 export default function Page() {
-  return <ProductDetail />;
+  return (
+    <Suspense fallback={null}>
+      <ProductDetail />
+    </Suspense>
+  );
 }

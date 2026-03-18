@@ -134,7 +134,7 @@ const Dashboard: React.FC = () => {
                 <div
                     className="card"
                     style={{ ...cardStyle, cursor: 'pointer', transition: 'box-shadow 0.15s ease, border-color 0.15s ease' }}
-                    onClick={() => router.push('/stock')}
+                    onClick={() => router.push('/warehouses')}
                     onMouseOver={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-primary)'; }}
                     onMouseOut={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = ''; (e.currentTarget as HTMLDivElement).style.borderColor = ''; }}
                     title="View Stock by Warehouse"
@@ -163,7 +163,7 @@ const Dashboard: React.FC = () => {
                 <div
                     className="card"
                     style={{ ...cardStyle, cursor: 'pointer', transition: 'box-shadow 0.15s ease, border-color 0.15s ease' }}
-                    onClick={() => router.push('/stock?filter=lowstock')}
+                    onClick={() => router.push('/warehouses?filter=lowstock')}
                     onMouseOver={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)'; (e.currentTarget as HTMLDivElement).style.borderColor = '#f59e0b'; }}
                     onMouseOut={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = ''; (e.currentTarget as HTMLDivElement).style.borderColor = ''; }}
                     title="View low stock items in Stock by Warehouse"
