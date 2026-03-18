@@ -285,6 +285,30 @@ export const api = {
         if (error) throw new Error(error.message);
     },
 
+    /**
+     * Upserts bundle/kit component rows into the bundle_components table.
+     * Each row links a bundle product to one of its component products.
+     */
+    bulkImportKitComponents: async (components: Array<{
+        bundleProductId: string;
+        componentProductId: string;
+        quantityRequiredPerBundle: number;
+    }>): Promise<void> => {
+        if (components.length === 0) return;
+        const { v4: uuidv4 } = await import('uuid');
+        const rows = components.map(c => ({
+            id: uuidv4(),
+            bundle_product_id: c.bundleProductId,
+            component_product_id: c.componentProductId,
+            quantity_required_per_bundle: c.quantityRequiredPerBundle,
+        }));
+        // Delete existing components for these bundles first, then re-insert (clean replace)
+        const bundleIds = [...new Set(components.map(c => c.bundleProductId))];
+        await supabase.from('bundle_components').delete().in('bundle_product_id', bundleIds);
+        const { error } = await supabase.from('bundle_components').insert(rows);
+        if (error) throw new Error(error.message);
+    },
+
     getInventory: async (): Promise<InventoryItem[]> => {
         const { data, error } = await supabase.from('inventory').select('*');
         if (error) throw new Error(error.message);

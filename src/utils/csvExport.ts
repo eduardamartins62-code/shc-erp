@@ -122,43 +122,59 @@ export const exportOrdersToCSV = (orders: Order[], filename: string = 'orders_ex
 };
 
 import type { WarehouseLocation } from '../types/locations';
+import type { BundleComponent } from '../types/products';
 
 // Template CSV downloads — headers match what the importer expects (camelCase)
 export const downloadImportTemplate = (
-    tab: 'products' | 'inventory' | 'locations' | 'orders',
+    tab: 'products' | 'inventory' | 'locations' | 'orders' | 'kits',
     sampleWarehouse?: { id: string; name: string }
 ) => {
     let headers: string[];
-    let sampleRow: string[];
+    let sampleRows: string[][];
     let filename: string;
 
     switch (tab) {
         case 'products':
             headers = ['sku', 'name', 'type', 'brand', 'category', 'subcategory', 'status', 'upc', 'costOfGoods', 'mapPrice', 'msrpPrice', 'weight', 'length', 'width', 'height', 'reorderPoint', 'preferredSupplier', 'description'];
-            sampleRow = ['SKU-001', 'Sample Product', 'simple', 'Acme', 'Electronics', 'Audio', 'Active', '012345678901', '10.00', '14.99', '19.99', '1.5', '10', '5', '3', '10', 'Supplier Co', 'A sample product description'];
+            sampleRows = [['SKU-001', 'Sample Product', 'simple', 'Acme', 'Electronics', 'Audio', 'Active', '012345678901', '10.00', '14.99', '19.99', '1.5', '10', '5', '3', '10', 'Supplier Co', 'A sample product description']];
             filename = 'products_import_template.csv';
             break;
         case 'locations': {
             const whId = sampleWarehouse?.id ?? 'REPLACE_WITH_WAREHOUSE_ID';
             const whName = sampleWarehouse?.name ?? 'Your Warehouse Name';
             headers = ['warehouseId', 'locationCode', 'warehouseName', 'displayName', 'type', 'description', 'aisle', 'section', 'shelf', 'bin', 'barcodeValue', 'isActive'];
-            sampleRow = [whId, 'A-01-01-A', whName, 'Aisle A Shelf 1 Bin A', 'SHELF', 'Primary shelf location', 'A', '01', '01', 'A', 'A-01-01-A', 'true'];
+            sampleRows = [[whId, 'A-01-01-A', whName, 'Aisle A Shelf 1 Bin A', 'SHELF', 'Primary shelf location', 'A', '01', '01', 'A', 'A-01-01-A', 'true']];
             filename = 'locations_import_template.csv';
             break;
         }
         case 'inventory':
             headers = ['sku', 'warehouseId', 'locationCode', 'quantityOnHand', 'lotNumber', 'expirationDate', 'lotReceiveCost'];
-            sampleRow = ['SKU-001', 'WH-001', 'A-01-01-A', '100', 'LOT-2024-001', '2025-12-31', '10.00'];
+            sampleRows = [['SKU-001', 'WH-001', 'A-01-01-A', '100', 'LOT-2024-001', '2025-12-31', '10.00']];
             filename = 'inventory_import_template.csv';
             break;
         case 'orders':
             headers = ['orderId', 'channel', 'customerName', 'customerEmail', 'sku', 'quantity', 'unitPrice'];
-            sampleRow = ['ORD-001', 'Shopify', 'John Doe', 'john@example.com', 'SKU-001', '2', '19.99'];
+            sampleRows = [['ORD-001', 'Shopify', 'John Doe', 'john@example.com', 'SKU-001', '2', '19.99']];
             filename = 'orders_import_template.csv';
+            break;
+        case 'kits':
+            // Each row = one component of a kit/bundle.
+            // Repeat bundleSku/bundleName/etc. for every component row of the same kit.
+            headers = ['bundleSku', 'bundleName', 'type', 'brand', 'category', 'status', 'costOfGoods', 'msrpPrice', 'componentSku', 'quantityRequired'];
+            sampleRows = [
+                ['KIT-001', 'Starter Kit', 'bundle', 'Acme', 'Kits', 'Active', '25.00', '49.99', 'SKU-001', '2'],
+                ['KIT-001', 'Starter Kit', 'bundle', 'Acme', 'Kits', 'Active', '25.00', '49.99', 'SKU-002', '1'],
+                ['KIT-002', 'Pro Bundle', 'kit',    'Acme', 'Kits', 'Active', '45.00', '89.99', 'SKU-001', '1'],
+                ['KIT-002', 'Pro Bundle', 'kit',    'Acme', 'Kits', 'Active', '45.00', '89.99', 'SKU-003', '3'],
+            ];
+            filename = 'kits_bundles_import_template.csv';
             break;
     }
 
-    const csvContent = [headers.join(','), sampleRow.map(escapeCSVField).join(',')].join('\n');
+    const csvContent = [
+        headers.join(','),
+        ...sampleRows.map(row => row.map(escapeCSVField).join(','))
+    ].join('\n');
     triggerDownload(csvContent, filename);
 };
 
@@ -189,6 +205,51 @@ export const exportLocationsToCSV = (locations: WarehouseLocation[], filename: s
         headers.join(','),
         ...rows.map(row => row.map(escapeCSVField).join(','))
     ].join('\n');
+
+    triggerDownload(csvContent, filename);
+};
+
+/**
+ * Exports all kit/bundle products with their component relationships.
+ * One row per component — bundle info is repeated across each row for that kit.
+ */
+export const exportKitsToCSV = (
+    products: Product[],
+    bundleComponents: BundleComponent[],
+    filename: string = 'kits_bundles_export.csv'
+) => {
+    const headers = [
+        'bundleSku', 'bundleName', 'type', 'brand', 'category', 'status',
+        'costOfGoods', 'msrpPrice', 'componentSku', 'componentName', 'quantityRequired'
+    ];
+
+    const kitProducts = products.filter(p => p.type === 'bundle' || p.type === 'kit');
+
+    const rows: string[][] = [];
+    for (const kit of kitProducts) {
+        const components = bundleComponents.filter(c => c.bundleProductId === kit.id || c.bundleProductId === kit.sku);
+        if (components.length === 0) {
+            rows.push([
+                kit.sku, kit.name, kit.type, kit.brand || '', kit.category || '', kit.status,
+                String(kit.costOfGoods ?? ''), String(kit.msrpPrice ?? ''), '', '', ''
+            ]);
+        } else {
+            for (const comp of components) {
+                const compProduct = products.find(p => p.id === comp.componentProductId || p.sku === comp.componentProductId);
+                rows.push([
+                    kit.sku, kit.name, kit.type, kit.brand || '', kit.category || '', kit.status,
+                    String(kit.costOfGoods ?? ''), String(kit.msrpPrice ?? ''),
+                    compProduct?.sku || comp.componentProductId,
+                    compProduct?.name || '',
+                    String(comp.quantityRequiredPerBundle)
+                ]);
+            }
+        }
+    }
+
+    const csvContent = rows.length === 0
+        ? headers.join(',')
+        : [headers.join(','), ...rows.map(row => row.map(escapeCSVField).join(','))].join('\n');
 
     triggerDownload(csvContent, filename);
 };

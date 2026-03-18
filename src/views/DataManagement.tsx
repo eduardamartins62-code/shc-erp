@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Upload, Download, FileText, Database, Package, ShoppingCart, MapPin, X, AlertCircle, RefreshCw } from 'lucide-react';
+import { Upload, Download, FileText, Database, Package, ShoppingCart, MapPin, X, AlertCircle, RefreshCw, Layers } from 'lucide-react';
 import { useProducts } from '../context/ProductContext';
 import { useInventory } from '../context/InventoryContext';
 import { useLocations } from '../context/LocationContext';
 import { useOrders } from '../context/OrderContext';
 import { useSettings } from '../context/SettingsContext';
 import Papa from 'papaparse';
-import { exportProductsToCSV, exportInventoryToCSV, exportOrdersToCSV, exportLocationsToCSV, downloadImportTemplate } from '../utils/csvExport';
+import { exportProductsToCSV, exportInventoryToCSV, exportOrdersToCSV, exportLocationsToCSV, exportKitsToCSV, downloadImportTemplate } from '../utils/csvExport';
 import { api } from '../services/api';
 
-type TabType = 'products' | 'inventory' | 'locations' | 'orders';
+type TabType = 'products' | 'inventory' | 'locations' | 'orders' | 'kits';
 
 interface ImportJob {
     id: string;
@@ -36,7 +36,7 @@ const DataManagement: React.FC = () => {
     const [logModal, setLogModal] = useState<ImportJob | null>(null);
 
     // Bring in data contexts
-    const { products, bulkImportProducts } = useProducts();
+    const { products, bundleComponents, bulkImportProducts } = useProducts();
     const { inventory, bulkImportInventory } = useInventory();
     const { locations, bulkImportLocations } = useLocations();
     const { orders } = useOrders();
@@ -47,6 +47,7 @@ const DataManagement: React.FC = () => {
         { id: 'inventory', label: 'Inventory', icon: <Database size={18} /> },
         { id: 'locations', label: 'Locations', icon: <MapPin size={18} /> },
         { id: 'orders', label: 'Orders', icon: <ShoppingCart size={18} /> },
+        { id: 'kits', label: 'Kits & Bundles', icon: <Layers size={18} /> },
     ];
 
     const loadJobs = useCallback(async () => {
@@ -207,6 +208,68 @@ const DataManagement: React.FC = () => {
                         success = true;
                         setImportResult({ success: true, message: 'Locations successfully imported.', rowsProcessed });
                     }
+                    else if (activeTab === 'kits') {
+                        if (!rows[0].bundleSku || !rows[0].componentSku || !rows[0].quantityRequired) {
+                            throw new Error("Invalid format. Must contain 'bundleSku', 'componentSku', and 'quantityRequired' columns.");
+                        }
+
+                        // Validate all component SKUs exist in the product catalog
+                        const existingSkus = new Set(products.map(p => p.sku));
+                        const missingComponentSkus = [...new Set(
+                            rows.map((r: any) => r.componentSku?.trim()).filter((sku: string) => sku && !existingSkus.has(sku))
+                        )];
+                        if (missingComponentSkus.length > 0) {
+                            throw new Error(
+                                `Component SKU(s) not found in the product catalog: ${missingComponentSkus.join(', ')}. ` +
+                                `Import those products first before creating kits that reference them.`
+                            );
+                        }
+
+                        // Group rows by bundleSku to upsert bundle products + their components
+                        const bundleMap = new Map<string, { rows: any[] }>();
+                        rows.forEach((r: any) => {
+                            const bSku = r.bundleSku?.trim();
+                            if (!bSku) return;
+                            if (!bundleMap.has(bSku)) bundleMap.set(bSku, { rows: [] });
+                            bundleMap.get(bSku)!.rows.push(r);
+                        });
+
+                        // 1. Upsert the bundle products themselves
+                        const bundleProducts = Array.from(bundleMap.entries()).map(([bSku, { rows: bRows }]) => {
+                            const r = bRows[0]; // first row has the bundle-level info
+                            return {
+                                sku: bSku,
+                                name: r.bundleName || bSku,
+                                type: (r.type === 'kit' ? 'kit' : 'bundle') as 'bundle' | 'kit',
+                                brand: r.brand || '',
+                                category: r.category || '',
+                                status: (r.status === 'Inactive' ? 'Inactive' : 'Active') as 'Active' | 'Inactive',
+                                costOfGoods: r.costOfGoods ? parseFloat(r.costOfGoods) : undefined,
+                                msrpPrice: r.msrpPrice ? parseFloat(r.msrpPrice) : undefined,
+                                description: r.description || '',
+                            };
+                        });
+                        await bulkImportProducts(bundleProducts);
+
+                        // 2. Upsert component relationships — use bundleSku as bundleProductId
+                        // (the api method will do delete+insert to cleanly replace components)
+                        const componentRows = rows.map((r: any) => ({
+                            bundleProductId: r.bundleSku?.trim(),
+                            componentProductId: r.componentSku?.trim(),
+                            quantityRequiredPerBundle: parseFloat(r.quantityRequired) || 1,
+                        })).filter((c: any) => c.bundleProductId && c.componentProductId);
+
+                        await api.bulkImportKitComponents(componentRows);
+
+                        rowsProcessed = rows.length;
+                        success = true;
+                        const kitCount = bundleMap.size;
+                        setImportResult({
+                            success: true,
+                            message: `Successfully imported ${kitCount} kit${kitCount !== 1 ? 's' : ''} with ${rows.length} component row${rows.length !== 1 ? 's' : ''}.`,
+                            rowsProcessed,
+                        });
+                    }
                     else {
                         throw new Error(`Import for '${activeTab}' is not yet configured.`);
                     }
@@ -261,6 +324,9 @@ const DataManagement: React.FC = () => {
                 break;
             case 'orders':
                 exportOrdersToCSV(orders);
+                break;
+            case 'kits':
+                exportKitsToCSV(products, bundleComponents);
                 break;
         }
     };
