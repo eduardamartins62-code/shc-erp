@@ -32,7 +32,7 @@ const ProductDetail: React.FC = () => {
         logCostChange,
         updateProduct
     } = useProducts();
-    const { movements } = useInventory();
+    const { inventory } = useInventory();
 
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -78,8 +78,35 @@ const ProductDetail: React.FC = () => {
     const activeWarehousesCount = new Set(locations.filter(l => l.qtyOnHand > 0).map(l => l.warehouseName)).size;
     const soonestExpiration = sortedLocations.find(l => l.expirationDate && l.qtyOnHand > 0)?.expirationDate;
 
-    // Filter logs for this specific product
+    // Filter static/context logs for this product
     const productActivityLogs = activityLogs.filter(log => log.sku === product.sku);
+
+    // Derive activity entries from real Supabase inventory records for this SKU
+    // Each inventory row (lot) becomes its own log entry with real date + user
+    const inventoryRowLogs = inventory
+        .filter(i => i.id === product.sku)
+        .map(i => {
+            const isImport = (i.updatedBy || '').toLowerCase().includes('import');
+            return {
+                id: `inv-${i.warehouseId}-${i.lotNumber || 'nolot'}-${i.lastUpdated}`,
+                sku: product.sku,
+                action: isImport ? 'CSV Import' : 'Stock Added',
+                details: [
+                    `Warehouse: ${i.warehouseId}`,
+                    i.locationCode ? `Location: ${i.locationCode}` : null,
+                    `QOH: ${i.quantityOnHand.toLocaleString()}`,
+                    i.lotNumber ? `Lot: ${i.lotNumber}` : null,
+                ].filter(Boolean).join(' · '),
+                user: i.updatedBy || 'System',
+                module: 'Inventory',
+                timestamp: i.lastUpdated,
+            };
+        });
+
+    const allActivityLogs = [
+        ...productActivityLogs,
+        ...inventoryRowLogs,
+    ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     const getStatusBadge = (status: string) => {
         // We calculate reorder point logic
@@ -362,7 +389,7 @@ const ProductDetail: React.FC = () => {
                 )}
                 {activeTab === 'activity-log' && (
                     <ProductActivityTab
-                        logs={productActivityLogs}
+                        logs={allActivityLogs}
                     />
                 )}
                 {activeTab === 'relationships' && !isBundle && (
