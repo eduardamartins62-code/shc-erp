@@ -84,7 +84,8 @@
       "Bash(gh run:*)",
       "Bash(git fetch:*)",
       "Bash(find /Users/eduardapantaleao/ERP -name schema.sql -o -name migration* -o -name init*.sql)",
-      "Bash(find /Users/eduardapantaleao/ERP -name *.sql -o -name *schema* -o -name *migration*)"
+      "Bash(find /Users/eduardapantaleao/ERP -name *.sql -o -name *schema* -o -name *migration*)",
+      "Bash(grep -E \"\\(types|index\\)\\\\.ts$\")"
     ]
   }
 }

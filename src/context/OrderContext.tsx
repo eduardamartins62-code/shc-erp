@@ -192,31 +192,38 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const syncShippedOrders = async () => {
-        try {
-            const ssChannel = channels.find(c => c.channel === 'ShipStation');
-            if (!ssChannel || !ssChannel.isEnabled || !ssChannel.apiKey || !ssChannel.apiSecret) return;
+        const ssChannel = channels.find(c => c.channel === 'ShipStation');
+        if (!ssChannel || !ssChannel.isEnabled || !ssChannel.apiKey || !ssChannel.apiSecret) return;
 
-            const method = (systemSettings as any)?.inventoryDeductionMethod || 'FEFO';
-            const autoDeduct = (systemSettings as any)?.autoDeductInventoryOnShipped !== false; // default true
+        const method = (systemSettings as any)?.inventoryDeductionMethod || 'FEFO';
+        const autoDeduct = (systemSettings as any)?.autoDeductInventoryOnShipped !== false; // default true
 
-            const shippedFromSS = await shipstationApi.fetchShippedOrders(ssChannel.apiKey, ssChannel.apiSecret);
-            if (shippedFromSS.length === 0) return;
+        // Fetch shipped orders from ShipStation — any failure here should surface to caller
+        const shippedFromSS = await shipstationApi.fetchShippedOrders(ssChannel.apiKey, ssChannel.apiSecret);
+        if (shippedFromSS.length === 0) return;
 
-            // Build a lookup map: orderNumber → tracking info
-            const shippedMap = new Map(shippedFromSS.map(o => [o.orderNumber, o]));
+        // Build a lookup map: orderNumber → tracking info
+        const shippedMap = new Map(shippedFromSS.map(o => [o.orderNumber, o]));
 
-            // Query the DB directly — never use React state here to avoid stale closure bugs.
-            // The auto-sync runs on a 15-min interval that captures function refs from an old render,
-            // so `orders` state would be stale. Querying the DB always gives the truth.
-            const nonShipped = await ordersApi.getNonShippedOrders();
-            const ordersToMarkShipped = nonShipped.filter(o => shippedMap.has(o.id));
+        // Query the DB directly — never use React state here to avoid stale closure bugs.
+        // The auto-sync runs on a 15-min interval that captures function refs from an old render,
+        // so `orders` state would be stale. Querying the DB always gives the truth.
+        const nonShipped = await ordersApi.getNonShippedOrders();
+        const ordersToMarkShipped = nonShipped.filter(o => shippedMap.has(o.id));
 
-            for (const order of ordersToMarkShipped) {
+        let markedCount = 0;
+        for (const order of ordersToMarkShipped) {
+            try {
                 const trackingInfo = shippedMap.get(order.id)!;
 
-                // Auto-deduct inventory only if the toggle is on
+                // Auto-deduct inventory only if the toggle is on.
+                // If deduction fails, log and continue — don't block the status update.
                 if (autoDeduct) {
-                    await ordersApi.deductInventoryForShippedOrder(order.id, method, 'ShipStation Sync');
+                    try {
+                        await ordersApi.deductInventoryForShippedOrder(order.id, method, 'ShipStation Sync');
+                    } catch (deductErr) {
+                        console.error(`Inventory deduction failed for order ${order.id}:`, deductErr);
+                    }
                 }
 
                 // Mark as shipped and save tracking info
@@ -227,13 +234,14 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     trackingInfo.shippedAt,
                     'ShipStation Sync'
                 );
+                markedCount++;
+            } catch (orderErr) {
+                console.error(`Failed to mark order ${order.id} as shipped:`, orderErr);
             }
+        }
 
-            if (ordersToMarkShipped.length > 0) {
-                await fetchOrders();
-            }
-        } catch (err) {
-            console.error('Failed to sync shipped orders', err);
+        if (markedCount > 0) {
+            await fetchOrders();
         }
     };
 
