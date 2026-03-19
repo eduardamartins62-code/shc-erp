@@ -59,7 +59,7 @@ export interface TransferFormData {
 export interface AdjustmentFormData {
   sku: string;
   warehouseId: string;
-  locationCode: string;
+  locationCode?: string;
   adjustmentType: 'Increase' | 'Decrease';
   quantity: number;
   lotNumber?: string;
