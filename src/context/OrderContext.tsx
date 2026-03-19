@@ -15,7 +15,7 @@ interface OrderContextProps {
     updateOrderStatus: (orderId: string, status: OrderStatus, performedBy: string, notes?: string) => Promise<void>;
     allocateOrderInventory: (orderId: string, performedBy: string) => Promise<void>;
     syncShipStationOrders: () => Promise<void>;
-    syncShippedOrders: () => Promise<void>;
+    syncShippedOrders: () => Promise<{ marked: number; ssShipped: number; dbPending: number }>;
     cancelOrder: (orderId: string, reason: string, performedBy: string) => Promise<void>;
     deleteOrders: (orderIds: string[]) => Promise<void>;
 }
@@ -189,42 +189,51 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
     };
 
-    const syncShippedOrders = async () => {
+    const syncShippedOrders = async (): Promise<{ marked: number; ssShipped: number; dbPending: number }> => {
         const ssChannel = channels.find(c => c.channel === 'ShipStation');
-        if (!ssChannel || !ssChannel.isEnabled || !ssChannel.apiKey || !ssChannel.apiSecret) return;
-        // Respect the "Sync Shipped Order Status" toggle — defaults ON if never explicitly set
-        if (ssChannel.syncShippedOrders === false) return;
+        if (!ssChannel || !ssChannel.isEnabled || !ssChannel.apiKey || !ssChannel.apiSecret) {
+            throw new Error('ShipStation integration is not enabled or API keys are missing.');
+        }
+        if (ssChannel.syncShippedOrders === false) {
+            throw new Error('Sync Shipped Order Status is disabled in Settings > Integrations.');
+        }
 
         const method = (systemSettings as any)?.inventoryDeductionMethod || 'FEFO';
-        const autoDeduct = (systemSettings as any)?.autoDeductInventoryOnShipped !== false; // default true
+        const autoDeduct = (systemSettings as any)?.autoDeductInventoryOnShipped !== false;
 
-        // Fetch shipped orders from ShipStation — throws on API failure so the error bubbles
-        // up to syncShipStationOrders and is shown in the UI via setError.
         let shippedFromSS: Awaited<ReturnType<typeof shipstationApi.fetchShippedOrders>>;
         try {
             shippedFromSS = await shipstationApi.fetchShippedOrders(ssChannel.apiKey, ssChannel.apiSecret);
         } catch (fetchErr) {
             console.error('[ShipStation] fetchShippedOrders failed:', fetchErr);
-            throw fetchErr; // Let syncShipStationOrders surface this to the user
+            throw fetchErr;
         }
-        if (shippedFromSS.length === 0) return;
 
-        // Build a lookup map: orderNumber → tracking info
+        console.log(`[ShipStation Sync] SS shipped orders fetched: ${shippedFromSS.length}`);
+        if (shippedFromSS.length > 0) {
+            console.log('[ShipStation Sync] Sample SS orderNumbers:', shippedFromSS.slice(0, 5).map(o => o.orderNumber));
+        }
+
+        if (shippedFromSS.length === 0) {
+            return { marked: 0, ssShipped: 0, dbPending: 0 };
+        }
+
         const shippedMap = new Map(shippedFromSS.map(o => [o.orderNumber, o]));
 
-        // Query the DB directly — never use React state here to avoid stale closure bugs.
-        // The auto-sync runs on a 15-min interval that captures function refs from an old render,
-        // so `orders` state would be stale. Querying the DB always gives the truth.
         const nonShipped = await ordersApi.getNonShippedOrders();
+        console.log(`[ShipStation Sync] DB pending (non-shipped) orders: ${nonShipped.length}`);
+        if (nonShipped.length > 0) {
+            console.log('[ShipStation Sync] Sample DB order IDs:', nonShipped.slice(0, 5).map(o => o.id));
+        }
+
         const ordersToMarkShipped = nonShipped.filter(o => shippedMap.has(o.id));
+        console.log(`[ShipStation Sync] Matched orders to mark shipped: ${ordersToMarkShipped.length}`);
 
         let markedCount = 0;
         for (const order of ordersToMarkShipped) {
             try {
                 const trackingInfo = shippedMap.get(order.id)!;
 
-                // Auto-deduct inventory only if the toggle is on.
-                // If deduction fails, log and continue — don't block the status update.
                 if (autoDeduct) {
                     try {
                         await ordersApi.deductInventoryForShippedOrder(order.id, method, 'ShipStation Sync');
@@ -233,7 +242,6 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     }
                 }
 
-                // Mark as shipped and save tracking info
                 await ordersApi.markOrderShippedWithTracking(
                     order.id,
                     trackingInfo.trackingNumber,
@@ -250,6 +258,8 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (markedCount > 0) {
             await fetchOrders();
         }
+
+        return { marked: markedCount, ssShipped: shippedFromSS.length, dbPending: nonShipped.length };
     };
 
     useEffect(() => {

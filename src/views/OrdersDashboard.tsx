@@ -53,10 +53,16 @@ const OrdersDashboard: React.FC = () => {
                                 onClick={async () => {
                                     setSyncingShipped(true);
                                     try {
-                                        await syncShippedOrders();
-                                        alert('Shipped status synced from ShipStation!');
+                                        const result = await syncShippedOrders();
+                                        if (result.marked > 0) {
+                                            alert(`✅ Marked ${result.marked} order(s) as Shipped.`);
+                                        } else if (result.ssShipped === 0) {
+                                            alert(`⚠️ ShipStation returned 0 shipped orders. Check your date range or store filter.\n\nOpen browser console (F12) for details.`);
+                                        } else {
+                                            alert(`⚠️ ShipStation has ${result.ssShipped} shipped order(s) but none matched ${result.dbPending} pending order(s) in this system.\n\nOpen browser console (F12) and look for "[ShipStation Sync]" logs to compare order IDs.`);
+                                        }
                                     } catch (e: any) {
-                                        alert(e.message || 'Sync failed');
+                                        alert(`❌ Sync error: ${e.message || 'Unknown error'}`);
                                     } finally {
                                         setSyncingShipped(false);
                                     }
