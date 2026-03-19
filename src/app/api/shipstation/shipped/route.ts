@@ -19,7 +19,9 @@ export async function GET(request: Request) {
         let totalPages = 1;
 
         do {
-            const url = `https://ssapi.shipstation.com/orders?orderStatus=shipped&shipDateStart=${shipDateStart}&pageSize=500&page=${page}&sortBy=ShipDate&sortDir=DESC`;
+            // sortBy valid values: OrderDate, ModifyDate, CreateDate (ShipDate is not supported)
+            // ModifyDate DESC ensures recently-shipped orders (status change) surface first
+            const url = `https://ssapi.shipstation.com/orders?orderStatus=shipped&shipDateStart=${shipDateStart}&pageSize=500&page=${page}&sortBy=ModifyDate&sortDir=DESC`;
             const response = await fetch(url, {
                 method: 'GET',
                 headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' }
