@@ -31,7 +31,7 @@ const NAV_ITEMS: NavItem[] = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true },
     { to: '/products', icon: Package, label: 'Product Catalog' },
     { to: '/warehouses', icon: MapIcon, label: 'Stock by Warehouse' },
-    { to: '/movements', icon: Activity, label: 'Movements' },
+    { to: '/movements', icon: Activity, label: 'Adjustments' },
     { to: '/receiving', icon: ArrowDownToLine, label: 'Receiving' },
     { to: '/locations', icon: MapPin, label: 'Locations' },
     { to: '/orders', icon: ShoppingCart, label: 'Orders' },
