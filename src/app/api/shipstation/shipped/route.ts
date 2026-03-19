@@ -6,7 +6,7 @@ export async function GET(request: Request) {
         if (!authHeader) {
             return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
         }
-        const response = await fetch('https://ssapi.shipstation.com/orders?orderStatus=shipped&createDateStart=2026-01-01&pageSize=500', {
+        const response = await fetch('https://ssapi.shipstation.com/orders?orderStatus=shipped&createDateStart=2026-01-01&pageSize=500&sortBy=OrderDate&sortDir=DESC', {
             method: 'GET',
             headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' }
         });

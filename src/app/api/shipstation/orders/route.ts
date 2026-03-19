@@ -12,10 +12,10 @@ export async function GET(request: Request) {
 
         // Fetch awaiting_shipment AND shipped orders in parallel
         const [awaitingRes, shippedRes] = await Promise.all([
-            fetch(`https://ssapi.shipstation.com/orders?orderStatus=awaiting_shipment&createDateStart=${dateFrom}&pageSize=500`, {
+            fetch(`https://ssapi.shipstation.com/orders?orderStatus=awaiting_shipment&createDateStart=${dateFrom}&pageSize=500&sortBy=OrderDate&sortDir=DESC`, {
                 headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' }
             }),
-            fetch(`https://ssapi.shipstation.com/orders?orderStatus=shipped&createDateStart=${dateFrom}&pageSize=500`, {
+            fetch(`https://ssapi.shipstation.com/orders?orderStatus=shipped&createDateStart=${dateFrom}&pageSize=500&sortBy=OrderDate&sortDir=DESC`, {
                 headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' }
             })
         ]);
