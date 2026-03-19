@@ -240,7 +240,7 @@ const DataManagement: React.FC = () => {
                             return {
                                 sku: bSku,
                                 name: r.bundleName || bSku,
-                                type: (r.type === 'kit' ? 'kit' : 'bundle') as 'bundle' | 'kit',
+                                type: 'bundle' as const,
                                 brand: r.brand || '',
                                 category: r.category || '',
                                 status: (r.status === 'Inactive' ? 'Inactive' : 'Active') as 'Active' | 'Inactive',
@@ -266,7 +266,7 @@ const DataManagement: React.FC = () => {
                         const kitCount = bundleMap.size;
                         setImportResult({
                             success: true,
-                            message: `Successfully imported ${kitCount} kit${kitCount !== 1 ? 's' : ''} with ${rows.length} component row${rows.length !== 1 ? 's' : ''}.`,
+                            message: `Successfully imported ${kitCount} bundle${kitCount !== 1 ? 's' : ''} with ${rows.length} component row${rows.length !== 1 ? 's' : ''}.`,
                             rowsProcessed,
                         });
                     }

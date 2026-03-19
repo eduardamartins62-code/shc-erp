@@ -465,18 +465,18 @@ const ProductDetail: React.FC = () => {
                         {/* Find all bundles/kits that use this product as a component */}
                         {(() => {
                             const usedInBundles = products.filter(p =>
-                                (p.type === 'bundle' || (p.type as string) === 'kit') &&
+                                (p.type === 'bundle' || p.type === 'alias') &&
                                 getBundleComponents(p.id).some(bc => bc.componentProductId === product.id)
                             );
                             return (
                                 <div className="card">
-                                    <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0' }}>Used In Bundles & Kits</h2>
+                                    <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0' }}>Used In Bundles & Aliases</h2>
                                     <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', margin: '0 0 1.5rem 0' }}>
-                                        Bundles and kits that include <strong>{product.name}</strong> as a component.
+                                        Bundles and aliases that include <strong>{product.name}</strong> as a component.
                                     </p>
                                     {usedInBundles.length === 0 ? (
                                         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
-                                            This product is not used in any bundles or kits.
+                                            This product is not used in any bundles or aliases.
                                         </div>
                                     ) : (
                                         <div className="table-container">
@@ -500,7 +500,7 @@ const ProductDetail: React.FC = () => {
                                                                 <td style={{ fontWeight: 500 }}>{bundle.name}</td>
                                                                 <td>
                                                                     <span style={{ padding: '0.15rem 0.5rem', borderRadius: '4px', backgroundColor: 'var(--color-bg-light)', fontSize: '0.75rem', textTransform: 'capitalize' }}>
-                                                                        {bundle.type === 'bundle' ? 'Bundle' : 'Kit'}
+                                                                        {bundle.type === 'bundle' ? 'Bundle' : 'Alias'}
                                                                     </span>
                                                                 </td>
                                                                 <td style={{ textAlign: 'center' }}>{comp?.quantityRequiredPerBundle ?? 1}</td>

@@ -223,7 +223,7 @@ export const exportKitsToCSV = (
         'costOfGoods', 'msrpPrice', 'componentSku', 'componentName', 'quantityRequired'
     ];
 
-    const kitProducts = products.filter(p => p.type === 'bundle' || p.type === 'kit');
+    const kitProducts = products.filter(p => p.type === 'bundle' || p.type === 'alias');
 
     const rows: string[][] = [];
     for (const kit of kitProducts) {
