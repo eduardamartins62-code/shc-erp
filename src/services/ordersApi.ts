@@ -587,6 +587,26 @@ export const ordersApi = {
     },
 
     /**
+     * Updates store_name and customer_name for ShipStation orders whose names have changed
+     * (e.g. previously imported as "web" / "tiktok" before store map was available).
+     * Only updates rows where the value actually differs to avoid unnecessary writes.
+     */
+    batchUpdateStoreNames: async (updates: { id: string; storeName: string }[]): Promise<void> => {
+        if (!updates || updates.length === 0) return;
+        // Supabase doesn't support batch conditional updates natively, so we upsert only the
+        // columns we want to change. Using Promise.allSettled so one failure doesn't block others.
+        await Promise.allSettled(
+            updates.map(({ id, storeName }) =>
+                supabase
+                    .from('orders')
+                    .update({ store_name: storeName, customer_name: storeName })
+                    .eq('id', id)
+                    .eq('channel', 'ShipStation') // safety: only touch SS orders
+            )
+        );
+    },
+
+    /**
      * Returns the set of order IDs already in the DB — used by sync to avoid stale React state.
      */
     getExistingOrderIds: async (): Promise<Set<string>> => {

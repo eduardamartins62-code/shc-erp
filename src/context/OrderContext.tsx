@@ -173,6 +173,12 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 await ordersApi.batchCreateOrders(toAdd);
             }
 
+            // Patch store names on ALL SS orders (new + existing) so previously-imported
+            // orders with wrong names like "web" or "tiktok" get corrected to the real store name.
+            await ordersApi.batchUpdateStoreNames(
+                newOrders.map(o => ({ id: o.id, storeName: o.storeName }))
+            );
+
             // Always check for shipped status updates — not just when new orders exist.
             // This runs inside syncShipStationOrders so the manual "Import Orders" button
             // also picks up shipped status changes, not just the 15-min auto-sync.

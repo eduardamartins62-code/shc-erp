@@ -135,6 +135,22 @@ export const shipstationApi = {
     },
 
     /**
+     * Fetches all active ShipStation stores and returns a storeId → storeName map.
+     */
+    fetchStoreMap: async (base64Credentials: string): Promise<Map<number, string>> => {
+        try {
+            const response = await fetch('/api/shipstation/stores', {
+                headers: { 'Authorization': `Basic ${base64Credentials}` }
+            });
+            if (!response.ok) return new Map();
+            const stores: any[] = await response.json();
+            return new Map((stores || []).map((s: any) => [s.storeId, s.storeName]));
+        } catch {
+            return new Map();
+        }
+    },
+
+    /**
      * Fetches orders from ShipStation using the provided credentials via proxy.
      */
     fetchOrders: async (apiKey: string, apiSecret: string): Promise<Order[]> => {
@@ -144,11 +160,13 @@ export const shipstationApi = {
 
         const base64Credentials = btoa(`${apiKey}:${apiSecret}`);
 
-        const response = await fetch('/api/shipstation/orders', {
-            headers: {
-                'Authorization': `Basic ${base64Credentials}`
-            }
-        });
+        // Fetch orders and store map in parallel
+        const [response, storeMap] = await Promise.all([
+            fetch('/api/shipstation/orders', {
+                headers: { 'Authorization': `Basic ${base64Credentials}` }
+            }),
+            shipstationApi.fetchStoreMap(base64Credentials)
+        ]);
 
         if (!response.ok) {
             const err = await response.json();
@@ -186,11 +204,15 @@ export const shipstationApi = {
                 : ssOrder.orderStatus === 'cancelled' ? 'Cancelled'
                 : 'New';
 
+            // Resolve store name: prefer storeId lookup, fall back to source tag
+            const storeId: number | undefined = ssOrder.advancedOptions?.storeId;
+            const resolvedStoreName = (storeId && storeMap.get(storeId)) || ssOrder.advancedOptions?.source || 'ShipStation Store';
+
             return {
                 id: orderId,
                 channel: 'ShipStation',
-                storeName: ssOrder.advancedOptions?.source || 'ShipStation Store',
-                customerName: ssOrder.advancedOptions?.source || 'ShipStation Store',
+                storeName: resolvedStoreName,
+                customerName: resolvedStoreName,
                 shipToName: ssOrder.shipTo?.name || 'Unknown Recipient',
                 customerEmail: ssOrder.customerEmail || 'no-email@shc.com',
                 shippingAddress: formatAddress(ssOrder.shipTo),
