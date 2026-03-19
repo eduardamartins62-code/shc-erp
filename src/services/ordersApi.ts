@@ -559,7 +559,7 @@ export const ordersApi = {
         if (!toFix.length) return [];
 
         // Find which of these belong to active (not yet shipped/cancelled) orders
-        const orderIds = [...new Set(toFix.map((i: any) => i.order_id))];
+        const orderIds = Array.from(new Set(toFix.map((i: any) => i.order_id)));
         const { data: activeOrders } = await supabase
             .from('orders')
             .select('id')
