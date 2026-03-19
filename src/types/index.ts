@@ -46,9 +46,9 @@ export interface ReceiptFormData {
 export interface TransferFormData {
   sku: string;
   fromWarehouseId: string;
-  fromLocationCode: string;
+  fromLocationCode?: string;
   toWarehouseId: string;
-  toLocationCode: string;
+  toLocationCode?: string;
   quantity: number;
   performedBy: string;
   lotNumber?: string;
