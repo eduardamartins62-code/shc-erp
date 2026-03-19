@@ -3,7 +3,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { useProducts } from '../../context/ProductContext';
 import { useLocations } from '../../context/LocationContext';
 import { useSettings } from '../../context/SettingsContext';
-import LocationSelect from '../locations/LocationSelect';
+import LocationInput from '../locations/LocationInput';
 import SkuSearch from '../ui/SkuSearch';
 import { ArrowLeftRight } from 'lucide-react';
 import type { TransferFormData } from '../../types';
@@ -13,7 +13,6 @@ const today = new Date().toISOString().split('T')[0];
 const TransferStockTab: React.FC = () => {
     const { transferStock, inventory } = useInventory();
     const { products } = useProducts();
-    const { locations } = useLocations();
     const { warehouses } = useSettings();
 
     const [sku, setSku] = useState('');
@@ -28,6 +27,17 @@ const TransferStockTab: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    // Validate that the selected From location actually has stock for this SKU
+    const fromLocationHasStock = useMemo(() => {
+        if (!sku || !fromWarehouseId || !fromLocationCode) return true; // no location selected yet, allow
+        return inventory.some(
+            i => i.id === sku &&
+                i.warehouseId === fromWarehouseId &&
+                i.locationCode === fromLocationCode &&
+                (i.quantityOnHand - i.quantityReserved) > 0
+        );
+    }, [sku, fromWarehouseId, fromLocationCode, inventory]);
 
     // Warehouses that have available stock for the selected SKU
     const availableWarehouses = useMemo(() => {
@@ -69,6 +79,9 @@ const TransferStockTab: React.FC = () => {
         if (fromWarehouseId === toWarehouseId && fromLocationCode === toLocationCode) {
             setError('Source and destination cannot be identical.'); return;
         }
+        if (fromLocationCode && !fromLocationHasStock) {
+            setError(`No stock for ${sku} at location ${fromLocationCode}. Choose a location that has inventory.`); return;
+        }
         if (!sku || !fromWarehouseId || !toWarehouseId || !quantity || quantity <= 0) {
             setError('Please fill in all required fields.'); return;
         }
@@ -80,9 +93,9 @@ const TransferStockTab: React.FC = () => {
             const data: TransferFormData = {
                 sku,
                 fromWarehouseId,
-                fromLocationCode: fromLocationCode || 'Default',
+                fromLocationCode: fromLocationCode || undefined,
                 toWarehouseId,
-                toLocationCode: toLocationCode || 'Default',
+                toLocationCode: toLocationCode || undefined,
                 quantity: Number(quantity),
                 lotNumber: lotNumber || undefined,
                 reason,
@@ -158,13 +171,18 @@ const TransferStockTab: React.FC = () => {
 
                         <div style={fieldStyle}>
                             <label style={labelStyle}>Location / Bin</label>
-                            <LocationSelect
+                            <LocationInput
                                 warehouseId={fromWarehouseId}
                                 value={fromLocationCode}
-                                onChange={e => { setFromLocationCode(e.target.value); setLotNumber(''); }}
+                                onChange={val => { setFromLocationCode(val); setLotNumber(''); }}
                                 disabled={!fromWarehouseId}
                                 skuFilter={sku || undefined}
                             />
+                            {fromLocationCode && !fromLocationHasStock && (
+                                <small style={{ color: '#ef4444', fontSize: '0.75rem' }}>
+                                    No stock for {sku} at this location.
+                                </small>
+                            )}
                         </div>
 
                         {/* Lot selector — shows if lots exist */}
@@ -235,17 +253,12 @@ const TransferStockTab: React.FC = () => {
 
                         <div style={fieldStyle}>
                             <label style={labelStyle}>Location / Bin</label>
-                            <LocationSelect
+                            <LocationInput
                                 warehouseId={toWarehouseId}
                                 value={toLocationCode}
-                                onChange={e => setToLocationCode(e.target.value)}
+                                onChange={val => setToLocationCode(val)}
                                 disabled={!toWarehouseId}
                             />
-                            {toWarehouseId && locations.filter(l => l.warehouseId === toWarehouseId).length === 0 && (
-                                <small style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                                    No locations found. Create them in Settings › Locations.
-                                </small>
-                            )}
                         </div>
 
                         <div style={fieldStyle}>

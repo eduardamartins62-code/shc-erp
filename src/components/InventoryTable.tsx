@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import type { InventoryItem } from '../types';
 import { useInventory } from '../context/InventoryContext';
 import { useProducts } from '../context/ProductContext';
-import { Edit2, ArrowRightLeft, Plus, Download, History } from 'lucide-react';
+import { Edit2, Download, History } from 'lucide-react';
 import ReceiveForm from './ReceiveForm';
 import AdjustForm from './AdjustForm';
-import TransferForm from './TransferForm';
 import { DataTable, type Column } from './ui/DataTable';
 import { SlideOverPanel } from './ui/SlideOverPanel';
 import { BulkActionBar } from './ui/BulkActionBar';
@@ -26,7 +25,7 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard, headerSearch }) =>
     const { products } = useProducts();
     const displayData = data || inventory;
 
-    const [activeModal, setActiveModal] = useState<'receive' | 'adjust' | 'transfer' | null>(null);
+    const [activeModal, setActiveModal] = useState<'receive' | 'adjust' | null>(null);
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
     const [detailItem, setDetailItem] = useState<InventoryItem | null>(null); // For slide-over
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
@@ -191,15 +190,9 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard, headerSearch }) =>
 
     return (
         <>
-            {!isDashboard && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                    <div style={{ flex: 1 }}>
-                        {headerSearch}
-                    </div>
-                    <button className="btn-secondary" style={{ flexShrink: 0 }} onClick={() => setActiveModal('transfer')}>
-                        <ArrowRightLeft size={16} />
-                        Transfer Stock
-                    </button>
+            {!isDashboard && headerSearch && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                    {headerSearch}
                 </div>
             )}
 
@@ -244,16 +237,6 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard, headerSearch }) =>
                             }}
                         >
                             <Edit2 size={14} /> Adjust Qty
-                        </button>
-                        <button
-                            className="btn-secondary"
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                            onClick={() => {
-                                setActiveModal('transfer');
-                                setDetailItem(null);
-                            }}
-                        >
-                            <ArrowRightLeft size={14} /> Move Stock
                         </button>
                     </>
                 }
@@ -342,10 +325,6 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard, headerSearch }) =>
                         setSelectedItem(null);
                     }}
                 />
-            )}
-
-            {activeModal === 'transfer' && (
-                <TransferForm onClose={() => setActiveModal(null)} />
             )}
 
             <MovementHistorySlideOver

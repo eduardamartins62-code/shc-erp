@@ -3,7 +3,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { useProducts } from '../../context/ProductContext';
 import { useLocations } from '../../context/LocationContext';
 import { useSettings } from '../../context/SettingsContext';
-import LocationSelect from '../locations/LocationSelect';
+import LocationInput from '../locations/LocationInput';
 import SkuSearch from '../ui/SkuSearch';
 import { FileText } from 'lucide-react';
 import type { AdjustmentFormData } from '../../types';
@@ -117,7 +117,7 @@ const AdjustStockTab: React.FC<Props> = ({ defaultMode, onModeChange }) => {
             const data: AdjustmentFormData = {
                 sku,
                 warehouseId,
-                locationCode: locationCode || 'Default',
+                locationCode: locationCode || undefined,
                 adjustmentType: adjustmentType === 'Add' ? 'Increase' : 'Decrease',
                 quantity: Number(quantity),
                 lotNumber: finalLotNumber,
@@ -209,13 +209,13 @@ const AdjustStockTab: React.FC<Props> = ({ defaultMode, onModeChange }) => {
                     </select>
                 </div>
 
-                {/* Location — for Remove, only shows locations that have the SKU */}
+                {/* Location — for Remove, only suggests locations that have the SKU */}
                 <div style={fieldStyle}>
                     <label style={labelStyle}>Location / Bin</label>
-                    <LocationSelect
+                    <LocationInput
                         warehouseId={warehouseId}
                         value={locationCode}
-                        onChange={e => setLocationCode(e.target.value)}
+                        onChange={val => setLocationCode(val)}
                         disabled={!warehouseId}
                         skuFilter={adjustmentType === 'Remove' && sku ? sku : undefined}
                     />
