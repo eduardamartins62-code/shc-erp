@@ -176,7 +176,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             // Patch store names on ALL SS orders (new + existing) so previously-imported
             // orders with wrong names like "web" or "tiktok" get corrected to the real store name.
             await ordersApi.batchUpdateStoreNames(
-                newOrders.map(o => ({ id: o.id, storeName: o.storeName }))
+                newOrders.map(o => ({ id: o.id, storeName: o.storeName ?? 'ShipStation Store' }))
             );
 
             // Always check for shipped status updates — not just when new orders exist.
