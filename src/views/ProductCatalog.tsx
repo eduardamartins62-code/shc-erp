@@ -13,9 +13,10 @@ import { SkuLink } from '../components/ui/SkuLink';
 import type { Product } from '../types';
 
 const typeLabel = (type: string): string => {
-    if (type === 'simple') return 'Main';
+    if (type === 'simple') return 'Sellable';
     if (type === 'bundle') return 'Bundle';
-    if (type === 'kit') return 'Kit';
+    if (type === 'alias') return 'Alias';
+    if (type === 'supply') return 'Supply';
     return type.charAt(0).toUpperCase() + type.slice(1);
 };
 
@@ -47,15 +48,15 @@ const ProductCatalog: React.FC = () => {
             return realInventoryBySku.get(sku)?.qtyAvailable ?? 0;
         }
         // fallback to mock data when no real inventory loaded yet
-        return (type === 'simple' || type === 'kit')
-            ? calculateSimpleInventory(productId).qtyAvailable
-            : calculateBundleInventory(productId);
+        return (type === 'bundle')
+            ? calculateBundleInventory(productId)
+            : calculateSimpleInventory(productId).qtyAvailable;
     };
 
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<'all' | 'simple' | 'bundle' | 'kit'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'simple' | 'bundle' | 'alias' | 'supply'>('all');
     const [statusFilter, setStatusFilter] = useState('All');
     const [categoryFilter, setCategoryFilter] = useState('All');
     const [inStockOnly, setInStockOnly] = useState(false);
@@ -109,21 +110,25 @@ const ProductCatalog: React.FC = () => {
             label: 'Type',
             type: 'select',
             filterable: false,
-            options: ['simple', 'bundle', 'kit'],
-            render: (val) => (
-                <span style={{
-                    display: 'inline-flex',
-                    padding: '0.15rem 0.5rem',
-                    borderRadius: '4px',
-                    backgroundColor: val === 'simple' ? '#eff6ff' : val === 'bundle' ? '#f0fdf4' : '#faf5ff',
-                    color: val === 'simple' ? '#1d4ed8' : val === 'bundle' ? '#15803d' : '#7e22ce',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    textTransform: 'capitalize'
-                }}>
-                    {typeLabel(val as string)}
-                </span>
-            )
+            options: ['simple', 'bundle', 'alias', 'supply'],
+            render: (val) => {
+                const colors: Record<string, { bg: string; text: string }> = {
+                    simple:  { bg: '#eff6ff', text: '#1d4ed8' },
+                    bundle:  { bg: '#f0fdf4', text: '#15803d' },
+                    alias:   { bg: '#fdf4ff', text: '#7e22ce' },
+                    supply:  { bg: '#fff7ed', text: '#c2410c' },
+                };
+                const c = colors[val as string] || { bg: '#f3f4f6', text: '#374151' };
+                return (
+                    <span style={{
+                        display: 'inline-flex', padding: '0.15rem 0.5rem', borderRadius: '4px',
+                        backgroundColor: c.bg, color: c.text,
+                        fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize'
+                    }}>
+                        {typeLabel(val as string)}
+                    </span>
+                );
+            }
         },
         { key: 'brand', label: 'Brand', type: 'text', filterable: false, render: (val) => val || '—' },
         { key: 'category', label: 'Category', type: 'text', filterable: false, render: (val) => val || '—' },
@@ -166,7 +171,8 @@ const ProductCatalog: React.FC = () => {
     // Counts per type
     const mainCount = products.filter(p => p.type === 'simple').length;
     const bundleCount = products.filter(p => p.type === 'bundle').length;
-    const kitCount = products.filter(p => (p.type as string) === 'kit').length;
+    const aliasCount = products.filter(p => p.type === 'alias').length;
+    const supplyCount = products.filter(p => p.type === 'supply').length;
 
     // Filtering: search + tab + status + category + in-stock
     const filteredProducts = products.filter(p => {
@@ -303,7 +309,7 @@ const ProductCatalog: React.FC = () => {
                         Products
                     </h1>
                     <p style={{ color: 'var(--color-text-muted)', fontSize: '14px', margin: 0 }}>
-                        Manage all SKUs, bundles, and kits in the Super Health Center catalog.
+                        Manage all sellable SKUs, bundles, aliases, and supplies.
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexShrink: 0, flexWrap: 'wrap' }}>
@@ -435,13 +441,16 @@ const ProductCatalog: React.FC = () => {
                     All Products {tabCount(products.length)}
                 </button>
                 <button style={tabStyle('simple')} onClick={() => setActiveTab('simple')}>
-                    Main SKUs {tabCount(mainCount)}
+                    Sellable SKUs {tabCount(mainCount)}
                 </button>
                 <button style={tabStyle('bundle')} onClick={() => setActiveTab('bundle')}>
                     Bundles {tabCount(bundleCount)}
                 </button>
-                <button style={tabStyle('kit')} onClick={() => setActiveTab('kit')}>
-                    Kits {tabCount(kitCount)}
+                <button style={tabStyle('alias')} onClick={() => setActiveTab('alias')}>
+                    Aliases {tabCount(aliasCount)}
+                </button>
+                <button style={tabStyle('supply')} onClick={() => setActiveTab('supply')}>
+                    Supplies {tabCount(supplyCount)}
                 </button>
             </div>
 

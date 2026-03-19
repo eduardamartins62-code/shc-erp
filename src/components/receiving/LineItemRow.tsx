@@ -170,12 +170,16 @@ const LineItemRow: React.FC<LineItemRowProps> = ({ line, mode, index, locations,
                     {line.lotTracked || mode === 'manual' ? (
                         <input
                             type="text"
-                            placeholder="Lot #"
+                            placeholder={line.lotTracked ? 'Lot # *' : 'Lot #'}
+                            required={line.lotTracked}
                             value={line.lot}
                             onChange={(e) => onChange(index, 'lot', e.target.value)}
                             style={{
                                 width: '100%', fontSize: '13px', padding: '6px',
-                                border: '1px solid var(--color-border)', borderRadius: '4px',
+                                border: line.lotTracked && !line.lot
+                                    ? '1px solid var(--color-status-expired)'
+                                    : '1px solid var(--color-border)',
+                                borderRadius: '4px',
                                 fontFamily: "'DM Mono', 'Courier New', monospace"
                             }}
                         />
@@ -189,9 +193,16 @@ const LineItemRow: React.FC<LineItemRowProps> = ({ line, mode, index, locations,
                     {line.lotTracked || mode === 'manual' ? (
                         <input
                             type="date"
+                            required={line.lotTracked}
                             value={line.expDate}
                             onChange={(e) => onChange(index, 'expDate', e.target.value)}
-                            style={{ width: '100%', minWidth: 0, fontSize: '12px', padding: '5px 4px', border: '1px solid var(--color-border)', borderRadius: '4px', boxSizing: 'border-box' }}
+                            style={{
+                                width: '100%', minWidth: 0, fontSize: '12px', padding: '5px 4px',
+                                border: line.lotTracked && !line.expDate
+                                    ? '1px solid var(--color-status-expired)'
+                                    : '1px solid var(--color-border)',
+                                borderRadius: '4px', boxSizing: 'border-box'
+                            }}
                         />
                     ) : (
                         <span style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>—</span>

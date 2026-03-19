@@ -63,7 +63,7 @@ const ProductDetail: React.FC = () => {
         );
     }
 
-    const isBundle = product.type === 'bundle';
+    const isBundle = product.type === 'bundle' || product.type === 'alias';
     const components = isBundle ? getBundleComponents(product.id) : [];
     const autoCalculatedBundleInventory = isBundle ? calculateBundleInventory(product.id) : 0;
 
@@ -253,6 +253,35 @@ const ProductDetail: React.FC = () => {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
                     {getStatusBadge(product.status)}
+
+                    {/* LOT TRACKED TOGGLE — simple/supply products only */}
+                    {(product.type === 'simple' || product.type === 'supply') && (
+                        <label
+                            title={product.lotTracked ? 'Lot tracking ON — click to disable' : 'Lot tracking OFF — click to enable'}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}
+                            onClick={async () => {
+                                await updateProduct(product.id, { lotTracked: !product.lotTracked });
+                            }}
+                        >
+                            <div style={{
+                                position: 'relative', width: '36px', height: '20px',
+                                backgroundColor: product.lotTracked ? 'var(--color-shc-red)' : '#e5e7eb',
+                                borderRadius: '999px', transition: 'background-color 0.2s',
+                                flexShrink: 0
+                            }}>
+                                <div style={{
+                                    position: 'absolute', top: '2px',
+                                    left: product.lotTracked ? '18px' : '2px',
+                                    width: '16px', height: '16px',
+                                    backgroundColor: 'white', borderRadius: '50%',
+                                    transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                }} />
+                            </div>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: product.lotTracked ? 'var(--color-shc-red)' : 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                                Lot Tracked
+                            </span>
+                        </label>
+                    )}
 
                     {/* MORE BUTTON & DROPDOWN */}
                     <div style={{ position: 'relative' }}>

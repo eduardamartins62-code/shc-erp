@@ -1,7 +1,8 @@
 export interface Product {
     id: string;
     sku: string;
-    type: 'simple' | 'bundle' | 'kit';
+    /** simple = sellable SKU | bundle = multi-component bundle | alias = alternate SKU for a sellable SKU | supply = non-sellable supply item */
+    type: 'simple' | 'bundle' | 'alias' | 'supply';
     name: string;
     upc?: string;
     brand?: string;
@@ -12,7 +13,7 @@ export interface Product {
     length?: number;
     width?: number;
     height?: number;
-    costOfGoods?: number; // for simple
+    costOfGoods?: number; // for simple / supply
     mapPrice?: number;
     msrpPrice?: number;
     status: 'Active' | 'Inactive' | 'Discontinued';
@@ -20,6 +21,8 @@ export interface Product {
     productImageUrl?: string; // high-res square thumbnail
     reorderPoint?: number;
     preferredSupplier?: string;
+    /** When true, lot number + expiration date are required at receiving time */
+    lotTracked?: boolean;
     createdAt: string;
     updatedAt: string;
 }

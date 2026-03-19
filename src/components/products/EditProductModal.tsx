@@ -27,6 +27,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ isOpen, onCl
         msrpPrice: '',
         status: 'Active' as Product['status']
     });
+    const [lotTracked, setLotTracked] = useState(false);
 
     useEffect(() => {
         if (product && isOpen) {
@@ -40,6 +41,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ isOpen, onCl
                 msrpPrice: product.msrpPrice ? product.msrpPrice.toString() : '',
                 status: product.status
             });
+            setLotTracked(product.lotTracked ?? false);
         }
     }, [product, isOpen, isDuplicate]);
 
@@ -59,7 +61,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ isOpen, onCl
             upc: formData.upc,
             costOfGoods: formData.costOfGoods ? parseFloat(formData.costOfGoods) : undefined,
             msrpPrice: formData.msrpPrice ? parseFloat(formData.msrpPrice) : undefined,
-            status: formData.status
+            status: formData.status,
+            lotTracked: (product?.type === 'simple' || product?.type === 'supply') ? lotTracked : undefined,
         };
 
         if (isDuplicate && product) {
@@ -119,7 +122,30 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ isOpen, onCl
                             <label className="form-label">Category</label>
                             <input type="text" name="category" value={formData.category} onChange={handleInputChange} className="form-control" />
                         </div>
-                        {product.type === 'simple' && (
+                        {/* Lot tracking toggle for simple / supply */}
+                        {(product.type === 'simple' || product.type === 'supply') && (
+                            <div style={{ gridColumn: '1 / -1', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary-dark)' }}>Lot Tracked</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Requires lot # and expiration date when receiving</div>
+                                </div>
+                                <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                    <div style={{
+                                        position: 'relative', width: '36px', height: '20px',
+                                        backgroundColor: lotTracked ? 'var(--color-shc-red)' : '#e5e7eb',
+                                        borderRadius: '999px', transition: 'background-color 0.2s',
+                                    }}>
+                                        <div style={{
+                                            position: 'absolute', top: '2px', left: lotTracked ? '18px' : '2px',
+                                            width: '16px', height: '16px', backgroundColor: 'white', borderRadius: '50%',
+                                            transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                        }} />
+                                    </div>
+                                    <input type="checkbox" style={{ display: 'none' }} checked={lotTracked} onChange={e => setLotTracked(e.target.checked)} />
+                                </label>
+                            </div>
+                        )}
+                        {(product.type === 'simple' || product.type === 'supply') && (
                             <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label className="form-label">Cost of Goods (COGS)</label>
                                 <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--color-border)', borderRadius: '4px', backgroundColor: 'var(--color-white)', overflow: 'hidden' }}>
