@@ -85,7 +85,10 @@
       "Bash(git fetch:*)",
       "Bash(find /Users/eduardapantaleao/ERP -name schema.sql -o -name migration* -o -name init*.sql)",
       "Bash(find /Users/eduardapantaleao/ERP -name *.sql -o -name *schema* -o -name *migration*)",
-      "Bash(grep -E \"\\(types|index\\)\\\\.ts$\")"
+      "Bash(grep -E \"\\(types|index\\)\\\\.ts$\")",
+      "Bash(find /Users/eduardapantaleao/ERP -path */node_modules -prune -o -type d -name api -print)",
+      "Bash(grep -r quantityReserved /Users/eduardapantaleao/ERP/src --include=*.ts --include=*.tsx)",
+      "Bash(find /Users/eduardapantaleao/ERP -type f \\\\\\(-name *.sql -o -name schema* -o -name migrations* \\\\\\))"
     ]
   }
 }
