@@ -6,7 +6,7 @@ import { useProducts } from '../../context/ProductContext';
 import { supabase } from '../../lib/supabase';
 import type { Product } from '../../types';
 
-type ProductType = 'simple' | 'bundle' | 'kit';
+type ProductType = 'simple' | 'bundle' | 'alias' | 'supply';
 
 interface QuickAddProductModalProps {
     sku: string;
@@ -17,7 +17,7 @@ interface QuickAddProductModalProps {
 const TYPE_OPTIONS: { type: ProductType; label: string; sub: string; icon: React.ReactNode }[] = [
     {
         type: 'simple',
-        label: 'Main Product',
+        label: 'Sellable SKU',
         sub: 'A standalone SKU with its own inventory (e.g. single item, case, variant).',
         icon: <Box size={20} />
     },
@@ -28,9 +28,15 @@ const TYPE_OPTIONS: { type: ProductType; label: string; sub: string; icon: React
         icon: <Layers size={20} />
     },
     {
-        type: 'kit',
-        label: 'Kit',
-        sub: 'Pre-assembled set of items sold together. Tracked as its own inventory unit.',
+        type: 'alias',
+        label: 'Alias',
+        sub: 'Alternate SKU that maps 1:1 to a sellable SKU. Inventory shared with the parent product.',
+        icon: <Package size={20} />
+    },
+    {
+        type: 'supply',
+        label: 'Supply Item',
+        sub: 'Non-sellable internal supply item (e.g. packaging, labels). Tracked separately.',
         icon: <Package size={20} />
     }
 ];
@@ -235,7 +241,7 @@ const QuickAddProductModal: React.FC<QuickAddProductModalProps> = ({ sku, onClos
                                 </div>
                             </div>
 
-                            {selectedType === 'simple' && (
+                            {(selectedType === 'simple' || selectedType === 'supply') && (
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>Cost of Goods ($)</label>
                                     <input
@@ -252,8 +258,8 @@ const QuickAddProductModal: React.FC<QuickAddProductModalProps> = ({ sku, onClos
                             )}
                         </div>
 
-                        {/* Note for bundle/kit */}
-                        {(selectedType === 'bundle' || selectedType === 'kit') && (
+                        {/* Note for bundle/alias */}
+                        {(selectedType === 'bundle' || selectedType === 'alias') && (
                             <div style={{
                                 backgroundColor: '#f0f9ff',
                                 border: '1px solid #bae6fd',
@@ -266,7 +272,7 @@ const QuickAddProductModal: React.FC<QuickAddProductModalProps> = ({ sku, onClos
                             }}>
                                 <AlertCircle size={14} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
                                 <span>
-                                    You can add {selectedType === 'bundle' ? 'bundle components' : 'kit items'} after saving by visiting the product detail page.
+                                    You can {selectedType === 'bundle' ? 'add bundle components' : 'set the parent SKU'} after saving by visiting the product detail page.
                                 </span>
                             </div>
                         )}
