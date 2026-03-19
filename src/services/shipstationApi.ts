@@ -142,10 +142,17 @@ export const shipstationApi = {
             const response = await fetch('/api/shipstation/stores', {
                 headers: { 'Authorization': `Basic ${base64Credentials}` }
             });
-            if (!response.ok) return new Map();
-            const stores: any[] = await response.json();
-            return new Map((stores || []).map((s: any) => [s.storeId, s.storeName]));
-        } catch {
+            if (!response.ok) {
+                console.warn(`[ShipStation] /stores endpoint returned ${response.status} — store names will fall back to source tag`);
+                return new Map();
+            }
+            const raw = await response.json();
+            // SS /stores returns a plain array; guard against wrapped formats just in case
+            const stores: any[] = Array.isArray(raw) ? raw : (raw.stores || raw.data || []);
+            console.log(`[ShipStation] Fetched ${stores.length} store(s):`, stores.map((s: any) => `${s.storeId}=${s.storeName}`));
+            return new Map(stores.map((s: any) => [s.storeId, s.storeName]));
+        } catch (err) {
+            console.warn('[ShipStation] fetchStoreMap failed:', err);
             return new Map();
         }
     },
@@ -177,6 +184,13 @@ export const shipstationApi = {
 
         // Ensure we gracefully handle if there are no orders
         const ssOrders: any[] = data.orders || [];
+
+        // Debug: log storeId/source on first few orders to verify what SS sends
+        console.log('[ShipStation] Sample order advancedOptions:', ssOrders.slice(0, 3).map((o: any) => ({
+            orderNumber: o.orderNumber,
+            storeId: o.advancedOptions?.storeId,
+            source: o.advancedOptions?.source,
+        })));
 
         // Map the real ShipStation data to our internal Order schema
         const mappedOrders: Order[] = ssOrders.map(ssOrder => {
