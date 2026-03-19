@@ -226,6 +226,7 @@ export const shipstationApi = {
 
     /**
      * Fetches orders with shipped status from ShipStation, including tracking info.
+     * Throws on failure so syncShippedOrders can surface the error to the user.
      */
     fetchShippedOrders: async (apiKey: string, apiSecret: string): Promise<{
         orderNumber: string;
@@ -233,15 +234,20 @@ export const shipstationApi = {
         carrierCode?: string;
         shippedAt?: string;
     }[]> => {
-        if (!apiKey || !apiSecret) return [];
+        if (!apiKey || !apiSecret) throw new Error('Missing ShipStation API keys');
         const base64Credentials = btoa(`${apiKey}:${apiSecret}`);
         const response = await fetch('/api/shipstation/shipped', {
             headers: { 'Authorization': `Basic ${base64Credentials}` }
         });
-        if (!response.ok) return [];
+        if (!response.ok) {
+            const errBody = await response.json().catch(() => ({}));
+            throw new Error(errBody.error || `ShipStation API error ${response.status}: ${response.statusText}`);
+        }
         const data = await response.json();
-        return (data.orders || []).map((o: any) => {
-            // ShipStation returns shipments array; grab the first/latest shipment tracking
+        const orders: any[] = data.orders || [];
+        return orders.map((o: any) => {
+            // SS GET /orders returns shipment info directly on the order object for shipped status
+            // Some accounts also nest a shipments array; prefer that tracking if present
             const shipments: any[] = o.shipments || [];
             const latest = shipments.length > 0 ? shipments[shipments.length - 1] : null;
             return {

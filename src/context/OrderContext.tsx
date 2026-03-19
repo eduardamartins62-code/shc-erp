@@ -4,7 +4,6 @@ import { ordersApi } from '../services/ordersApi';
 import { useSettings } from './SettingsContext';
 import { shipstationApi } from '../services/shipstationApi';
 import { useInventory } from './InventoryContext';
-import { useProducts } from './ProductContext';
 
 interface OrderContextProps {
     orders: Order[];
@@ -40,8 +39,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return null;
     });
     const { channels, systemSettings } = useSettings();
-    const { reserveInventory, releaseInventory, inventory } = useInventory();
-    const { products } = useProducts();
+    const { reserveInventory, releaseInventory } = useInventory();
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -151,9 +149,9 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const toAdd = newOrders.filter(o => !existingIds.has(o.id));
 
             if (toAdd.length > 0) {
-                // Cross-reference with product catalog (not inventory) to set mappingStatus
-                // A product can be registered with 0 stock and should still be "Mapped"
-                const existingSkus = new Set(products.map(p => p.sku));
+                // Query DB directly for product SKUs — never use React state here, it may be
+                // empty or stale if the sync runs before useProducts has finished loading.
+                const existingSkus = await ordersApi.getExistingSkus();
                 toAdd.forEach(order => {
                     order.items.forEach(item => {
                         item.mappingStatus = existingSkus.has(item.sku) ? 'Mapped' : 'Unmapped';
@@ -200,8 +198,15 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const method = (systemSettings as any)?.inventoryDeductionMethod || 'FEFO';
         const autoDeduct = (systemSettings as any)?.autoDeductInventoryOnShipped !== false; // default true
 
-        // Fetch shipped orders from ShipStation — any failure here should surface to caller
-        const shippedFromSS = await shipstationApi.fetchShippedOrders(ssChannel.apiKey, ssChannel.apiSecret);
+        // Fetch shipped orders from ShipStation — throws on API failure so the error bubbles
+        // up to syncShipStationOrders and is shown in the UI via setError.
+        let shippedFromSS: Awaited<ReturnType<typeof shipstationApi.fetchShippedOrders>>;
+        try {
+            shippedFromSS = await shipstationApi.fetchShippedOrders(ssChannel.apiKey, ssChannel.apiSecret);
+        } catch (fetchErr) {
+            console.error('[ShipStation] fetchShippedOrders failed:', fetchErr);
+            throw fetchErr; // Let syncShipStationOrders surface this to the user
+        }
         if (shippedFromSS.length === 0) return;
 
         // Build a lookup map: orderNumber → tracking info
@@ -249,9 +254,19 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     useEffect(() => {
         fetchOrders().then(() => {
-            // Silently fix any Unmapped items whose SKU is now in the product catalog
-            ordersApi.refreshMappingStatus().then(() => fetchOrders()).catch(() => {});
+            // Fix any Unmapped items whose SKU is now in the product catalog.
+            // If any were newly mapped, reserve their inventory — this handles the case
+            // where orders were imported before the product existed in the catalog.
+            ordersApi.refreshMappingStatus()
+                .then(async (newlyMapped) => {
+                    if (newlyMapped.length > 0) {
+                        await reserveInventory(newlyMapped, 'System: Mapping Status Refresh').catch(() => {});
+                    }
+                    await fetchOrders();
+                })
+                .catch(() => {});
         });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Keep refs to the latest sync functions so the interval never closes over stale versions

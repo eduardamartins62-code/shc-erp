@@ -535,28 +535,55 @@ export const ordersApi = {
      * Fix stale Unmapped order_items whose SKU now exists in the products catalog.
      * Run once on app load to repair historical imports.
      */
-    refreshMappingStatus: async (): Promise<void> => {
+    /**
+     * Fix stale Unmapped order_items whose SKU now exists in the products catalog.
+     * Returns { sku, quantity }[] for items in ACTIVE (non-shipped/cancelled) orders
+     * so the caller can reserve inventory for them.
+     */
+    refreshMappingStatus: async (): Promise<{ sku: string; quantity: number }[]> => {
         const { data: unmapped } = await supabase
             .from('order_items')
-            .select('id, sku')
+            .select('id, sku, quantity, order_id')
             .eq('mapping_status', 'Unmapped');
 
-        if (!unmapped || !unmapped.length) return;
+        if (!unmapped || !unmapped.length) return [];
 
         const { data: catalogProducts } = await supabase
             .from('products')
             .select('sku');
 
-        if (!catalogProducts || !catalogProducts.length) return;
+        if (!catalogProducts || !catalogProducts.length) return [];
 
         const catalogSkus = new Set(catalogProducts.map((p: any) => p.sku));
         const toFix = unmapped.filter((item: any) => catalogSkus.has(item.sku));
-        if (!toFix.length) return;
+        if (!toFix.length) return [];
 
+        // Find which of these belong to active (not yet shipped/cancelled) orders
+        const orderIds = [...new Set(toFix.map((i: any) => i.order_id))];
+        const { data: activeOrders } = await supabase
+            .from('orders')
+            .select('id')
+            .in('id', orderIds)
+            .neq('fulfillment_status', 'Shipped')
+            .neq('fulfillment_status', 'Cancelled');
+
+        const activeOrderIds = new Set((activeOrders || []).map((o: any) => o.id));
+
+        // Mark all matching items as Mapped
         await supabase
             .from('order_items')
             .update({ mapping_status: 'Mapped' })
             .in('id', toFix.map((i: any) => i.id));
+
+        // Aggregate quantities per SKU (active orders only) for inventory reservation
+        const skuQtyMap = new Map<string, number>();
+        toFix.forEach((item: any) => {
+            if (activeOrderIds.has(item.order_id)) {
+                skuQtyMap.set(item.sku, (skuQtyMap.get(item.sku) || 0) + item.quantity);
+            }
+        });
+
+        return Array.from(skuQtyMap.entries()).map(([sku, quantity]) => ({ sku, quantity }));
     },
 
     /**
@@ -568,14 +595,24 @@ export const ordersApi = {
     },
 
     /**
-     * Returns all orders that are NOT yet Shipped or Cancelled — used by syncShippedOrders
-     * to avoid depending on stale React state in the auto-sync interval.
+     * Returns the set of product SKUs in the catalog — used by syncShipStationOrders
+     * to set mappingStatus without depending on potentially-stale React products state.
+     */
+    getExistingSkus: async (): Promise<Set<string>> => {
+        const { data } = await supabase.from('products').select('sku');
+        return new Set((data || []).map((p: any) => p.sku));
+    },
+
+    /**
+     * Returns all orders that are NOT yet Shipped or Cancelled — used by syncShippedOrders.
+     * Uses .neq().neq() instead of .not('in') to avoid PostgREST quote-formatting issues.
      */
     getNonShippedOrders: async (): Promise<{ id: string }[]> => {
         const { data } = await supabase
             .from('orders')
             .select('id, fulfillment_status')
-            .not('fulfillment_status', 'in', '("Shipped","Cancelled")');
+            .neq('fulfillment_status', 'Shipped')
+            .neq('fulfillment_status', 'Cancelled');
         return data || [];
     },
 
