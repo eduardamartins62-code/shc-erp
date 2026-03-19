@@ -168,6 +168,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 </Link>
                             );
                         })}
+
+                        <div className="sidebar-divider" />
+
+                        {/* User info */}
+                        <div className="sidebar-user" title="System Admin">
+                            <div className="sidebar-user-avatar">SA</div>
+                            <div className="sidebar-user-info">
+                                <div className="sidebar-user-name">System Admin</div>
+                                <div className="sidebar-user-email">admin@shc.com</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </nav>
@@ -176,9 +187,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <main className="main-content">
                 <div className="main-inner">
 
-                    {/* Topbar */}
-                    <header className="card topbar-card">
-                        {/* Mobile hamburger — shown via CSS only on mobile */}
+                    {/* Mobile-only hamburger strip — hidden on desktop */}
+                    <div className="mobile-topbar">
                         <button
                             className="mobile-menu-btn"
                             onClick={() => setMobileOpen(true)}
@@ -186,15 +196,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         >
                             <Menu size={18} />
                         </button>
-
-                        <div className="topbar-user">
-                            <div className="user-avatar">SA</div>
-                            <div className="user-info">
-                                <div className="user-name">System Admin</div>
-                                <div className="user-email">admin@shc.com</div>
-                            </div>
-                        </div>
-                    </header>
+                    </div>
 
                     {/* Page content rendered by Next.js */}
                     {children}

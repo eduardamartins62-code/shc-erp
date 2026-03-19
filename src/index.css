@@ -496,6 +496,60 @@ tbody tr:hover {
   pointer-events: none;
 }
 
+/* User chip at the bottom of the sidebar */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sidebar-user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-shc-red);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.03em;
+}
+
+.sidebar-user-info {
+  overflow: hidden;
+  transition: opacity 0.15s ease, max-width 0.25s ease;
+  max-width: 160px;
+  opacity: 1;
+}
+
+.sidebar-user-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-user-email {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-collapsed .sidebar-user-info {
+  opacity: 0;
+  max-width: 0;
+}
+
 /* Navigation area */
 .sidebar-nav {
   display: flex;
@@ -628,6 +682,14 @@ tbody tr:hover {
   padding: 12px 20px !important;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
+}
+
+/* Mobile-only strip that holds just the hamburger; invisible on desktop */
+.mobile-topbar {
+  display: none;
+  align-items: center;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
 }
 
 .mobile-menu-btn {
@@ -815,6 +877,10 @@ tbody tr:hover {
   }
 
   .mobile-menu-btn {
+    display: flex !important;
+  }
+
+  .mobile-topbar {
     display: flex !important;
   }
 
