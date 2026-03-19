@@ -462,6 +462,40 @@ tbody tr:hover {
   pointer-events: none;
 }
 
+/* Warehouse selector in sidebar */
+.sidebar-warehouse {
+  padding: 0 0.625rem 0.5rem;
+  overflow: hidden;
+  transition: opacity 0.15s ease, max-height 0.25s ease;
+  max-height: 60px;
+}
+
+.sidebar-warehouse-select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 0.5rem;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;
+}
+
+.sidebar-warehouse-select option {
+  background: var(--color-sidebar-bg);
+  color: #fff;
+}
+
+.sidebar-collapsed .sidebar-warehouse {
+  opacity: 0;
+  max-height: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
 /* Navigation area */
 .sidebar-nav {
   display: flex;

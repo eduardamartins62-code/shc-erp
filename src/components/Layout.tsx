@@ -104,6 +104,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </div>
                     </div>
 
+                    {/* Warehouse selector */}
+                    <div className="sidebar-warehouse">
+                        <select
+                            value={selectedWarehouseId}
+                            onChange={e => setSelectedWarehouseId(e.target.value)}
+                            className="sidebar-warehouse-select"
+                            title="Select warehouse"
+                        >
+                            <option value="">All Warehouses</option>
+                            {warehouses.map(w => (
+                                <option key={w.id} value={w.id}>{w.warehouseName}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     {/* Main navigation links */}
                     <div className="sidebar-nav">
                         {NAV_ITEMS.map(({ to, icon: Icon, label, end }) => {
@@ -171,30 +186,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         >
                             <Menu size={18} />
                         </button>
-
-                        <div className="topbar-location">
-                            <span className="topbar-label">Location</span>
-                            <select
-                                value={selectedWarehouseId}
-                                onChange={e => setSelectedWarehouseId(e.target.value)}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    fontWeight: 600,
-                                    fontSize: '0.9rem',
-                                    cursor: 'pointer',
-                                    color: 'var(--color-text-main)',
-                                    padding: 0,
-                                    outline: 'none',
-                                    maxWidth: '200px',
-                                }}
-                            >
-                                <option value="">All Warehouses</option>
-                                {warehouses.map(w => (
-                                    <option key={w.id} value={w.id}>{w.warehouseName}</option>
-                                ))}
-                            </select>
-                        </div>
 
                         <div className="topbar-user">
                             <div className="user-avatar">SA</div>

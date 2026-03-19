@@ -4,7 +4,7 @@ import { useInventory } from '../context/InventoryContext';
 import { useSettings } from '../context/SettingsContext';
 import { useProducts } from '../context/ProductContext';
 import InventoryTable from '../components/InventoryTable';
-import { MapPin, Search, X, AlertTriangle } from 'lucide-react';
+import { Search, X, AlertTriangle } from 'lucide-react';
 
 const StockByWarehouse: React.FC = () => {
     const searchParams = useSearchParams();
@@ -59,41 +59,16 @@ const StockByWarehouse: React.FC = () => {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: '4px' }}>
-                        Inventory Management
-                    </div>
-                    <h1 style={{ fontSize: '28px', fontWeight: 'bold', letterSpacing: '-0.02em', color: 'var(--color-text-main)', margin: '0 0 4px 0' }}>
-                        Stock by Warehouse
-                    </h1>
-                    <p style={{ color: 'var(--color-text-muted)', fontSize: '14px', margin: 0 }}>
-                        Manage and view inventory segregated by physical location.
-                    </p>
+            <div style={{ marginBottom: '2rem' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                    Inventory Management
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: 'var(--color-white)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--color-border)', flexShrink: 0 }}>
-                    <MapPin size={20} color="var(--color-shc-red)" />
-                    <select
-                        style={{
-                            border: 'none',
-                            outline: 'none',
-                            fontSize: '1rem',
-                            fontWeight: 600,
-                            color: 'var(--color-primary-dark)',
-                            backgroundColor: 'transparent',
-                            cursor: 'pointer'
-                        }}
-                        value={selectedWarehouseId}
-                        onChange={(e) => setSelectedWarehouseId(e.target.value)}
-                    >
-                        <option value="">All Warehouses</option>
-                        {warehouses.map(wh => (
-                            <option key={wh.id} value={wh.id}>{wh.warehouseName} ({wh.warehouseCode})</option>
-                        ))}
-                        {warehouses.length === 0 && <option value="">No Warehouses Found</option>}
-                    </select>
-                </div>
+                <h1 style={{ fontSize: '28px', fontWeight: 'bold', letterSpacing: '-0.02em', color: 'var(--color-text-main)', margin: '0 0 4px 0' }}>
+                    Stock by Warehouse
+                </h1>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '14px', margin: 0 }}>
+                    Manage and view inventory segregated by physical location.
+                </p>
             </div>
 
             {/* Low Stock Filter Banner */}
