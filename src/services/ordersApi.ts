@@ -476,16 +476,24 @@ export const ordersApi = {
         shippedAt: string | undefined,
         performedBy: string
     ): Promise<void> => {
-        const updateData: any = {
-            fulfillment_status: 'Shipped',
-            updated_at: new Date().toISOString()
-        };
-        if (trackingNumber) updateData.tracking_number = trackingNumber;
-        if (carrierCode) updateData.carrier_code = carrierCode;
-        if (shippedAt) updateData.shipped_at = shippedAt;
-
-        const { error } = await supabase.from('orders').update(updateData).eq('id', orderId);
+        // Step 1: Update fulfillment_status only — this column is guaranteed to exist.
+        // Keeping tracking fields separate so a missing column never blocks the status update.
+        const { error } = await supabase
+            .from('orders')
+            .update({ fulfillment_status: 'Shipped', updated_at: new Date().toISOString() })
+            .eq('id', orderId);
         if (error) throw new Error(error.message);
+
+        // Step 2: Try to store tracking info — non-blocking, columns may not exist yet.
+        const trackingData: any = {};
+        if (trackingNumber) trackingData.tracking_number = trackingNumber;
+        if (carrierCode) trackingData.carrier_code = carrierCode;
+        if (shippedAt) trackingData.shipped_at = shippedAt;
+        if (Object.keys(trackingData).length > 0) {
+            await supabase.from('orders').update(trackingData).eq('id', orderId).then(
+                () => {}, // ignore errors — columns might not exist in DB yet
+            );
+        }
 
         // Mark all items as Picked
         await supabase.from('order_items').update({ pick_status: 'Picked' }).eq('order_id', orderId);

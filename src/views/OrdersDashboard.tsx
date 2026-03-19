@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useRouter } from 'next/navigation';
 import OrderTable from '../components/OrderTable';
-import { Download, Plus } from 'lucide-react';
+import { Download, Plus, RefreshCw } from 'lucide-react';
 
 const OrdersDashboard: React.FC = () => {
-    const { orders, loading, error, syncShipStationOrders, lastOrderSyncedAt } = useOrders();
+    const { orders, loading, error, syncShipStationOrders, syncShippedOrders, lastOrderSyncedAt } = useOrders();
     const router = useRouter();
     const [syncing, setSyncing] = useState(false);
+    const [syncingShipped, setSyncingShipped] = useState(false);
     const [activeTab, setActiveTab] = useState<'Pending' | 'Shipped' | 'Cancelled'>('Pending');
 
     const pendingOrders = orders.filter(o => ['New', 'Allocated', 'Picking', 'Packed'].includes(o.fulfillmentStatus));
@@ -46,24 +47,45 @@ const OrdersDashboard: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', flexShrink: 0, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
-                        <button
-                            className="btn-secondary"
-                            onClick={async () => {
-                                setSyncing(true);
-                                try {
-                                    await syncShipStationOrders();
-                                    alert('Orders synced successfully!');
-                                } catch (e: any) {
-                                    alert(e.message);
-                                } finally {
-                                    setSyncing(false);
-                                }
-                            }}
-                            disabled={syncing || loading}
-                        >
-                            <Download size={18} />
-                            {syncing ? 'Importing...' : 'Import Orders'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                                className="btn-secondary"
+                                onClick={async () => {
+                                    setSyncingShipped(true);
+                                    try {
+                                        await syncShippedOrders();
+                                        alert('Shipped status synced from ShipStation!');
+                                    } catch (e: any) {
+                                        alert(e.message || 'Sync failed');
+                                    } finally {
+                                        setSyncingShipped(false);
+                                    }
+                                }}
+                                disabled={syncingShipped || syncing || loading}
+                                title="Pull shipped status updates from ShipStation"
+                            >
+                                <RefreshCw size={18} className={syncingShipped ? 'spin' : ''} />
+                                {syncingShipped ? 'Syncing...' : 'Sync Shipped'}
+                            </button>
+                            <button
+                                className="btn-secondary"
+                                onClick={async () => {
+                                    setSyncing(true);
+                                    try {
+                                        await syncShipStationOrders();
+                                        alert('Orders synced successfully!');
+                                    } catch (e: any) {
+                                        alert(e.message);
+                                    } finally {
+                                        setSyncing(false);
+                                    }
+                                }}
+                                disabled={syncing || loading}
+                            >
+                                <Download size={18} />
+                                {syncing ? 'Importing...' : 'Import Orders'}
+                            </button>
+                        </div>
                         {lastOrderSyncedAt && (
                             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
                                 Last synced: {new Date(lastOrderSyncedAt).toLocaleTimeString()}
