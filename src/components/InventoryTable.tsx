@@ -18,9 +18,10 @@ import BulkMoveModal from './inventory/BulkMoveModal';
 interface Props {
     data?: InventoryItem[];
     isDashboard?: boolean;
+    headerSearch?: React.ReactNode;
 }
 
-const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
+const InventoryTable: React.FC<Props> = ({ data, isDashboard, headerSearch }) => {
     const { inventory } = useInventory();
     const { products } = useProducts();
     const displayData = data || inventory;
@@ -190,21 +191,17 @@ const InventoryTable: React.FC<Props> = ({ data, isDashboard }) => {
 
     return (
         <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Inventory Stock</h2>
-                {!isDashboard && (
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button className="btn-secondary" onClick={() => setActiveModal('transfer')}>
-                            <ArrowRightLeft size={16} />
-                            Transfer Stock
-                        </button>
-                        <button className="btn-primary" onClick={() => setActiveModal('receive')}>
-                            <Plus size={16} />
-                            Receive Stock
-                        </button>
+            {!isDashboard && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                    <div style={{ flex: 1 }}>
+                        {headerSearch}
                     </div>
-                )}
-            </div>
+                    <button className="btn-secondary" style={{ flexShrink: 0 }} onClick={() => setActiveModal('transfer')}>
+                        <ArrowRightLeft size={16} />
+                        Transfer Stock
+                    </button>
+                </div>
+            )}
 
             <BulkActionBar
                 selectedCount={selectedKeys.size}

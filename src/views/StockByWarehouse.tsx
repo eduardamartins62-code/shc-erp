@@ -10,7 +10,7 @@ const StockByWarehouse: React.FC = () => {
     const searchParams = useSearchParams();
     const router = useRouter();
     const { inventory } = useInventory();
-    const { warehouses, selectedWarehouseId, setSelectedWarehouseId } = useSettings();
+    const { warehouses, selectedWarehouseId } = useSettings();
     const { products } = useProducts();
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -97,62 +97,6 @@ const StockByWarehouse: React.FC = () => {
                 </div>
             )}
 
-            {/* Search Bar */}
-            <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
-                <Search
-                    size={16}
-                    style={{
-                        position: 'absolute',
-                        left: '0.75rem',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        color: 'var(--color-text-muted)',
-                        pointerEvents: 'none',
-                        zIndex: 1
-                    }}
-                />
-                <input
-                    type="text"
-                    placeholder="Search by SKU, description, UPC, lot number..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{
-                        width: '100%',
-                        paddingLeft: '2.5rem',
-                        paddingRight: searchQuery ? '2.5rem' : '0.75rem',
-                        paddingTop: '0.625rem',
-                        paddingBottom: '0.625rem',
-                        borderRadius: '8px',
-                        border: '1px solid var(--color-border)',
-                        backgroundColor: 'var(--color-white)',
-                        fontSize: '0.875rem',
-                        color: 'var(--color-text-dark)',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                    }}
-                />
-                {searchQuery && (
-                    <button
-                        onClick={() => setSearchQuery('')}
-                        style={{
-                            position: 'absolute',
-                            right: '0.75rem',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: 'var(--color-text-muted)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: 0
-                        }}
-                    >
-                        <X size={14} />
-                    </button>
-                )}
-            </div>
-
             <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '2rem' }}>
                 <div className="card" style={{ flex: 1 }}>
                     <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Unique Items at {targetWarehouse?.warehouseName || 'Warehouse'}</div>
@@ -165,7 +109,49 @@ const StockByWarehouse: React.FC = () => {
             </div>
 
             <div className="card">
-                <InventoryTable data={filteredInventory} />
+                <InventoryTable
+                    data={filteredInventory}
+                    headerSearch={
+                        <div style={{ position: 'relative' }}>
+                            <Search
+                                size={16}
+                                style={{
+                                    position: 'absolute', left: '0.75rem', top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    color: 'var(--color-text-muted)', pointerEvents: 'none', zIndex: 1
+                                }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Search by SKU, description, UPC, lot number..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    width: '100%', paddingLeft: '2.5rem',
+                                    paddingRight: searchQuery ? '2.5rem' : '0.75rem',
+                                    paddingTop: '0.625rem', paddingBottom: '0.625rem',
+                                    borderRadius: '8px', border: '1px solid var(--color-border)',
+                                    backgroundColor: 'var(--color-white)', fontSize: '0.875rem',
+                                    color: 'var(--color-text-dark)', outline: 'none', boxSizing: 'border-box'
+                                }}
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    style={{
+                                        position: 'absolute', right: '0.75rem', top: '50%',
+                                        transform: 'translateY(-50%)', background: 'none',
+                                        border: 'none', cursor: 'pointer',
+                                        color: 'var(--color-text-muted)', display: 'flex',
+                                        alignItems: 'center', padding: 0
+                                    }}
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+                    }
+                />
             </div>
         </div>
     );
