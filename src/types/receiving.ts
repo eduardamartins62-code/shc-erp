@@ -43,7 +43,7 @@ export interface ReceiptSession {
     receiptNumber: string;
     receivedDate: string;
     warehouseId: string;
-    location: string;
+    location?: string; // optional - locations are assigned per-line in the put-away step
     notes: string;
     mode: 'po' | 'manual' | 'bulk';
     poId: string | null;

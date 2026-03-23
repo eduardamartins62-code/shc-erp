@@ -3,10 +3,11 @@
 import React, { useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import { SlideOverPanel } from '../components/ui/SlideOverPanel';
 import {
     Plus, Edit2, ShieldCheck, Shield, UserMinus, KeyRound,
-    Check, X,
+    Check, X, Loader2, Mail,
 } from 'lucide-react';
 import type { User, UserPermissions, PermissionModuleKey, PermissionLevel, AppAccess, ERPAppKey } from '../types';
 import {
@@ -206,6 +207,10 @@ export default function ERPUsersAdmin() {
     const [detailUser, setDetailUser] = useState<User | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
+    const [inviteStatus, setInviteStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+    const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
     const [formData, setFormData] = useState({
         fullName: '',
@@ -218,6 +223,8 @@ export default function ERPUsersAdmin() {
     });
 
     function openModal(user?: User) {
+        setSaveError('');
+        setInviteStatus('idle');
         if (user) {
             setEditingUser(user);
             setFormData({
@@ -244,6 +251,8 @@ export default function ERPUsersAdmin() {
 
     async function handleSave(e: React.FormEvent) {
         e.preventDefault();
+        setSaveError('');
+        setSaving(true);
         try {
             const dataToSave = {
                 ...formData,
@@ -253,13 +262,52 @@ export default function ERPUsersAdmin() {
             if (editingUser) {
                 await updateUser(editingUser.id, dataToSave);
                 if (detailUser?.id === editingUser.id) setDetailUser({ ...editingUser, ...dataToSave } as User);
+                setIsModalOpen(false);
             } else {
+                // 1. Insert into users table
                 await addUser({ ...dataToSave, createdBy: currentUser?.fullName || 'System', updatedBy: currentUser?.fullName || 'System' });
+
+                // 2. Send invite email via server-side API (creates Supabase Auth account)
+                setInviteStatus('sending');
+                const res = await fetch('/api/admin/invite-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: formData.email,
+                        name: formData.fullName,
+                        redirectTo: `${window.location.origin}/reset-password`,
+                    }),
+                });
+                const json = await res.json();
+                if (!res.ok && !json.alreadyExists) {
+                    setInviteStatus('error');
+                    setSaveError(`User created but invite email failed: ${json.error}. They can still be manually invited later.`);
+                    // Don't close modal so user can see the error
+                    setSaving(false);
+                    return;
+                }
+                setInviteStatus('sent');
+                setIsModalOpen(false);
             }
-            setIsModalOpen(false);
         } catch (err) {
             console.error(err);
-            alert('Error saving user.');
+            setSaveError('Error saving user. Please try again.');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function handleResetPassword(email: string) {
+        setResetStatus('sending');
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) {
+            setResetStatus('error');
+            setTimeout(() => setResetStatus('idle'), 3000);
+        } else {
+            setResetStatus('sent');
+            setTimeout(() => setResetStatus('idle'), 4000);
         }
     }
 
@@ -311,9 +359,21 @@ export default function ERPUsersAdmin() {
                             onClick={() => detailUser && openModal(detailUser)}>
                             <Edit2 size={14} /> Edit
                         </button>
-                        <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                            onClick={() => detailUser && alert(`Password reset sent to ${detailUser.email}`)}>
-                            <KeyRound size={14} /> Reset Password
+                        <button
+                            className="btn-secondary"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minWidth: '120px', justifyContent: 'center' }}
+                            disabled={resetStatus === 'sending'}
+                            onClick={() => detailUser && handleResetPassword(detailUser.email)}
+                        >
+                            {resetStatus === 'sending' ? (
+                                <><Loader2 size={13} className="animate-spin" /> Sending…</>
+                            ) : resetStatus === 'sent' ? (
+                                <><Check size={13} style={{ color: '#16a34a' }} /> Email sent!</>
+                            ) : resetStatus === 'error' ? (
+                                <><X size={13} style={{ color: '#dc2626' }} /> Failed</>
+                            ) : (
+                                <><KeyRound size={14} /> Reset Password</>
+                            )}
                         </button>
                     </>
                 }
@@ -505,15 +565,33 @@ export default function ERPUsersAdmin() {
                                 </>
                             )}
 
+                            {/* Error message */}
+                            {saveError && (
+                                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.625rem 0.875rem', color: '#dc2626', fontSize: '0.8rem' }}>
+                                    {saveError}
+                                </div>
+                            )}
+
+                            {/* Invite info banner — new users only */}
+                            {!editingUser && (
+                                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '0.625rem 0.875rem', fontSize: '0.8rem', color: '#1d4ed8', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                    <Mail size={14} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+                                    <span>An invite email will be sent to this address so they can set their password and sign in.</span>
+                                </div>
+                            )}
+
                             {/* Footer */}
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
                                 <button type="button" onClick={() => setIsModalOpen(false)}
                                     style={{ padding: '0.5rem 1.25rem', backgroundColor: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '6px', fontWeight: 500, cursor: 'pointer' }}>
                                     Cancel
                                 </button>
-                                <button type="submit"
-                                    style={{ padding: '0.5rem 1.25rem', backgroundColor: 'var(--color-shc-red)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 500, cursor: 'pointer' }}>
-                                    {editingUser ? 'Save Changes' : 'Create User'}
+                                <button type="submit" disabled={saving}
+                                    style={{ padding: '0.5rem 1.25rem', backgroundColor: 'var(--color-shc-red)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    {saving
+                                        ? <><Loader2 size={15} className="animate-spin" />{inviteStatus === 'sending' ? 'Sending invite…' : 'Saving…'}</>
+                                        : editingUser ? 'Save Changes' : 'Create & Send Invite'
+                                    }
                                 </button>
                             </div>
                         </form>
