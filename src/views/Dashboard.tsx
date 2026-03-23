@@ -20,7 +20,7 @@ const Dashboard: React.FC = () => {
         ? auditLogs.filter(l => l.warehouseId === selectedWarehouseId)
         : auditLogs;
     const selectedWarehouseName = selectedWarehouseId
-        ? (warehouses.find(w => w.id === selectedWarehouseId)?.name ?? 'Selected Warehouse')
+        ? (warehouses.find(w => w.id === selectedWarehouseId)?.warehouseName ?? 'Selected Warehouse')
         : null;
 
     // Quick Stats — computed from filtered inventory (respects selected warehouse)
