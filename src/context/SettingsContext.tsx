@@ -16,6 +16,7 @@ interface SettingsContextType {
     // User Actions
     addUser: (data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
     updateUser: (id: string, data: Partial<User>) => Promise<void>;
+    deleteUser: (id: string) => Promise<void>;
 
     // Warehouse Actions
     addWarehouse: (data: Omit<Warehouse, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -153,6 +154,20 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     };
 
+    const deleteUser = async (id: string) => {
+        try {
+            setLoading(true);
+            setError(null);
+            await api.deleteUser(id);
+            await refreshSettings();
+        } catch (err: any) {
+            setError(err.message || 'Failed to delete user');
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // WAREHOUSE ACTIONS
     const addWarehouse = async (data: Omit<Warehouse, 'id' | 'createdAt' | 'updatedAt'>) => {
         try {
@@ -252,6 +267,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
                 refreshSettings,
                 addUser,
                 updateUser,
+                deleteUser,
                 addWarehouse,
                 updateWarehouse,
                 addChannel,

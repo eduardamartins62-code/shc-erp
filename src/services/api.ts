@@ -934,6 +934,11 @@ export const api = {
         };
     },
 
+    deleteUser: async (id: string): Promise<void> => {
+        const { error } = await supabase.from('users').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+    },
+
     getWarehouses: async (): Promise<Warehouse[]> => {
         const { data, error } = await supabase.from('warehouses').select('*').order('is_default', { ascending: false });
         if (error) return [...warehouseStore]; // fallback to mock if table missing

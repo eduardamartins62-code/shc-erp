@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import { SlideOverPanel } from '../components/ui/SlideOverPanel';
 import {
     Plus, Edit2, ShieldCheck, Shield, UserMinus, KeyRound,
-    Check, X, Loader2, Mail,
+    Check, X, Loader2, Mail, Trash2, Lock,
 } from 'lucide-react';
 import type { User, UserPermissions, PermissionModuleKey, PermissionLevel, AppAccess, ERPAppKey } from '../types';
 import {
@@ -201,7 +201,7 @@ function WMSPermissionTable({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function ERPUsersAdmin() {
-    const { users, warehouses, addUser, updateUser } = useSettings();
+    const { users, warehouses, addUser, updateUser, deleteUser } = useSettings();
     const { currentUser } = useAuth();
 
     const [detailUser, setDetailUser] = useState<User | null>(null);
@@ -211,6 +211,13 @@ export default function ERPUsersAdmin() {
     const [saveError, setSaveError] = useState('');
     const [inviteStatus, setInviteStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
     const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+    const [isSetPasswordOpen, setIsSetPasswordOpen] = useState(false);
+    const [setPasswordTarget, setSetPasswordTarget] = useState<User | null>(null);
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showNewPw, setShowNewPw] = useState(false);
+    const [setPasswordStatus, setSetPasswordStatus] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
+    const [setPasswordError, setSetPasswordError] = useState('');
 
     const [formData, setFormData] = useState({
         fullName: '',
@@ -311,6 +318,47 @@ export default function ERPUsersAdmin() {
         }
     }
 
+    function openSetPassword(user: User) {
+        setSetPasswordTarget(user);
+        setNewPassword('');
+        setConfirmPassword('');
+        setSetPasswordError('');
+        setSetPasswordStatus('idle');
+        setShowNewPw(false);
+        setIsSetPasswordOpen(true);
+    }
+
+    async function handleSetPassword(e: React.FormEvent) {
+        e.preventDefault();
+        setSetPasswordError('');
+        if (newPassword.length < 8) { setSetPasswordError('Password must be at least 8 characters.'); return; }
+        if (newPassword !== confirmPassword) { setSetPasswordError('Passwords do not match.'); return; }
+        setSetPasswordStatus('saving');
+        const res = await fetch('/api/admin/set-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: setPasswordTarget?.email, password: newPassword }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+            setSetPasswordError(json.error || 'Failed to set password.');
+            setSetPasswordStatus('error');
+        } else {
+            setSetPasswordStatus('done');
+            setTimeout(() => setIsSetPasswordOpen(false), 1500);
+        }
+    }
+
+    async function handleDeleteUser(user: User) {
+        if (!confirm(`Permanently delete ${user.fullName} (${user.email})?\n\nThis removes them from the ERP system. Their Supabase login account will remain unless removed manually.`)) return;
+        try {
+            await deleteUser(user.id);
+            setDetailUser(null);
+        } catch (err) {
+            alert('Failed to delete user. Please try again.');
+        }
+    }
+
     return (
         <div>
             {/* Page header */}
@@ -359,6 +407,10 @@ export default function ERPUsersAdmin() {
                             onClick={() => detailUser && openModal(detailUser)}>
                             <Edit2 size={14} /> Edit
                         </button>
+                        <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                            onClick={() => detailUser && openSetPassword(detailUser)}>
+                            <Lock size={14} /> Set Password
+                        </button>
                         <button
                             className="btn-secondary"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', minWidth: '120px', justifyContent: 'center' }}
@@ -372,7 +424,7 @@ export default function ERPUsersAdmin() {
                             ) : resetStatus === 'error' ? (
                                 <><X size={13} style={{ color: '#dc2626' }} /> Failed</>
                             ) : (
-                                <><KeyRound size={14} /> Reset Password</>
+                                <><KeyRound size={14} /> Reset Email</>
                             )}
                         </button>
                     </>
@@ -421,8 +473,8 @@ export default function ERPUsersAdmin() {
                             </div>
                         )}
 
-                        {/* Activate / deactivate */}
-                        <div style={{ marginTop: 'auto', paddingTop: '1.5rem' }}>
+                        {/* Activate / deactivate + Delete */}
+                        <div style={{ marginTop: 'auto', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             {detailUser.isActive ? (
                                 <button className="btn-secondary"
                                     style={{ width: '100%', justifyContent: 'center', padding: '0.75rem', color: 'var(--color-shc-red)', borderColor: 'var(--color-shc-red)' }}
@@ -444,10 +496,85 @@ export default function ERPUsersAdmin() {
                                     Activate User
                                 </button>
                             )}
+                            <button
+                                className="btn-secondary"
+                                style={{ width: '100%', justifyContent: 'center', padding: '0.75rem', color: '#6b7280', fontSize: '0.8rem' }}
+                                onClick={() => handleDeleteUser(detailUser)}
+                            >
+                                <Trash2 size={15} /> Delete User
+                            </button>
                         </div>
                     </div>
                 )}
             </SlideOverPanel>
+
+            {/* ── Set Password Modal ── */}
+            {isSetPasswordOpen && setPasswordTarget && (
+                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' }}>
+                    <div style={{ backgroundColor: 'white', borderRadius: '10px', padding: '2rem', width: '420px', maxWidth: '95vw', boxShadow: '0 10px 25px rgba(0,0,0,0.15)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                            <Lock size={20} color="var(--color-shc-red)" />
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-primary-dark)' }}>Set Password</h3>
+                        </div>
+                        <p style={{ margin: '0 0 1.5rem', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                            Set a new password for <strong>{setPasswordTarget.fullName}</strong> ({setPasswordTarget.email})
+                        </p>
+
+                        {setPasswordStatus === 'done' ? (
+                            <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                                <Check size={40} color="#16a34a" style={{ marginBottom: '0.5rem' }} />
+                                <p style={{ color: '#16a34a', fontWeight: 600, margin: 0 }}>Password updated!</p>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleSetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.375rem', fontWeight: 500, fontSize: '0.875rem' }}>New Password</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type={showNewPw ? 'text' : 'password'}
+                                            value={newPassword}
+                                            onChange={e => setNewPassword(e.target.value)}
+                                            placeholder="Minimum 8 characters"
+                                            required
+                                            style={{ width: '100%', padding: '0.5rem 2.5rem 0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                                        />
+                                        <button type="button" onClick={() => setShowNewPw(v => !v)}
+                                            style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', padding: 0 }}>
+                                            {showNewPw ? <X size={16} /> : <Check size={16} />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.375rem', fontWeight: 500, fontSize: '0.875rem' }}>Confirm Password</label>
+                                    <input
+                                        type={showNewPw ? 'text' : 'password'}
+                                        value={confirmPassword}
+                                        onChange={e => setConfirmPassword(e.target.value)}
+                                        placeholder="Re-enter password"
+                                        required
+                                        style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                                    />
+                                </div>
+                                {setPasswordError && (
+                                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.5rem 0.75rem', color: '#dc2626', fontSize: '0.8rem' }}>
+                                        {setPasswordError}
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem' }}>
+                                    <button type="button" onClick={() => setIsSetPasswordOpen(false)}
+                                        style={{ padding: '0.5rem 1rem', backgroundColor: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '6px', fontWeight: 500, cursor: 'pointer', fontSize: '0.875rem' }}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" disabled={setPasswordStatus === 'saving'}
+                                        style={{ padding: '0.5rem 1.25rem', backgroundColor: 'var(--color-shc-red)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 500, cursor: 'pointer', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: setPasswordStatus === 'saving' ? 0.7 : 1 }}>
+                                        {setPasswordStatus === 'saving' ? <><Loader2 size={15} className="animate-spin" /> Saving…</> : 'Set Password'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* ── Add / Edit Modal ── */}
             {isModalOpen && (
