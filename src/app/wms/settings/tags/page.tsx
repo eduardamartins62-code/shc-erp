@@ -1,7 +1,7 @@
 "use client";
 
 import SettingsLayout from '../../../../views/settings/SettingsLayout';
-import { TagsSection } from '../../../../views/settings/TagsSection';
+import { TagsSection } from '../../../../views/settings';
 
 export default function TagsPage() {
     return (

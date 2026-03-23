@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, X, Search, GripVertical } from 'lucide-react';
 import { useProducts } from '../context/ProductContext';
 import { useInventory } from '../context/InventoryContext';
+import { useSettings } from '../context/SettingsContext';
 import InventoryTable from './InventoryTable';
 import type { InventoryItem } from '../types';
 
@@ -12,6 +13,12 @@ interface DashboardInventoryWidgetProps {
 const DashboardInventoryWidget: React.FC<DashboardInventoryWidgetProps> = ({ userId = 'default_user' }) => {
     const { products } = useProducts();
     const { inventory } = useInventory();
+    const { selectedWarehouseId } = useSettings();
+
+    // Filter inventory by selected warehouse (empty string = all warehouses)
+    const filteredInventory = selectedWarehouseId
+        ? inventory.filter(i => i.warehouseId === selectedWarehouseId)
+        : inventory;
 
     const [selectedSkus, setSelectedSkus] = useState<string[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,15 +39,15 @@ const DashboardInventoryWidget: React.FC<DashboardInventoryWidgetProps> = ({ use
         } else {
             setupDefaultSkus();
         }
-    }, [storageKey, inventory]);
+    }, [storageKey, filteredInventory]);
 
     const setupDefaultSkus = () => {
         // Default to up to 10 SKUs with lowest stock
-        if (inventory.length === 0) return;
+        if (filteredInventory.length === 0) return;
 
         // Group and sum total available per SKU
         const skuTotals = new Map<string, number>();
-        inventory.forEach(item => {
+        filteredInventory.forEach(item => {
             const available = item.quantityOnHand - item.quantityReserved;
             skuTotals.set(item.id, (skuTotals.get(item.id) || 0) + available);
         });
@@ -105,7 +112,7 @@ const DashboardInventoryWidget: React.FC<DashboardInventoryWidgetProps> = ({ use
     // Aggregate inventory by SKU and pre-compute sortable fields so DataTable can sort on them.
     // DataTable sorts by row[col.key], so computed columns (available, cogs, name) must be real fields.
     const aggregatedInventory = selectedSkus.reduce((acc: (InventoryItem & { available: number; cogs: number; name: string })[],  sku) => {
-        const productInv = inventory.filter(i => i.id === sku);
+        const productInv = filteredInventory.filter(i => i.id === sku);
         if (productInv.length > 0) {
             const product = products.find(p => p.sku === sku);
             const totalQOH = productInv.reduce((sum, item) => sum + item.quantityOnHand, 0);
@@ -126,7 +133,7 @@ const DashboardInventoryWidget: React.FC<DashboardInventoryWidgetProps> = ({ use
     }, []);
 
     // Also we need to render the Modal for selection
-    const allSkus = Array.from(new Set(inventory.map(i => i.id))).sort();
+    const allSkus = Array.from(new Set(filteredInventory.map(i => i.id))).sort();
     const filteredSkus = allSkus.filter(sku =>
         sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (products.find(p => p.sku === sku)?.name || '').toLowerCase().includes(searchTerm.toLowerCase())

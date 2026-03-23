@@ -95,7 +95,11 @@
       "Bash(sed -i '' 's|href=\"\"/settings/tags\"\"|href=\"\"/wms/settings/tags\"\"|g' /Users/eduardapantaleao/ERP/src/components/ui/TagMultiSelect.tsx)",
       "Bash(sed -i '' 's|href=\"\"/movements\"\"|href=\"\"/wms/movements\"\"|g' /Users/eduardapantaleao/ERP/src/components/products/ProductOverviewTab.tsx)",
       "Bash(grep -rn \"from ''\\\\.\\\\./views\\\\|from ''\\\\.\\\\./components\\\\|from ''\\\\.\\\\./context\\\\|from ''\\\\.\\\\./types\\\\|from ''\\\\.\\\\./lib\" /Users/eduardapantaleao/ERP/src/app/wms/)",
-      "Bash(grep -rn \"from ''\\\\.\\\\.\" /Users/eduardapantaleao/ERP/src/app/wms/)"
+      "Bash(grep -rn \"from ''\\\\.\\\\.\" /Users/eduardapantaleao/ERP/src/app/wms/)",
+      "Bash(while read:*)",
+      "Bash(do grep:*)",
+      "Bash(done)",
+      "Bash(grep -h \"^import\" /Users/eduardapantaleao/ERP/src/views/settings/*.tsx)"
     ]
   }
 }

@@ -3,20 +3,33 @@ import { useRouter } from 'next/navigation';
 import DashboardInventoryWidget from '../components/DashboardInventoryWidget';
 import { useInventory } from '../context/InventoryContext';
 import { useProducts } from '../context/ProductContext';
+import { useSettings } from '../context/SettingsContext';
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 const Dashboard: React.FC = () => {
     const router = useRouter();
     const { inventory, auditLogs, snapshots } = useInventory();
     const { products } = useProducts();
+    const { selectedWarehouseId, warehouses } = useSettings();
 
-    // Quick Stats — computed from real Supabase inventory data
-    const totalQoH = inventory.reduce((sum, item) => sum + item.quantityOnHand, 0);
-    const totalReserved = inventory.reduce((sum, item) => sum + item.quantityReserved, 0);
+    // Filter inventory and logs by selected warehouse (empty string = all warehouses)
+    const filteredInventory = selectedWarehouseId
+        ? inventory.filter(i => i.warehouseId === selectedWarehouseId)
+        : inventory;
+    const filteredAuditLogs = selectedWarehouseId
+        ? auditLogs.filter(l => l.warehouseId === selectedWarehouseId)
+        : auditLogs;
+    const selectedWarehouseName = selectedWarehouseId
+        ? (warehouses.find(w => w.id === selectedWarehouseId)?.name ?? 'Selected Warehouse')
+        : null;
+
+    // Quick Stats — computed from filtered inventory (respects selected warehouse)
+    const totalQoH = filteredInventory.reduce((sum, item) => sum + item.quantityOnHand, 0);
+    const totalReserved = filteredInventory.reduce((sum, item) => sum + item.quantityReserved, 0);
     const totalAvailable = totalQoH - totalReserved;
 
     // Low stock: count unique SKUs where total available < their product's reorderPoint (or < 50 if none set)
-    const availablePerSku = inventory.reduce<Record<string, number>>((acc, item) => {
+    const availablePerSku = filteredInventory.reduce<Record<string, number>>((acc, item) => {
         acc[item.id] = (acc[item.id] || 0) + Math.max(0, item.quantityOnHand - item.quantityReserved);
         return acc;
     }, {});
@@ -27,8 +40,7 @@ const Dashboard: React.FC = () => {
     }).length;
 
     // Compute COGS directly from real Supabase inventory × product unit cost
-    // (calculateCOGS from ProductContext uses mock inventoryLocations, so QOH is always 0 there)
-    const totalCogs = inventory.reduce((sum, item) => {
+    const totalCogs = filteredInventory.reduce((sum, item) => {
         const product = products.find(p => p.sku === item.id);
         const unitCost = product?.costOfGoods ?? 0;
         return sum + unitCost * item.quantityOnHand;
@@ -123,7 +135,9 @@ const Dashboard: React.FC = () => {
                         Inventory Overview
                     </h1>
                     <p style={{ color: 'var(--color-text-muted)', fontSize: '14px', margin: 0 }}>
-                        Monitor stock levels, COGS, and overall inventory health.
+                        {selectedWarehouseName
+                            ? <>Showing data for <strong>{selectedWarehouseName}</strong>.</>
+                            : 'Monitor stock levels, COGS, and overall inventory health across all warehouses.'}
                     </p>
                 </div>
             </div>
@@ -199,7 +213,7 @@ const Dashboard: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {auditLogs.slice(0, 10).map(log => (
+                            {filteredAuditLogs.slice(0, 10).map(log => (
                                 <tr key={log.id}>
                                     <td>{new Date(log.timestamp).toLocaleString()}</td>
                                     <td>
@@ -222,7 +236,7 @@ const Dashboard: React.FC = () => {
                                     </td>
                                 </tr>
                             ))}
-                            {auditLogs.length === 0 && (
+                            {filteredAuditLogs.length === 0 && (
                                 <tr>
                                     <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
                                         No recent activity logs.

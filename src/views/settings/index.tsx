@@ -4,3 +4,4 @@ export * from './WarehousesSection';
 export * from './LocationsSectionLink';
 export * from './ChannelsSection';
 export * from './PreferencesSection';
+export * from './TagsSection';
