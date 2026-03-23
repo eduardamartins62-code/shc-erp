@@ -210,7 +210,7 @@ export default function ERPUsersAdmin() {
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [inviteStatus, setInviteStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-    const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+    const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error' | 'noAccount'>('idle');
     const [isSetPasswordOpen, setIsSetPasswordOpen] = useState(false);
     const [setPasswordTarget, setSetPasswordTarget] = useState<User | null>(null);
     const [newPassword, setNewPassword] = useState('');
@@ -306,6 +306,18 @@ export default function ERPUsersAdmin() {
 
     async function handleResetPassword(email: string) {
         setResetStatus('sending');
+        // Check if auth account exists first via set-password endpoint listing
+        const checkRes = await fetch('/api/admin/check-auth-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        const checkJson = await checkRes.json();
+        if (!checkJson.exists) {
+            setResetStatus('noAccount');
+            setTimeout(() => setResetStatus('idle'), 5000);
+            return;
+        }
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: `${window.location.origin}/reset-password`,
         });
@@ -421,10 +433,12 @@ export default function ERPUsersAdmin() {
                                 <><Loader2 size={13} className="animate-spin" /> Sending…</>
                             ) : resetStatus === 'sent' ? (
                                 <><Check size={13} style={{ color: '#16a34a' }} /> Email sent!</>
+                            ) : resetStatus === 'noAccount' ? (
+                                <><X size={13} style={{ color: '#dc2626' }} /> No login yet — use Set Password</>
                             ) : resetStatus === 'error' ? (
                                 <><X size={13} style={{ color: '#dc2626' }} /> Failed</>
                             ) : (
-                                <><KeyRound size={14} /> Reset Email</>
+                                <><KeyRound size={14} /> Reset Password</>
                             )}
                         </button>
                     </>
