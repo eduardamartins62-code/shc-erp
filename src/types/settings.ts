@@ -1,12 +1,44 @@
-export type UserRole = 'Admin' | 'Manager' | 'Operator' | 'ReadOnly';
+export type PermissionLevel = 'none' | 'view' | 'edit' | 'admin';
+
+export const PERMISSION_MODULES = {
+    dashboard: 'Dashboard',
+    products: 'Products',
+    inventory: 'Inventory & Stock',
+    locations: 'Locations',
+    orders: 'Orders',
+    receiving: 'Receiving',
+    dataManagement: 'Data Management',
+    settingsUsers: 'Settings – Users',
+    settingsWarehouses: 'Settings – Warehouses',
+    settingsChannels: 'Settings – Channels',
+    settingsPreferences: 'Settings – Preferences',
+} as const;
+
+export type PermissionModuleKey = keyof typeof PERMISSION_MODULES;
+export type UserPermissions = Record<PermissionModuleKey, PermissionLevel>;
+
+export const DEFAULT_PERMISSIONS: UserPermissions = {
+    dashboard: 'none',
+    products: 'none',
+    inventory: 'none',
+    locations: 'none',
+    orders: 'none',
+    receiving: 'none',
+    dataManagement: 'none',
+    settingsUsers: 'none',
+    settingsWarehouses: 'none',
+    settingsChannels: 'none',
+    settingsPreferences: 'none',
+};
 
 export interface User {
     id: string;
     fullName: string;
     email: string;
-    role: UserRole;
+    isAccountAdmin: boolean;
     isActive: boolean;
     allowedWarehouses: string[] | null; // null = all
+    permissions: UserPermissions; // ignored when isAccountAdmin = true
     createdAt: string;
     createdBy: string;
     updatedAt: string;

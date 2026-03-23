@@ -15,6 +15,7 @@ import type {
     DailySnapshot,
     Product
 } from '../types';
+import { DEFAULT_PERMISSIONS } from '../types/settings';
 
 // Audit, Movements, Snapshots, Users, Warehouses, Channels, Settings stay in memory for now.
 const auditStore: AuditLog[] = [];
@@ -28,9 +29,10 @@ const userStore: User[] = [
         id: uuidv4(),
         fullName: 'System Admin',
         email: 'admin@shc.com',
-        role: 'Admin',
+        isAccountAdmin: true,
         isActive: true,
         allowedWarehouses: null,
+        permissions: { ...DEFAULT_PERMISSIONS },
         createdAt: new Date().toISOString(),
         createdBy: 'System',
         updatedAt: new Date().toISOString(),
@@ -40,9 +42,17 @@ const userStore: User[] = [
         id: uuidv4(),
         fullName: 'Warehouse Manager',
         email: 'manager@shc.com',
-        role: 'Manager',
+        isAccountAdmin: false,
         isActive: true,
         allowedWarehouses: ['WH-MAIN'],
+        permissions: {
+            ...DEFAULT_PERMISSIONS,
+            dashboard: 'view',
+            inventory: 'edit',
+            locations: 'edit',
+            receiving: 'edit',
+            orders: 'view',
+        },
         createdAt: new Date().toISOString(),
         createdBy: 'System',
         updatedAt: new Date().toISOString(),
@@ -864,10 +874,12 @@ export const api = {
 
     getUsers: async (): Promise<User[]> => {
         const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: true });
-        if (error) return [...userStore]; // fallback to mock if table missing
-        return (data || []).map(u => ({
-            id: u.id, fullName: u.full_name, email: u.email, role: u.role,
+        if (error || !data || data.length === 0) return [...userStore]; // fallback to mock if table missing or empty
+        return data.map(u => ({
+            id: u.id, fullName: u.full_name, email: u.email,
+            isAccountAdmin: u.is_account_admin ?? false,
             isActive: u.is_active, allowedWarehouses: u.allowed_warehouses,
+            permissions: u.permissions ?? { ...DEFAULT_PERMISSIONS },
             createdAt: u.created_at, createdBy: u.created_by,
             updatedAt: u.updated_at, updatedBy: u.updated_by
         }));
@@ -876,16 +888,22 @@ export const api = {
     addUser: async (data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> => {
         const now = new Date().toISOString();
         const { data: row, error } = await supabase.from('users').insert([{
-            id: uuidv4(), full_name: data.fullName, email: data.email, role: data.role,
+            id: uuidv4(), full_name: data.fullName, email: data.email,
+            is_account_admin: data.isAccountAdmin,
             is_active: data.isActive, allowed_warehouses: data.allowedWarehouses,
+            permissions: data.permissions,
             created_at: now, created_by: data.createdBy || 'System',
             updated_at: now, updated_by: data.updatedBy || 'System'
         }]).select().single();
         if (error) throw new Error(error.message);
-        return { id: row.id, fullName: row.full_name, email: row.email, role: row.role,
+        return {
+            id: row.id, fullName: row.full_name, email: row.email,
+            isAccountAdmin: row.is_account_admin ?? false,
             isActive: row.is_active, allowedWarehouses: row.allowed_warehouses,
+            permissions: row.permissions ?? { ...DEFAULT_PERMISSIONS },
             createdAt: row.created_at, createdBy: row.created_by,
-            updatedAt: row.updated_at, updatedBy: row.updated_by };
+            updatedAt: row.updated_at, updatedBy: row.updated_by
+        };
     },
 
     updateUser: async (id: string, data: Partial<User>): Promise<User> => {
@@ -893,15 +911,20 @@ export const api = {
         const updates: any = { updated_at: now };
         if (data.fullName !== undefined) updates.full_name = data.fullName;
         if (data.email !== undefined) updates.email = data.email;
-        if (data.role !== undefined) updates.role = data.role;
+        if (data.isAccountAdmin !== undefined) updates.is_account_admin = data.isAccountAdmin;
         if (data.isActive !== undefined) updates.is_active = data.isActive;
         if (data.allowedWarehouses !== undefined) updates.allowed_warehouses = data.allowedWarehouses;
+        if (data.permissions !== undefined) updates.permissions = data.permissions;
         const { data: row, error } = await supabase.from('users').update(updates).eq('id', id).select().single();
         if (error) throw new Error(error.message);
-        return { id: row.id, fullName: row.full_name, email: row.email, role: row.role,
+        return {
+            id: row.id, fullName: row.full_name, email: row.email,
+            isAccountAdmin: row.is_account_admin ?? false,
             isActive: row.is_active, allowedWarehouses: row.allowed_warehouses,
+            permissions: row.permissions ?? { ...DEFAULT_PERMISSIONS },
             createdAt: row.created_at, createdBy: row.created_by,
-            updatedAt: row.updated_at, updatedBy: row.updated_by };
+            updatedAt: row.updated_at, updatedBy: row.updated_by
+        };
     },
 
     getWarehouses: async (): Promise<Warehouse[]> => {
