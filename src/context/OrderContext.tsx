@@ -232,7 +232,12 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             console.log('[ShipStation Sync] Sample DB order IDs:', nonShipped.slice(0, 5).map(o => o.id));
         }
 
-        const ordersToMarkShipped = nonShipped.filter(o => shippedMap.has(o.id));
+        const mappedToShip = nonShipped.filter(o => shippedMap.has(o.id));
+        const unmappedBlocked = mappedToShip.filter(o => o.hasUnmappedItems);
+        if (unmappedBlocked.length > 0) {
+            console.warn(`[ShipStation Sync] Skipping ${unmappedBlocked.length} order(s) with unmapped SKUs:`, unmappedBlocked.map(o => o.id));
+        }
+        const ordersToMarkShipped = mappedToShip.filter(o => !o.hasUnmappedItems);
         console.log(`[ShipStation Sync] Matched orders to mark shipped: ${ordersToMarkShipped.length}`);
 
         let markedCount = 0;

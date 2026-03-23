@@ -41,6 +41,9 @@ const OrderDetails: React.FC = () => {
         );
     }
 
+    const hasUnmappedItems = order.items.some(i => i.mappingStatus === 'Unmapped');
+    const unmappedSkus = order.items.filter(i => i.mappingStatus === 'Unmapped').map(i => i.sku);
+
     const handleAllocate = async () => {
         try {
             await allocateOrderInventory(order.id, 'System Admin');
@@ -217,6 +220,50 @@ const OrderDetails: React.FC = () => {
                                     <strong>Reason:</strong> {order.cancellationReason || 'No reason provided'}
                                 </div>
                             </div>
+                        ) : hasUnmappedItems ? (
+                            <div style={{
+                                backgroundColor: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                borderRadius: '8px',
+                                padding: '1rem 1.25rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.75rem',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#991b1b', fontWeight: 600, fontSize: '0.9rem' }}>
+                                    <AlertTriangle size={18} /> Order Blocked — Unregistered SKUs
+                                </div>
+                                <p style={{ margin: 0, fontSize: '0.875rem', color: '#7f1d1d' }}>
+                                    This order cannot be processed until all items are registered in the product catalog.
+                                    Inventory cannot be accurately tracked for unregistered SKUs.
+                                </p>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                    {unmappedSkus.map(sku => (
+                                        <span key={sku} style={{
+                                            backgroundColor: '#fee2e2', color: '#991b1b',
+                                            padding: '0.2rem 0.6rem', borderRadius: '4px',
+                                            fontSize: '0.8rem', fontWeight: 600, fontFamily: 'monospace',
+                                        }}>
+                                            {sku}
+                                        </span>
+                                    ))}
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
+                                    <a href="/wms/products/new" style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                                        backgroundColor: '#991b1b', color: 'white',
+                                        padding: '0.45rem 1rem', borderRadius: '6px',
+                                        textDecoration: 'none', fontSize: '0.875rem', fontWeight: 500,
+                                    }}>
+                                        Register SKUs in Catalog
+                                    </a>
+                                    <button className="btn-secondary"
+                                        style={{ color: 'var(--color-shc-red)', borderColor: 'var(--color-shc-red)' }}
+                                        onClick={() => setShowCancelModal(true)}>
+                                        Cancel Order
+                                    </button>
+                                </div>
+                            </div>
                         ) : (
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 {order.fulfillmentStatus === 'New' && (
@@ -239,8 +286,6 @@ const OrderDetails: React.FC = () => {
                                         Ship Order
                                     </button>
                                 )}
-
-                                {/* Generic actions available depending on status */}
                                 {['Allocated', 'Picking'].includes(order.fulfillmentStatus) && (
                                     <button className="btn-secondary">
                                         Print Pick List

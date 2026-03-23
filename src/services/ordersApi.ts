@@ -625,15 +625,20 @@ export const ordersApi = {
 
     /**
      * Returns all orders that are NOT yet Shipped or Cancelled — used by syncShippedOrders.
+     * Also fetches order_items mapping_status so we can skip orders with unmapped SKUs.
      * Uses .neq().neq() instead of .not('in') to avoid PostgREST quote-formatting issues.
      */
-    getNonShippedOrders: async (): Promise<{ id: string }[]> => {
+    getNonShippedOrders: async (): Promise<{ id: string; hasUnmappedItems: boolean }[]> => {
         const { data } = await supabase
             .from('orders')
-            .select('id, fulfillment_status')
+            .select('id, fulfillment_status, order_items(mapping_status)')
             .neq('fulfillment_status', 'Shipped')
             .neq('fulfillment_status', 'Cancelled');
-        return data || [];
+        if (!data) return [];
+        return data.map(o => ({
+            id: o.id,
+            hasUnmappedItems: Array.isArray(o.order_items) && o.order_items.some((i: any) => i.mapping_status === 'Unmapped'),
+        }));
     },
 
     /**

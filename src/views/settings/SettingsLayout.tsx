@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Users, Warehouse, Link as LinkIcon, Settings as SettingsIcon, Globe, Tag } from 'lucide-react';
+import { Warehouse, Link as LinkIcon, Settings as SettingsIcon, Globe, Tag } from 'lucide-react';
 
 interface SettingsLayoutProps {
     children: React.ReactNode;
@@ -53,15 +53,6 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({ children }) => {
                     gap: '0.5rem',
                     flexShrink: 0
                 }}>
-                    <Link
-                        href="/wms/settings/users"
-                        className={`nav-link ${pathname.startsWith('/wms/settings/users') ? 'active' : ''}`}
-                        style={getLinkStyle(pathname.startsWith('/wms/settings/users'))}
-                    >
-                        <Users size={18} />
-                        Users
-                    </Link>
-
                     <Link
                         href="/wms/settings/warehouses"
                         className={`nav-link ${pathname.startsWith('/wms/settings/warehouses') ? 'active' : ''}`}

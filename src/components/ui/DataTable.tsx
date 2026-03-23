@@ -56,6 +56,23 @@ export function DataTable<T extends Record<string, any>>({
             let aVal = a[sortColumn];
             let bVal = b[sortColumn];
 
+            // Nulls/undefined always sort to the bottom
+            if (aVal == null && bVal == null) return 0;
+            if (aVal == null) return 1;
+            if (bVal == null) return -1;
+
+            // Booleans: true before false on asc
+            if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+                return sortDirection === 'asc' ? (bVal ? 1 : -1) : (aVal ? 1 : -1);
+            }
+
+            // Numeric strings: compare as numbers
+            const aNum = Number(aVal);
+            const bNum = Number(bVal);
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+                return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+            }
+
             if (typeof aVal === 'string') aVal = aVal.toLowerCase();
             if (typeof bVal === 'string') bVal = bVal.toLowerCase();
 
