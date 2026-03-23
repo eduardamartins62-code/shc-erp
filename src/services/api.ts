@@ -32,7 +32,7 @@ const userStore: User[] = [
         isAccountAdmin: true,
         isActive: true,
         allowedWarehouses: null,
-        appAccess: { wms: true, crm: false, accounting: false, hr: false, analytics: false, purchasing: false },
+        appAccess: { wms: true, crm: false, accounting: false, hr: false, analytics: false, purchasing: false, sales: false, dropshipping: false, globallogistics: false },
         permissions: { ...DEFAULT_PERMISSIONS },
         createdAt: new Date().toISOString(),
         createdBy: 'System',
@@ -46,7 +46,7 @@ const userStore: User[] = [
         isAccountAdmin: false,
         isActive: true,
         allowedWarehouses: ['WH-MAIN'],
-        appAccess: { wms: true, crm: false, accounting: false, hr: false, analytics: false, purchasing: false },
+        appAccess: { wms: true, crm: false, accounting: false, hr: false, analytics: false, purchasing: false, sales: false, dropshipping: false, globallogistics: false },
         permissions: {
             ...DEFAULT_PERMISSIONS,
             dashboard: 'view',

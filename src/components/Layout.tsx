@@ -20,6 +20,7 @@ import {
     ChevronRight,
     Menu,
     LogOut,
+    LayoutGrid,
 } from 'lucide-react';
 
 interface NavItem {
@@ -115,7 +116,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <nav className={sidebarClass}>
                 <div className="sidebar-inner">
 
-                    {/* Logo */}
+                    {/* Logo + ERP Home link */}
                     <div className="sidebar-logo">
                         <Warehouse
                             size={26}
@@ -127,6 +128,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             <div className="sidebar-subtitle">ERP Module</div>
                         </div>
                     </div>
+
+                    {/* ERP Home button */}
+                    <Link
+                        href="/"
+                        className="nav-link"
+                        title="ERP Home"
+                        style={{
+                            margin: '0 0 0.25rem',
+                            fontSize: '0.78rem',
+                            opacity: 0.75,
+                            borderRadius: '6px',
+                        }}
+                    >
+                        <LayoutGrid size={16} style={{ flexShrink: 0 }} />
+                        <span className="nav-link-label">ERP Home</span>
+                    </Link>
+
+                    <div className="sidebar-divider" />
 
                     {/* Warehouse selector */}
                     <div className="sidebar-warehouse">

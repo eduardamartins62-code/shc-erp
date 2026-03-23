@@ -3,11 +3,13 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
+import Link from 'next/link';
 import {
     Warehouse,
     LogOut,
     ChevronRight,
     Clock,
+    Users,
 } from 'lucide-react';
 
 interface AppTile {
@@ -104,6 +106,50 @@ const APP_TILES: AppTile[] = [
         available: false,
         color: '#0891b2',
     },
+    {
+        id: 'sales',
+        name: 'Sales',
+        description: 'Sales management — quotes, orders, commissions, and customer pricing.',
+        icon: (
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                <polyline points="16 7 22 7 22 13" />
+            </svg>
+        ),
+        href: '#',
+        available: false,
+        color: '#16a34a',
+    },
+    {
+        id: 'dropshipping',
+        name: 'Dropshipping',
+        description: 'Dropship operations — supplier routing, auto-POs, and vendor fulfillment tracking.',
+        icon: (
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12H19" />
+                <path d="M12 5l7 7-7 7" />
+                <circle cx="5" cy="12" r="2" />
+            </svg>
+        ),
+        href: '#',
+        available: false,
+        color: '#ea580c',
+    },
+    {
+        id: 'globallogistics',
+        name: 'Global Logistics',
+        description: 'Shipping & logistics — carrier management, rate shopping, tracking, and label generation.',
+        icon: (
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+        ),
+        href: '#',
+        available: false,
+        color: '#0e7490',
+    },
 ];
 
 export default function ERPHome() {
@@ -151,6 +197,23 @@ export default function ERPHome() {
                         SHC ERP
                     </span>
                 </div>
+
+                {/* Admin link — account admins only */}
+                {currentUser.isAccountAdmin && (
+                    <Link href="/admin/users" style={{
+                        display: 'flex', alignItems: 'center', gap: '0.4rem',
+                        color: 'rgba(255,255,255,0.65)', fontSize: '0.8rem', fontWeight: 500,
+                        textDecoration: 'none', padding: '0.3rem 0.75rem',
+                        borderRadius: '6px', border: '1px solid rgba(255,255,255,0.12)',
+                        transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'white'; (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.3)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.65)'; (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.12)'; }}
+                    >
+                        <Users size={14} />
+                        Users & Permissions
+                    </Link>
+                )}
 
                 {/* User + logout */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

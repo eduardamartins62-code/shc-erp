@@ -8,6 +8,9 @@ export const ERP_APPS = {
     hr: 'HR',
     analytics: 'Analytics',
     purchasing: 'Purchasing',
+    sales: 'Sales',
+    dropshipping: 'Dropshipping',
+    globallogistics: 'Global Logistics',
 } as const;
 
 export type ERPAppKey = keyof typeof ERP_APPS;
@@ -20,6 +23,9 @@ export const DEFAULT_APP_ACCESS: AppAccess = {
     hr: false,
     analytics: false,
     purchasing: false,
+    sales: false,
+    dropshipping: false,
+    globallogistics: false,
 };
 
 // ── Module-level permissions (within WMS) ────────────────────────────────────
