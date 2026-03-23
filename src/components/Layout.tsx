@@ -42,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const BOTTOM_NAV: NavItem[] = [
-    { to: '/wms/settings/users', icon: SettingsIcon, label: 'Settings' },
+    { to: '/wms/settings/warehouses', icon: SettingsIcon, label: 'Settings' },
 ];
 
 interface LayoutProps {
