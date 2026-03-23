@@ -182,7 +182,7 @@ export const ProductOverviewTab: React.FC<ProductOverviewTabProps> = ({
                             ) : (
                                 <div style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     No Lots Assigned
-                                    <a href="/movements" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>+ Assign Lot</a>
+                                    <a href="/wms/movements" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>+ Assign Lot</a>
                                 </div>
                             )}
                         </div>

@@ -248,7 +248,7 @@ export const ProductInventoryTab: React.FC<ProductInventoryTabProps> = ({
                                                 <button
                                                     className="btn-secondary"
                                                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                                    onClick={() => navigate.push('/movements')}
+                                                    onClick={() => navigate.push('/wms/movements')}
                                                 >
                                                     Adjust
                                                 </button>

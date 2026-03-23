@@ -53,7 +53,7 @@ const ProductDetail: React.FC = () => {
             <div style={{ padding: '4rem', textAlign: 'center' }}>
                 <h2 style={{ fontSize: '1.25rem', color: 'var(--color-primary-dark)' }}>Product not found</h2>
                 <button
-                    onClick={() => navigate.push('/products')}
+                    onClick={() => navigate.push('/wms/products')}
                     className="btn-primary"
                     style={{ marginTop: '1rem' }}
                 >
@@ -310,7 +310,7 @@ const ProductDetail: React.FC = () => {
                                     onClick={() => {
                                         setIsMoreMenuOpen(false);
                                         // Navigate to edit page with state to prefill a duplicate
-                                        navigate.push('/products/new');
+                                        navigate.push('/wms/products/new');
                                     }}
                                     style={{
                                         background: 'none', border: 'none', padding: '0.5rem 1rem',
@@ -346,7 +346,7 @@ const ProductDetail: React.FC = () => {
                                             // Call delete function here (assuming context provides it)
                                             // deleteProduct(product.id);
                                             console.log(`Deleting product ${product.id}`);
-                                            navigate.push('/products');
+                                            navigate.push('/wms/products');
                                         }
                                     }}
                                     style={{
@@ -511,7 +511,7 @@ const ProductDetail: React.FC = () => {
                                                                     <button
                                                                         className="btn-secondary"
                                                                         style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                                                        onClick={() => navigate.push(`/products/${bundle.id}`)}
+                                                                        onClick={() => navigate.push(`/wms/products/${bundle.id}`)}
                                                                     >
                                                                         View
                                                                     </button>

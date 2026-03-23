@@ -15,7 +15,7 @@ import type {
     DailySnapshot,
     Product
 } from '../types';
-import { DEFAULT_PERMISSIONS } from '../types/settings';
+import { DEFAULT_PERMISSIONS, DEFAULT_APP_ACCESS } from '../types/settings';
 
 // Audit, Movements, Snapshots, Users, Warehouses, Channels, Settings stay in memory for now.
 const auditStore: AuditLog[] = [];
@@ -32,6 +32,7 @@ const userStore: User[] = [
         isAccountAdmin: true,
         isActive: true,
         allowedWarehouses: null,
+        appAccess: { wms: true, crm: false, accounting: false, hr: false, analytics: false, purchasing: false },
         permissions: { ...DEFAULT_PERMISSIONS },
         createdAt: new Date().toISOString(),
         createdBy: 'System',
@@ -45,6 +46,7 @@ const userStore: User[] = [
         isAccountAdmin: false,
         isActive: true,
         allowedWarehouses: ['WH-MAIN'],
+        appAccess: { wms: true, crm: false, accounting: false, hr: false, analytics: false, purchasing: false },
         permissions: {
             ...DEFAULT_PERMISSIONS,
             dashboard: 'view',
@@ -879,6 +881,7 @@ export const api = {
             id: u.id, fullName: u.full_name, email: u.email,
             isAccountAdmin: u.is_account_admin ?? false,
             isActive: u.is_active, allowedWarehouses: u.allowed_warehouses,
+            appAccess: u.app_access ?? { ...DEFAULT_APP_ACCESS },
             permissions: u.permissions ?? { ...DEFAULT_PERMISSIONS },
             createdAt: u.created_at, createdBy: u.created_by,
             updatedAt: u.updated_at, updatedBy: u.updated_by
@@ -891,6 +894,7 @@ export const api = {
             id: uuidv4(), full_name: data.fullName, email: data.email,
             is_account_admin: data.isAccountAdmin,
             is_active: data.isActive, allowed_warehouses: data.allowedWarehouses,
+            app_access: data.appAccess,
             permissions: data.permissions,
             created_at: now, created_by: data.createdBy || 'System',
             updated_at: now, updated_by: data.updatedBy || 'System'
@@ -900,6 +904,7 @@ export const api = {
             id: row.id, fullName: row.full_name, email: row.email,
             isAccountAdmin: row.is_account_admin ?? false,
             isActive: row.is_active, allowedWarehouses: row.allowed_warehouses,
+            appAccess: row.app_access ?? { ...DEFAULT_APP_ACCESS },
             permissions: row.permissions ?? { ...DEFAULT_PERMISSIONS },
             createdAt: row.created_at, createdBy: row.created_by,
             updatedAt: row.updated_at, updatedBy: row.updated_by
@@ -914,6 +919,7 @@ export const api = {
         if (data.isAccountAdmin !== undefined) updates.is_account_admin = data.isAccountAdmin;
         if (data.isActive !== undefined) updates.is_active = data.isActive;
         if (data.allowedWarehouses !== undefined) updates.allowed_warehouses = data.allowedWarehouses;
+        if (data.appAccess !== undefined) updates.app_access = data.appAccess;
         if (data.permissions !== undefined) updates.permissions = data.permissions;
         const { data: row, error } = await supabase.from('users').update(updates).eq('id', id).select().single();
         if (error) throw new Error(error.message);
@@ -921,6 +927,7 @@ export const api = {
             id: row.id, fullName: row.full_name, email: row.email,
             isAccountAdmin: row.is_account_admin ?? false,
             isActive: row.is_active, allowedWarehouses: row.allowed_warehouses,
+            appAccess: row.app_access ?? { ...DEFAULT_APP_ACCESS },
             permissions: row.permissions ?? { ...DEFAULT_PERMISSIONS },
             createdAt: row.created_at, createdBy: row.created_by,
             updatedAt: row.updated_at, updatedBy: row.updated_by

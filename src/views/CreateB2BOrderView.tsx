@@ -78,7 +78,7 @@ const CreateB2BOrderView: React.FC = () => {
                 performedBy: 'Admin'
             };
             await createB2BOrder(formData);
-            router.push('/orders');
+            router.push('/wms/orders');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create order');
         }
@@ -90,7 +90,7 @@ const CreateB2BOrderView: React.FC = () => {
 
     return (
         <div style={{ paddingBottom: '3rem' }}>
-            <button className="btn-secondary" style={{ marginBottom: '1.5rem', border: 'none', background: 'transparent', padding: 0 }} onClick={() => router.push('/orders')}>
+            <button className="btn-secondary" style={{ marginBottom: '1.5rem', border: 'none', background: 'transparent', padding: 0 }} onClick={() => router.push('/wms/orders')}>
                 <ArrowLeft size={18} /> Back to Orders
             </button>
 

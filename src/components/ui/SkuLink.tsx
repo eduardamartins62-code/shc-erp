@@ -25,7 +25,7 @@ export const SkuLink: React.FC<SkuLinkProps> = ({ sku, onClick, className, style
 
         if (product) {
             if (onClick) onClick(); // Close modals if needed
-            navigate.push(`/products/${product.id}`); // Navigate to product detail using product ID as per the usual convention, or by sku if that's how it's set up
+            navigate.push(`/wms/products/${product.id}`); // Navigate to product detail using product ID as per the usual convention, or by sku if that's how it's set up
         } else {
             showToast(`Product not found for SKU: ${sku}`, 'error');
         }

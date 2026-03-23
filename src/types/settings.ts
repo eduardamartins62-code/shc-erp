@@ -1,5 +1,28 @@
 export type PermissionLevel = 'none' | 'view' | 'edit' | 'admin';
 
+// ── App-level access ─────────────────────────────────────────────────────────
+export const ERP_APPS = {
+    wms: 'WMS – Warehouse Management',
+    crm: 'CRM',
+    accounting: 'Accounting',
+    hr: 'HR',
+    analytics: 'Analytics',
+    purchasing: 'Purchasing',
+} as const;
+
+export type ERPAppKey = keyof typeof ERP_APPS;
+export type AppAccess = Record<ERPAppKey, boolean>;
+
+export const DEFAULT_APP_ACCESS: AppAccess = {
+    wms: false,
+    crm: false,
+    accounting: false,
+    hr: false,
+    analytics: false,
+    purchasing: false,
+};
+
+// ── Module-level permissions (within WMS) ────────────────────────────────────
 export const PERMISSION_MODULES = {
     dashboard: 'Dashboard',
     products: 'Products',
@@ -35,10 +58,11 @@ export interface User {
     id: string;
     fullName: string;
     email: string;
-    isAccountAdmin: boolean;
+    isAccountAdmin: boolean;   // full access to everything
     isActive: boolean;
     allowedWarehouses: string[] | null; // null = all
-    permissions: UserPermissions; // ignored when isAccountAdmin = true
+    appAccess: AppAccess;      // which ERP apps this user can open (ignored when isAccountAdmin)
+    permissions: UserPermissions; // WMS module permissions (ignored when isAccountAdmin)
     createdAt: string;
     createdBy: string;
     updatedAt: string;

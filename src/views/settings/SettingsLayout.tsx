@@ -54,54 +54,54 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({ children }) => {
                     flexShrink: 0
                 }}>
                     <Link
-                        href="/settings/users"
-                        className={`nav-link ${pathname.startsWith('/settings/users') ? 'active' : ''}`}
-                        style={getLinkStyle(pathname.startsWith('/settings/users'))}
+                        href="/wms/settings/users"
+                        className={`nav-link ${pathname.startsWith('/wms/settings/users') ? 'active' : ''}`}
+                        style={getLinkStyle(pathname.startsWith('/wms/settings/users'))}
                     >
                         <Users size={18} />
                         Users
                     </Link>
 
                     <Link
-                        href="/settings/warehouses"
-                        className={`nav-link ${pathname.startsWith('/settings/warehouses') ? 'active' : ''}`}
-                        style={getLinkStyle(pathname.startsWith('/settings/warehouses'))}
+                        href="/wms/settings/warehouses"
+                        className={`nav-link ${pathname.startsWith('/wms/settings/warehouses') ? 'active' : ''}`}
+                        style={getLinkStyle(pathname.startsWith('/wms/settings/warehouses'))}
                     >
                         <Warehouse size={18} />
                         Warehouses
                     </Link>
 
                     <Link
-                        href="/settings/locations"
-                        className={`nav-link ${pathname.startsWith('/settings/locations') ? 'active' : ''}`}
-                        style={getLinkStyle(pathname.startsWith('/settings/locations'))}
+                        href="/wms/settings/locations"
+                        className={`nav-link ${pathname.startsWith('/wms/settings/locations') ? 'active' : ''}`}
+                        style={getLinkStyle(pathname.startsWith('/wms/settings/locations'))}
                     >
                         <LinkIcon size={18} />
                         Locations
                     </Link>
 
                     <Link
-                        href="/settings/channels"
-                        className={`nav-link ${pathname.startsWith('/settings/channels') ? 'active' : ''}`}
-                        style={getLinkStyle(pathname.startsWith('/settings/channels'))}
+                        href="/wms/settings/channels"
+                        className={`nav-link ${pathname.startsWith('/wms/settings/channels') ? 'active' : ''}`}
+                        style={getLinkStyle(pathname.startsWith('/wms/settings/channels'))}
                     >
                         <Globe size={18} />
                         Channels & Integrations
                     </Link>
 
                     <Link
-                        href="/settings/tags"
-                        className={`nav-link ${pathname.startsWith('/settings/tags') ? 'active' : ''}`}
-                        style={getLinkStyle(pathname.startsWith('/settings/tags'))}
+                        href="/wms/settings/tags"
+                        className={`nav-link ${pathname.startsWith('/wms/settings/tags') ? 'active' : ''}`}
+                        style={getLinkStyle(pathname.startsWith('/wms/settings/tags'))}
                     >
                         <Tag size={18} />
                         Order Tags
                     </Link>
 
                     <Link
-                        href="/settings/preferences"
-                        className={`nav-link ${pathname.startsWith('/settings/preferences') ? 'active' : ''}`}
-                        style={getLinkStyle(pathname.startsWith('/settings/preferences'))}
+                        href="/wms/settings/preferences"
+                        className={`nav-link ${pathname.startsWith('/wms/settings/preferences') ? 'active' : ''}`}
+                        style={getLinkStyle(pathname.startsWith('/wms/settings/preferences'))}
                     >
                         <SettingsIcon size={18} />
                         System Preferences

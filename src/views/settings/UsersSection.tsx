@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Plus, Edit2, KeyRound, UserMinus, ShieldCheck, Shield } from 'lucide-react';
-import type { User, UserPermissions, PermissionModuleKey, PermissionLevel } from '../../types';
-import { DEFAULT_PERMISSIONS, PERMISSION_MODULES } from '../../types/settings';
+import type { User, UserPermissions, PermissionModuleKey, PermissionLevel, AppAccess, ERPAppKey } from '../../types';
+import { DEFAULT_PERMISSIONS, DEFAULT_APP_ACCESS, PERMISSION_MODULES, ERP_APPS } from '../../types/settings';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { SlideOverPanel } from '../../components/ui/SlideOverPanel';
 
@@ -156,6 +156,7 @@ export const UsersSection: React.FC = () => {
         isAccountAdmin: false,
         isActive: true,
         allowedWarehouses: [] as string[],
+        appAccess: { ...DEFAULT_APP_ACCESS } as AppAccess,
         permissions: { ...DEFAULT_PERMISSIONS } as UserPermissions,
     });
 
@@ -168,6 +169,7 @@ export const UsersSection: React.FC = () => {
                 isAccountAdmin: user.isAccountAdmin,
                 isActive: user.isActive,
                 allowedWarehouses: user.allowedWarehouses || [],
+                appAccess: { ...DEFAULT_APP_ACCESS, ...user.appAccess },
                 permissions: { ...DEFAULT_PERMISSIONS, ...user.permissions },
             });
         } else {
@@ -178,6 +180,7 @@ export const UsersSection: React.FC = () => {
                 isAccountAdmin: false,
                 isActive: true,
                 allowedWarehouses: [],
+                appAccess: { ...DEFAULT_APP_ACCESS },
                 permissions: { ...DEFAULT_PERMISSIONS },
             });
         }
@@ -219,6 +222,10 @@ export const UsersSection: React.FC = () => {
 
     const setPermission = (module: PermissionModuleKey, level: PermissionLevel) => {
         setFormData(prev => ({ ...prev, permissions: { ...prev.permissions, [module]: level } }));
+    };
+
+    const toggleAppAccess = (app: ERPAppKey) => {
+        setFormData(prev => ({ ...prev, appAccess: { ...prev.appAccess, [app]: !prev.appAccess[app] } }));
     };
 
     // ── Columns ──────────────────────────────────────────────────────────────
@@ -392,9 +399,31 @@ export const UsersSection: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* App Access */}
+                        {!detailUser.isAccountAdmin && (
+                            <div>
+                                <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.9rem' }}>Application Access</p>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                    {(Object.entries(ERP_APPS) as [ERPAppKey, string][]).map(([key, label]) => (
+                                        <span key={key} style={{
+                                            display: 'inline-block',
+                                            padding: '0.2rem 0.65rem',
+                                            borderRadius: '999px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 600,
+                                            backgroundColor: detailUser.appAccess?.[key] ? '#fee2e2' : '#f3f4f6',
+                                            color: detailUser.appAccess?.[key] ? '#991b1b' : '#9ca3af',
+                                        }}>
+                                            {label}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Permissions */}
                         <div>
-                            <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.9rem' }}>Module Permissions</p>
+                            <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.9rem' }}>WMS Module Permissions</p>
                             {detailUser.isAccountAdmin ? (
                                 <div style={{
                                     padding: '1rem', borderRadius: '8px',
@@ -544,10 +573,36 @@ export const UsersSection: React.FC = () => {
                                 </label>
                             </div>
 
+                            {/* App Access */}
+                            {!formData.isAccountAdmin && (
+                                <div>
+                                    <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.875rem' }}>Application Access</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                        {(Object.entries(ERP_APPS) as [ERPAppKey, string][]).map(([key, label]) => (
+                                            <label key={key} style={{
+                                                display: 'flex', alignItems: 'center', gap: '0.625rem',
+                                                padding: '0.5rem 0.75rem', borderRadius: '6px',
+                                                border: `1px solid ${formData.appAccess[key] ? 'var(--color-shc-red)' : 'var(--color-border)'}`,
+                                                backgroundColor: formData.appAccess[key] ? '#fff5f5' : '#f9fafb',
+                                                cursor: 'pointer', userSelect: 'none',
+                                            }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.appAccess[key]}
+                                                    onChange={() => toggleAppAccess(key)}
+                                                    style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--color-shc-red)' }}
+                                                />
+                                                <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--color-text-primary)' }}>{label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Per-module permissions */}
                             {!formData.isAccountAdmin && (
                                 <div>
-                                    <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.875rem' }}>Module Permissions</p>
+                                    <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.875rem' }}>WMS Module Permissions</p>
                                     <PermissionTable
                                         permissions={formData.permissions}
                                         onChange={setPermission}

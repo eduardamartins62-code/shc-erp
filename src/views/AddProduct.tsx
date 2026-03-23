@@ -190,7 +190,7 @@ const AddProduct: React.FC = () => {
             addBundleComponent({ bundleProductId: created.id, componentProductId: aliasParentId, quantityRequiredPerBundle: 1 });
         }
 
-        navigate.push('/products');
+        navigate.push('/wms/products');
     };
 
     const sellableProducts = products.filter(p => p.type === 'simple');
@@ -202,7 +202,7 @@ const AddProduct: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '2rem' }}>
                 <button
                     type="button"
-                    onClick={() => navigate.push('/products')}
+                    onClick={() => navigate.push('/wms/products')}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', color: 'var(--color-text-muted)', borderRadius: '50%' }}
                     onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--color-bg-light)'}
                     onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -434,7 +434,7 @@ const AddProduct: React.FC = () => {
 
                 {/* SAVE / CANCEL */}
                 <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <button type="button" onClick={() => navigate.push('/products')} className="btn-secondary">Cancel</button>
+                    <button type="button" onClick={() => navigate.push('/wms/products')} className="btn-secondary">Cancel</button>
                     <button type="submit" className="btn-primary">
                         <Save size={18} /> Save Product
                     </button>

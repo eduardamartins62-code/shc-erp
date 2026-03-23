@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSettings } from '../context/SettingsContext';
+import { useAuth } from '../context/AuthContext';
 import {
     Package,
     Warehouse,
@@ -18,6 +19,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Menu,
+    LogOut,
 } from 'lucide-react';
 
 interface NavItem {
@@ -28,18 +30,18 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true },
-    { to: '/products', icon: Package, label: 'Product Catalog' },
-    { to: '/warehouses', icon: MapIcon, label: 'Stock by Warehouse' },
-    { to: '/movements', icon: Activity, label: 'Adjustments' },
-    { to: '/receiving', icon: ArrowDownToLine, label: 'Receiving' },
-    { to: '/locations', icon: MapPin, label: 'Locations' },
-    { to: '/orders', icon: ShoppingCart, label: 'Orders' },
-    { to: '/data-management', icon: ArrowLeftRight, label: 'Imports & Exports' },
+    { to: '/wms', icon: LayoutDashboard, label: 'Dashboard', end: true },
+    { to: '/wms/products', icon: Package, label: 'Product Catalog' },
+    { to: '/wms/warehouses', icon: MapIcon, label: 'Stock by Warehouse' },
+    { to: '/wms/movements', icon: Activity, label: 'Adjustments' },
+    { to: '/wms/receiving', icon: ArrowDownToLine, label: 'Receiving' },
+    { to: '/wms/locations', icon: MapPin, label: 'Locations' },
+    { to: '/wms/orders', icon: ShoppingCart, label: 'Orders' },
+    { to: '/wms/data-management', icon: ArrowLeftRight, label: 'Imports & Exports' },
 ];
 
 const BOTTOM_NAV: NavItem[] = [
-    { to: '/settings/users', icon: SettingsIcon, label: 'Settings' },
+    { to: '/wms/settings/users', icon: SettingsIcon, label: 'Settings' },
 ];
 
 interface LayoutProps {
@@ -48,7 +50,9 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
     const pathname = usePathname();
+    const router = useRouter();
     const { warehouses, selectedWarehouseId, setSelectedWarehouseId } = useSettings();
+    const { currentUser, loading, signOut } = useAuth();
     const [collapsed, setCollapsed] = useState<boolean>(() => {
         try {
             return sessionStorage.getItem('sidebar-collapsed') === 'true';
@@ -58,6 +62,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     });
 
     const [mobileOpen, setMobileOpen] = useState(false);
+
+    // Redirect to login if not authenticated (skip on /login itself)
+    useEffect(() => {
+        if (!loading && !currentUser && pathname !== '/login') {
+            router.replace('/login');
+        }
+    }, [loading, currentUser, pathname, router]);
 
     const toggleCollapsed = useCallback(() => {
         setCollapsed(prev => {
@@ -76,6 +87,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     ]
         .filter(Boolean)
         .join(' ');
+
+    // While checking auth, show nothing to avoid flash
+    if (loading || !currentUser) {
+        return null;
+    }
+
+    // Build initials for avatar
+    const initials = currentUser.fullName
+        .split(' ')
+        .map(w => w[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
 
     return (
         <div className="app-shell">
@@ -122,7 +146,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     {/* Main navigation links */}
                     <div className="sidebar-nav">
                         {NAV_ITEMS.map(({ to, icon: Icon, label, end }) => {
-                            const isActive = end ? pathname === to : pathname.startsWith(to);
+                            const isActive = end ? (pathname === to || pathname === '/wms/') : pathname.startsWith(to);
                             return (
                                 <Link
                                     key={to}
@@ -171,14 +195,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                         <div className="sidebar-divider" />
 
-                        {/* User info */}
-                        <div className="sidebar-user" title="System Admin">
-                            <div className="sidebar-user-avatar">SA</div>
+                        {/* User info + logout */}
+                        <div className="sidebar-user" title={currentUser.fullName}>
+                            <div className="sidebar-user-avatar">{initials}</div>
                             <div className="sidebar-user-info">
-                                <div className="sidebar-user-name">System Admin</div>
-                                <div className="sidebar-user-email">admin@shc.com</div>
+                                <div className="sidebar-user-name">{currentUser.fullName}</div>
+                                <div className="sidebar-user-email">{currentUser.email}</div>
                             </div>
                         </div>
+                        <button
+                            onClick={signOut}
+                            className="nav-link"
+                            title="Sign out"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', opacity: 0.7 }}
+                        >
+                            <LogOut size={18} style={{ flexShrink: 0 }} />
+                            <span className="nav-link-label">Sign out</span>
+                        </button>
                     </div>
                 </div>
             </nav>

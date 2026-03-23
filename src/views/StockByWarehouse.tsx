@@ -84,7 +84,7 @@ const StockByWarehouse: React.FC = () => {
                         <strong>Low Stock Filter Active</strong> — showing items below their reorder point.
                     </span>
                     <button
-                        onClick={() => router.push('/warehouses')}
+                        onClick={() => router.push('/wms/warehouses')}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '0.25rem',
                             background: 'none', border: '1px solid #f59e0b', borderRadius: '6px',

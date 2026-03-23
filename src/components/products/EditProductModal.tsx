@@ -74,7 +74,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({ isOpen, onCl
             });
             // Also need to handle bundle components if it was a bundle, but this is a simplified edit modal for the UI fixes.
             onClose();
-            navigate.push(`/products/${newProduct.id}`);
+            navigate.push(`/wms/products/${newProduct.id}`);
         } else if (product) {
             await updateProduct(product.id, submittedData);
             onClose();

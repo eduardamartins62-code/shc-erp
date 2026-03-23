@@ -100,7 +100,7 @@ const OrdersDashboard: React.FC = () => {
                     </div>
                     <button
                         className="btn-primary"
-                        onClick={() => router.push('/orders/new')}
+                        onClick={() => router.push('/wms/orders/new')}
                     >
                         <Plus size={18} />
                         Create B2B Order

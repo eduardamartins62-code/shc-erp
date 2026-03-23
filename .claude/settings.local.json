@@ -89,7 +89,13 @@
       "Bash(find /Users/eduardapantaleao/ERP -path */node_modules -prune -o -type d -name api -print)",
       "Bash(grep -r quantityReserved /Users/eduardapantaleao/ERP/src --include=*.ts --include=*.tsx)",
       "Bash(find /Users/eduardapantaleao/ERP -type f \\\\\\(-name *.sql -o -name schema* -o -name migrations* \\\\\\))",
-      "Bash(grep -E \"\\\\.\\(ts|tsx|json\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|tsx|json\\)$\")",
+      "Bash(grep -rn \"\\\\`/\" /Users/eduardapantaleao/ERP/src --include=\"*.tsx\")",
+      "Bash(sed -i '' \"s|navigate\\\\.push\\(''/movements''\\)|navigate.push\\(''/wms/movements''\\)|g\" /Users/eduardapantaleao/ERP/src/components/products/ProductInventoryTab.tsx)",
+      "Bash(sed -i '' 's|href=\"\"/settings/tags\"\"|href=\"\"/wms/settings/tags\"\"|g' /Users/eduardapantaleao/ERP/src/components/ui/TagMultiSelect.tsx)",
+      "Bash(sed -i '' 's|href=\"\"/movements\"\"|href=\"\"/wms/movements\"\"|g' /Users/eduardapantaleao/ERP/src/components/products/ProductOverviewTab.tsx)",
+      "Bash(grep -rn \"from ''\\\\.\\\\./views\\\\|from ''\\\\.\\\\./components\\\\|from ''\\\\.\\\\./context\\\\|from ''\\\\.\\\\./types\\\\|from ''\\\\.\\\\./lib\" /Users/eduardapantaleao/ERP/src/app/wms/)",
+      "Bash(grep -rn \"from ''\\\\.\\\\.\" /Users/eduardapantaleao/ERP/src/app/wms/)"
     ]
   }
 }

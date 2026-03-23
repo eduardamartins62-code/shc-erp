@@ -317,7 +317,7 @@ const ProductCatalog: React.FC = () => {
                         <Download size={16} />
                         Export
                     </button>
-                    <button className="btn-primary" onClick={() => navigate.push('/products/new')}>
+                    <button className="btn-primary" onClick={() => navigate.push('/wms/products/new')}>
                         <Plus size={16} />
                         Add Product
                     </button>
@@ -482,14 +482,14 @@ const ProductCatalog: React.FC = () => {
                         <button
                             className="btn-secondary"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                            onClick={() => selectedProduct && navigate.push(`/products/${selectedProduct.id}`)}
+                            onClick={() => selectedProduct && navigate.push(`/wms/products/${selectedProduct.id}`)}
                         >
                             <Edit2 size={14} /> Edit
                         </button>
                         <button
                             className="btn-primary"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                            onClick={() => selectedProduct && navigate.push(`/products/${selectedProduct.id}?tab=inventory`)}
+                            onClick={() => selectedProduct && navigate.push(`/wms/products/${selectedProduct.id}?tab=inventory`)}
                         >
                             <Box size={14} /> Inventory
                         </button>

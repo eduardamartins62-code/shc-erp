@@ -40,7 +40,7 @@ export const LocationsSectionLink: React.FC = () => {
             </div>
 
             <button
-                onClick={() => navigate.push('/locations')}
+                onClick={() => navigate.push('/wms/locations')}
                 style={{
                     padding: '0.75rem 1.5rem',
                     backgroundColor: 'var(--color-shc-red)',

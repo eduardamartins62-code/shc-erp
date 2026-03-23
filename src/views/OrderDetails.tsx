@@ -34,7 +34,7 @@ const OrderDetails: React.FC = () => {
         return (
             <div style={{ padding: '3rem', textAlign: 'center' }}>
                 <h2>Order Not Found</h2>
-                <button className="btn-secondary" onClick={() => navigate.push('/orders')}>
+                <button className="btn-secondary" onClick={() => navigate.push('/wms/orders')}>
                     <ArrowLeft size={16} /> Back to Orders
                 </button>
             </div>
@@ -145,7 +145,7 @@ const OrderDetails: React.FC = () => {
             <button
                 className="btn-secondary"
                 style={{ marginBottom: '1.5rem', border: 'none', background: 'transparent', padding: 0 }}
-                onClick={() => navigate.push('/orders')}
+                onClick={() => navigate.push('/wms/orders')}
             >
                 <ArrowLeft size={18} /> Back to Orders
             </button>

@@ -47,7 +47,7 @@ const TagMultiSelect: React.FC<TagMultiSelectProps> = ({ selectedTagIds, onChang
                     ))}
                 </select>
             ) : (
-                <Link href="/settings/tags" target="_blank" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}>
+                <Link href="/wms/settings/tags" target="_blank" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}>
                     + Manage tags in Settings
                 </Link>
             )}
