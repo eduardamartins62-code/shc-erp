@@ -20,13 +20,18 @@ export default function LoginPage() {
         setError('');
         setLoading(true);
 
-        const result = await signIn(email, password);
+        try {
+            const result = await signIn(email, password);
 
-        if (result.error) {
-            setError(result.error);
+            if (result.error) {
+                setError(result.error);
+                setLoading(false);
+            } else {
+                router.replace('/');
+            }
+        } catch (err) {
+            setError('An unexpected error occurred. Please try again.');
             setLoading(false);
-        } else {
-            router.replace('/');
         }
     }
 

@@ -99,7 +99,8 @@
       "Bash(while read:*)",
       "Bash(do grep:*)",
       "Bash(done)",
-      "Bash(grep -h \"^import\" /Users/eduardapantaleao/ERP/src/views/settings/*.tsx)"
+      "Bash(grep -h \"^import\" /Users/eduardapantaleao/ERP/src/views/settings/*.tsx)",
+      "Bash(kill 11567)"
     ]
   }
 }
