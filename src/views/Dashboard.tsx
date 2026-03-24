@@ -5,8 +5,12 @@ import { useInventory } from '../context/InventoryContext';
 import { useProducts } from '../context/ProductContext';
 import { useSettings } from '../context/SettingsContext';
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 const Dashboard: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { levelFor } = usePermissions(currentUser);
     const router = useRouter();
     const { inventory, auditLogs, snapshots } = useInventory();
     const { products } = useProducts();
@@ -122,6 +126,13 @@ const Dashboard: React.FC = () => {
         minHeight: '160px',
         padding: '1.25rem'
     };
+
+    if (levelFor('dashboard') === 'none') return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <h2>Access Denied</h2>
+            <p>You don't have permission to view the Dashboard. Contact your administrator.</p>
+        </div>
+    );
 
     return (
         <div>

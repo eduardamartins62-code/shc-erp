@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Settings as SettingsIcon } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
 
 export const PreferencesSection: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { can } = usePermissions(currentUser);
+    const canEdit = can('settingsPreferences', 'edit');
     const { systemSettings, updateSystemSettings } = useSettings();
     const [formData, setFormData] = useState({
         defaultTimeZone: 'America/New_York',
@@ -195,6 +200,7 @@ export const PreferencesSection: React.FC = () => {
                 </div>
 
                 {/* Actions */}
+                {canEdit && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
                     <button
                         type="submit"
@@ -211,6 +217,7 @@ export const PreferencesSection: React.FC = () => {
                         Save Preferences
                     </button>
                 </div>
+                )}
             </form>
         </div>
     );

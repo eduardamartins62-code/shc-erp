@@ -5,8 +5,12 @@ import { useSettings } from '../context/SettingsContext';
 import { useProducts } from '../context/ProductContext';
 import InventoryTable from '../components/InventoryTable';
 import { Search, X, AlertTriangle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 const StockByWarehouse: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { levelFor } = usePermissions(currentUser);
     const searchParams = useSearchParams();
     const router = useRouter();
     const { inventory } = useInventory();
@@ -56,6 +60,13 @@ const StockByWarehouse: React.FC = () => {
     // Warehouse specific metrics
     const totalItems = filteredInventory.length;
     const totalValue = filteredInventory.reduce((sum, item) => sum + item.quantityOnHand, 0);
+
+    if (levelFor('inventory') === 'none') return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <h2>Access Denied</h2>
+            <p>You don't have permission to view Inventory. Contact your administrator.</p>
+        </div>
+    );
 
     return (
         <div>

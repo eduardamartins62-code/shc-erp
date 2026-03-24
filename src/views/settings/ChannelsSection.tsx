@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Globe, Plus, Settings2, Trash2, RefreshCw, PowerOff } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { ConnectStoreModal } from '../../components/integrations/ConnectStoreModal';
 import { SetupStoreModal } from '../../components/integrations/SetupStoreModal';
@@ -9,6 +11,9 @@ import { shipstationApi } from '../../services/shipstationApi';
 import type { ChannelConfig, ChannelEnum } from '../../types';
 
 export const ChannelsSection: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { can } = usePermissions(currentUser);
+    const canEdit = can('settingsChannels', 'edit');
     const { channels, updateChannel, deleteChannel, warehouses } = useSettings();
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
@@ -148,6 +153,7 @@ export const ChannelsSection: React.FC = () => {
             type: 'text',
             render: (_, row) => (
                 <div style={{ display: 'flex', gap: '0.5rem' }} onClick={e => e.stopPropagation()}>
+                    {canEdit && (
                     <button
                         className="btn-secondary"
                         style={{ padding: '0.35rem', color: 'var(--color-text-muted)' }}
@@ -159,6 +165,8 @@ export const ChannelsSection: React.FC = () => {
                     >
                         <Settings2 size={16} />
                     </button>
+                    )}
+                    {canEdit && (
                     <button
                         className="btn-secondary"
                         style={{ padding: '0.35rem', color: 'var(--color-shc-red)', borderColor: '#fee2e2', backgroundColor: '#fef2f2' }}
@@ -170,6 +178,7 @@ export const ChannelsSection: React.FC = () => {
                     >
                         <Trash2 size={16} />
                     </button>
+                    )}
                 </div>
             )
         }
@@ -196,6 +205,7 @@ export const ChannelsSection: React.FC = () => {
                         Connect an unlimited number of stores (including shopping carts, marketplaces, ERPs, etc) to begin importing your orders. Once connected, you can customize each store's settings.
                     </p>
                 </div>
+                {canEdit && (
                 <button
                     className="btn-primary"
                     style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
@@ -203,6 +213,7 @@ export const ChannelsSection: React.FC = () => {
                 >
                     <Plus size={16} /> Connect Store
                 </button>
+                )}
             </div>
 
             <DataTable
