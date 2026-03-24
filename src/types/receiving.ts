@@ -11,7 +11,7 @@ export interface PurchaseOrder {
     id: string;
     supplier: string;
     expectedDate: string;
-    status: 'pending' | 'partial' | 'overdue' | 'received';
+    status: 'pending' | 'partial' | 'overdue' | 'received' | 'on_hold';
     items: PurchaseOrderItem[];
 }
 

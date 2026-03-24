@@ -12,7 +12,7 @@ interface ReceivingSessionProps {
     selectedPOs?: PurchaseOrder[];
     locations: string[];
     onBack: () => void;
-    onSuccess: (receiptNumber: string, deltaCount: number) => void;
+    onSuccess: (receiptNumber: string, deltaCount: number, newStatus?: 'received' | 'partial') => void;
 }
 
 const generateReceiptNumber = () => `RCV-${String(Date.now()).slice(-6)}`;
@@ -243,8 +243,8 @@ const ReceivingSession: React.FC<ReceivingSessionProps> = ({
                 }
                 onSuccess(session.receiptNumber + ' (Bulk)', totalDiscrepancies);
             } else {
-                await submitReceipt(session, lines, discrepancies);
-                onSuccess(session.receiptNumber, discrepancies.length);
+                const result = await submitReceipt(session, lines, discrepancies);
+                onSuccess(session.receiptNumber, discrepancies.length, result.newStatus as 'received' | 'partial' | undefined);
             }
         } catch (error) {
             console.error('Error submitting receipt', error);

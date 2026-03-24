@@ -155,7 +155,7 @@ export const submitReceipt = async (
             const received = parseInt(l.receivedQty) || 0;
             return received >= l.expectedQty;
         });
-        const newStatus = allReceived ? 'received' : 'partial';
+        const newStatus: PurchaseOrder['status'] = allReceived ? 'received' : 'partial';
 
         await supabase
             .from('purchase_orders')
@@ -166,4 +166,18 @@ export const submitReceipt = async (
     }
 
     return { success: true };
+};
+
+// ---------------------------------------------------------------------------
+// Update PO Status (hold / unhold / etc.)
+// ---------------------------------------------------------------------------
+
+export const updatePOStatus = async (
+    poId: string,
+    status: PurchaseOrder['status']
+): Promise<void> => {
+    await supabase
+        .from('purchase_orders')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', poId);
 };

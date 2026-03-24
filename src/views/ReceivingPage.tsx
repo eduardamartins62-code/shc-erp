@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { PurchaseOrder } from '../types/receiving';
-import { getPurchaseOrders, getLocations } from '../services/receivingApi';
+import { getPurchaseOrders, getLocations, updatePOStatus } from '../services/receivingApi';
 import ReceivingList from '../components/receiving/ReceivingList';
 import ReceivingSession from '../components/receiving/ReceivingSession';
 import { CheckCircle2 } from 'lucide-react';
@@ -93,18 +93,33 @@ const ReceivingPage: React.FC = () => {
         setView('list');
     };
 
-    const handleSuccess = (receiptNumber: string, deltaCount: number) => {
+    const handleSuccess = (receiptNumber: string, deltaCount: number, newStatus?: 'received' | 'partial') => {
         setSuccessData({ receiptNumber, deltaCount });
         setView('success');
 
-        // Re-fetch POs to get updated status natively
+        // Optimistically update PO status in local state so it reflects immediately
+        if (selectedPO && newStatus) {
+            setPOs(prev => prev.map(p => p.id === selectedPO.id ? { ...p, status: newStatus } : p));
+        }
+
+        // Re-fetch in background to sync with server
         fetchInitialData();
 
-        // After 2.5s, return to list view
         setTimeout(() => {
             handleBackToList();
             setSuccessData(null);
         }, 2500);
+    };
+
+    const handleHoldPO = async (po: PurchaseOrder) => {
+        const newStatus = po.status === 'on_hold' ? 'pending' : 'on_hold';
+        setPOs(prev => prev.map(p => p.id === po.id ? { ...p, status: newStatus } : p));
+        try {
+            await updatePOStatus(po.id, newStatus);
+        } catch {
+            // Revert on failure
+            setPOs(prev => prev.map(p => p.id === po.id ? { ...p, status: po.status } : p));
+        }
     };
 
     const handlePrintSingle = (po: PurchaseOrder) => {
@@ -140,6 +155,7 @@ const ReceivingPage: React.FC = () => {
                     setDrawerPO={setDrawerPO}
                     onPrintSingle={handlePrintSingle}
                     onPrintMultiple={handlePrintMultiple}
+                    onHoldPO={canEdit ? handleHoldPO : () => {}}
                 />
                 <PrintTemplate target={printTarget} />
             </>
