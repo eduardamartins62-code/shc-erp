@@ -205,12 +205,14 @@ export const WarehousesSection: React.FC = () => {
                                     </span>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
+                                    {canEdit && (
                                     <button
                                         onClick={() => handleOpenModal(w)}
                                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-shc-red)' }}
                                     >
                                         <Edit2 size={16} />
                                     </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
