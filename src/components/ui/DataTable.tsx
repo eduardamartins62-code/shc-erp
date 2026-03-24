@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 
 export type FilterType = 'text' | 'select' | 'date-range' | 'number-range';
 
@@ -24,6 +24,13 @@ export interface DataTableProps<T> {
     onSelectionChange?: (keys: Set<string>) => void;
 }
 
+// Matches a strict number: optional minus, digits, optional decimal
+const isNumericString = (val: unknown): boolean => {
+    if (typeof val === 'number') return true;
+    if (typeof val !== 'string') return false;
+    return /^-?\d+(\.\d+)?$/.test(val.trim());
+};
+
 export function DataTable<T extends Record<string, any>>({
     data,
     columns,
@@ -36,15 +43,17 @@ export function DataTable<T extends Record<string, any>>({
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
 
+    // Cycle: none → asc → desc → none
     const handleSort = (key: string) => {
-        if (sortColumn === key) {
-            if (sortDirection === 'asc') setSortDirection('desc');
-            else if (sortDirection === 'desc') {
-                setSortColumn(null);
-                setSortDirection(null);
-            } else setSortDirection('asc');
-        } else {
+        if (sortColumn !== key) {
             setSortColumn(key);
+            setSortDirection('asc');
+        } else if (sortDirection === 'asc') {
+            setSortDirection('desc');
+        } else if (sortDirection === 'desc') {
+            setSortColumn(null);
+            setSortDirection(null);
+        } else {
             setSortDirection('asc');
         }
     };
@@ -56,28 +65,38 @@ export function DataTable<T extends Record<string, any>>({
             let aVal = a[sortColumn];
             let bVal = b[sortColumn];
 
-            // Nulls/undefined always sort to the bottom
+            // Nulls/undefined always sink to the bottom
             if (aVal == null && bVal == null) return 0;
             if (aVal == null) return 1;
             if (bVal == null) return -1;
 
-            // Booleans: true before false on asc
+            // Booleans: true before false on asc, false before true on desc
             if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
-                return sortDirection === 'asc' ? (bVal ? 1 : -1) : (aVal ? 1 : -1);
+                if (aVal === bVal) return 0;
+                return sortDirection === 'asc'
+                    ? (aVal ? -1 : 1)   // true first
+                    : (aVal ? 1 : -1);  // false first
             }
 
-            // Numeric strings: compare as numbers
-            const aNum = Number(aVal);
-            const bNum = Number(bVal);
-            if (!isNaN(aNum) && !isNaN(bNum)) {
-                return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+            // Strict numeric strings (e.g. "42", "3.14", "-7") — compare as numbers
+            if (isNumericString(aVal) && isNumericString(bVal)) {
+                const diff = Number(aVal) - Number(bVal);
+                return sortDirection === 'asc' ? diff : -diff;
             }
 
-            if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-            if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+            // Date strings: ISO-8601 dates sort correctly as strings; also handle Date objects
+            if (aVal instanceof Date && bVal instanceof Date) {
+                return sortDirection === 'asc'
+                    ? aVal.getTime() - bVal.getTime()
+                    : bVal.getTime() - aVal.getTime();
+            }
 
-            if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-            if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+            // Fallback: case-insensitive string comparison
+            const aStr = typeof aVal === 'string' ? aVal.toLowerCase() : String(aVal).toLowerCase();
+            const bStr = typeof bVal === 'string' ? bVal.toLowerCase() : String(bVal).toLowerCase();
+
+            if (aStr < bStr) return sortDirection === 'asc' ? -1 : 1;
+            if (aStr > bStr) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
     }, [data, sortColumn, sortDirection]);
@@ -126,35 +145,43 @@ export function DataTable<T extends Record<string, any>>({
                         )}
                         {columns.map(col => {
                             const isSortable = col.sortable !== false;
-                            const isCurrentlySorted = sortColumn === col.key;
+                            const isActive = sortColumn === col.key;
+                            const dir = isActive ? sortDirection : null;
 
                             return (
-                                <th key={col.key as string} style={{
-                                    backgroundColor: 'var(--color-primary-dark)',
-                                    color: 'var(--color-white)',
-                                    padding: '1rem',
-                                    fontWeight: 500,
-                                    fontSize: '0.875rem',
-                                    whiteSpace: 'nowrap',
-                                    verticalAlign: 'bottom',
-                                    borderBottom: '2px solid var(--color-border)',
-                                    cursor: isSortable ? 'pointer' : 'default',
-                                    userSelect: 'none'
-                                }}
+                                <th
+                                    key={col.key as string}
+                                    title={
+                                        !isSortable ? undefined
+                                            : dir === 'asc' ? 'Sorted A → Z  (click for Z → A)'
+                                            : dir === 'desc' ? 'Sorted Z → A  (click to clear)'
+                                            : 'Click to sort A → Z'
+                                    }
+                                    style={{
+                                        backgroundColor: 'var(--color-primary-dark)',
+                                        color: 'var(--color-white)',
+                                        padding: '1rem',
+                                        fontWeight: 500,
+                                        fontSize: '0.875rem',
+                                        whiteSpace: 'nowrap',
+                                        verticalAlign: 'bottom',
+                                        borderBottom: '2px solid var(--color-border)',
+                                        cursor: isSortable ? 'pointer' : 'default',
+                                        userSelect: 'none',
+                                    }}
                                     onClick={() => isSortable && handleSort(col.key as string)}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                         <span>{col.label}</span>
                                         {isSortable && (
-                                            <span style={{
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                color: isCurrentlySorted ? 'var(--color-white)' : 'rgba(255,255,255,0.3)',
-                                            }}>
-                                                {(!isCurrentlySorted || sortDirection === 'asc') ?
-                                                    <ArrowUp size={14} style={{ opacity: isCurrentlySorted && sortDirection === 'asc' ? 1 : 0.5 }} /> :
-                                                    <ArrowDown size={14} style={{ opacity: 1 }} />
-                                                }
+                                            <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                                                {dir === 'asc' ? (
+                                                    <ArrowUp size={14} style={{ color: '#fff' }} />
+                                                ) : dir === 'desc' ? (
+                                                    <ArrowDown size={14} style={{ color: '#fff' }} />
+                                                ) : (
+                                                    <ChevronsUpDown size={13} style={{ color: 'rgba(255,255,255,0.35)' }} />
+                                                )}
                                             </span>
                                         )}
                                     </div>

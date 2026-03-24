@@ -141,8 +141,9 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
         );
     }
 
-    const isFiltered = filters.tagIds.length > 0 || filters.channels.length > 0 ||
-        filters.statuses.length > 0 || !!filters.dateFrom || !!filters.dateTo;
+    const isFiltered = !!filters.search || filters.tagIds.length > 0 || filters.channels.length > 0 ||
+        filters.statuses.length > 0 || filters.paymentStatuses.length > 0 ||
+        !!filters.dateFrom || !!filters.dateTo || !!filters.totalMin || !!filters.totalMax;
 
     return (
         <div>

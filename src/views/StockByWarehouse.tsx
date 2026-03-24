@@ -4,9 +4,11 @@ import { useInventory } from '../context/InventoryContext';
 import { useSettings } from '../context/SettingsContext';
 import { useProducts } from '../context/ProductContext';
 import InventoryTable from '../components/InventoryTable';
-import { Search, X, AlertTriangle } from 'lucide-react';
+import { Search, X, AlertTriangle, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
+
+type QuickFilter = 'low_stock' | 'out_of_stock' | 'expiring_soon' | 'lot_tracked';
 
 const StockByWarehouse: React.FC = () => {
     const { currentUser } = useAuth();
@@ -18,12 +20,22 @@ const StockByWarehouse: React.FC = () => {
     const { products } = useProducts();
 
     const [searchQuery, setSearchQuery] = useState('');
+    const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set());
 
-    // Read ?filter=lowstock from URL
+    // Read ?filter=lowstock from URL — auto-activate the quick filter
     const filterParam = searchParams.get('filter');
     const isLowStockFilter = filterParam === 'lowstock';
 
-    // Filter inventory based on selected warehouse + search query + low stock flag
+    const toggleQuickFilter = (f: QuickFilter) => {
+        setQuickFilters(prev => {
+            const next = new Set(prev);
+            if (next.has(f)) next.delete(f);
+            else next.add(f);
+            return next;
+        });
+    };
+
+    // Filter inventory based on selected warehouse + search query + quick filters
     const filteredInventory = useMemo(() => {
         let items = selectedWarehouseId
             ? inventory.filter(item => item.warehouseId === selectedWarehouseId)
@@ -34,26 +46,55 @@ const StockByWarehouse: React.FC = () => {
             items = items.filter(item => {
                 const product = products.find(p => p.sku === item.id);
                 return (
-                    item.id.toLowerCase().includes(q) ||                            // SKU
-                    (product?.name?.toLowerCase().includes(q)) ||                   // Description / Name
-                    (product?.upc?.toLowerCase().includes(q)) ||                    // UPC
-                    item.warehouseId.toLowerCase().includes(q) ||                   // Location / Warehouse ID
-                    (item.lotNumber?.toLowerCase().includes(q))                     // Lot Number
+                    item.id.toLowerCase().includes(q) ||                                       // SKU
+                    (product?.name?.toLowerCase().includes(q)) ||                              // Name
+                    (product?.upc?.toLowerCase().includes(q)) ||                               // UPC
+                    (product?.brand?.toLowerCase().includes(q)) ||                             // Brand
+                    (product?.category?.toLowerCase().includes(q)) ||                          // Category
+                    item.warehouseId.toLowerCase().includes(q) ||                              // Warehouse ID
+                    (item.locationCode?.toLowerCase().includes(q)) ||                          // Location code
+                    (item.lotNumber?.toLowerCase().includes(q)) ||                             // Lot Number
+                    (item.updatedBy?.toLowerCase().includes(q))                                // Updated by
                 );
             });
         }
 
+        // URL-based low stock filter (from dashboard link)
         if (isLowStockFilter) {
             items = items.filter(item => {
                 const product = products.find(p => p.sku === item.id);
                 const threshold = product?.reorderPoint ?? 50;
-                const qtyAvailable = Math.max(0, item.quantityOnHand - item.quantityReserved);
-                return qtyAvailable < threshold;
+                return Math.max(0, item.quantityOnHand - item.quantityReserved) < threshold;
             });
         }
 
+        // Quick filter pills
+        if (quickFilters.has('low_stock')) {
+            items = items.filter(item => {
+                const product = products.find(p => p.sku === item.id);
+                const threshold = product?.reorderPoint ?? 50;
+                const available = Math.max(0, item.quantityOnHand - item.quantityReserved);
+                return available > 0 && available < threshold;
+            });
+        }
+        if (quickFilters.has('out_of_stock')) {
+            items = items.filter(item => Math.max(0, item.quantityOnHand - item.quantityReserved) <= 0);
+        }
+        if (quickFilters.has('expiring_soon')) {
+            const soon = new Date();
+            soon.setDate(soon.getDate() + 30);
+            items = items.filter(item => {
+                if (!item.expirationDate) return false;
+                const exp = new Date(item.expirationDate);
+                return exp <= soon && exp >= new Date();
+            });
+        }
+        if (quickFilters.has('lot_tracked')) {
+            items = items.filter(item => !!item.lotNumber);
+        }
+
         return items;
-    }, [inventory, selectedWarehouseId, searchQuery, products, isLowStockFilter]);
+    }, [inventory, selectedWarehouseId, searchQuery, products, isLowStockFilter, quickFilters]);
 
     const targetWarehouse = warehouses.find(w => w.id === selectedWarehouseId);
 
@@ -119,6 +160,47 @@ const StockByWarehouse: React.FC = () => {
                 </div>
             </div>
 
+            {/* Quick filter pills */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                    <Filter size={13} /> Quick filters:
+                </span>
+                {(
+                    [
+                        { key: 'low_stock',     label: '⚠ Low Stock' },
+                        { key: 'out_of_stock',  label: '✕ Out of Stock' },
+                        { key: 'expiring_soon', label: '⏰ Expiring Soon' },
+                        { key: 'lot_tracked',   label: '🔖 Lot Tracked' },
+                    ] as { key: QuickFilter; label: string }[]
+                ).map(({ key, label }) => {
+                    const active = quickFilters.has(key);
+                    return (
+                        <button
+                            key={key}
+                            onClick={() => toggleQuickFilter(key)}
+                            style={{
+                                padding: '0.3rem 0.7rem', borderRadius: '16px', fontSize: '0.78rem',
+                                fontWeight: active ? 600 : 400,
+                                border: active ? '1.5px solid var(--color-shc-red)' : '1px solid var(--color-border)',
+                                backgroundColor: active ? '#fff5f5' : 'var(--color-white)',
+                                color: active ? 'var(--color-shc-red)' : 'var(--color-text-main)',
+                                cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap'
+                            }}
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
+                {quickFilters.size > 0 && (
+                    <button
+                        onClick={() => setQuickFilters(new Set())}
+                        style={{ background: 'none', border: 'none', color: 'var(--color-shc-red)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                    >
+                        <X size={12} /> Clear
+                    </button>
+                )}
+            </div>
+
             <div className="card">
                 <InventoryTable
                     data={filteredInventory}
@@ -134,7 +216,7 @@ const StockByWarehouse: React.FC = () => {
                             />
                             <input
                                 type="text"
-                                placeholder="Search by SKU, description, UPC, lot number..."
+                                placeholder="Search by SKU, name, UPC, brand, category, location, lot…"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 style={{

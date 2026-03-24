@@ -3,22 +3,30 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Order } from '../../types';
 import type { OrderTag } from '../../types/tags';
-import { ChevronDown, X, Filter } from 'lucide-react';
+import { ChevronDown, X, Filter, Search } from 'lucide-react';
 
 export interface OrderFilters {
+    search: string;
     tagIds: string[];
     channels: string[];
     statuses: string[];
+    paymentStatuses: string[];
     dateFrom: string;
     dateTo: string;
+    totalMin: string;
+    totalMax: string;
 }
 
 export const EMPTY_FILTERS: OrderFilters = {
+    search: '',
     tagIds: [],
     channels: [],
     statuses: [],
+    paymentStatuses: [],
     dateFrom: '',
-    dateTo: ''
+    dateTo: '',
+    totalMin: '',
+    totalMax: '',
 };
 
 interface OrderFilterBarProps {
@@ -98,8 +106,9 @@ const DropdownPill: React.FC<DropdownPillProps> = ({ label, activeCount, childre
 const OrderFilterBar: React.FC<OrderFilterBarProps> = ({ orders, tags, filters, onChange }) => {
     const channels = Array.from(new Set(orders.map(o => o.channel).filter(Boolean)));
     const statuses = ['New', 'Allocated', 'Picking', 'Packed', 'Shipped', 'Cancelled'];
+    const paymentStatuses = ['Paid', 'Unpaid', 'Refunded'];
 
-    const toggle = <K extends 'tagIds' | 'channels' | 'statuses'>(key: K, value: string) => {
+    const toggle = <K extends 'tagIds' | 'channels' | 'statuses' | 'paymentStatuses'>(key: K, value: string) => {
         const arr = filters[key] as string[];
         onChange({
             ...filters,
@@ -108,7 +117,9 @@ const OrderFilterBar: React.FC<OrderFilterBarProps> = ({ orders, tags, filters, 
     };
 
     const activeCount = filters.tagIds.length + filters.channels.length + filters.statuses.length
-        + (filters.dateFrom ? 1 : 0) + (filters.dateTo ? 1 : 0);
+        + filters.paymentStatuses.length
+        + (filters.dateFrom ? 1 : 0) + (filters.dateTo ? 1 : 0)
+        + (filters.totalMin ? 1 : 0) + (filters.totalMax ? 1 : 0);
 
     const hasAny = activeCount > 0;
 
@@ -130,8 +141,14 @@ const OrderFilterBar: React.FC<OrderFilterBarProps> = ({ orders, tags, filters, 
             label: st,
             onRemove: () => toggle('statuses', st)
         })),
+        ...filters.paymentStatuses.map(st => ({
+            label: `Payment: ${st}`,
+            onRemove: () => toggle('paymentStatuses', st)
+        })),
         ...(filters.dateFrom ? [{ label: `From: ${filters.dateFrom}`, onRemove: () => onChange({ ...filters, dateFrom: '' }) }] : []),
         ...(filters.dateTo ? [{ label: `To: ${filters.dateTo}`, onRemove: () => onChange({ ...filters, dateTo: '' }) }] : []),
+        ...(filters.totalMin ? [{ label: `Min $${filters.totalMin}`, onRemove: () => onChange({ ...filters, totalMin: '' }) }] : []),
+        ...(filters.totalMax ? [{ label: `Max $${filters.totalMax}`, onRemove: () => onChange({ ...filters, totalMax: '' }) }] : []),
     ] as { label: string; onRemove: () => void; color?: string }[];
 
     const checkboxStyle = (active: boolean): React.CSSProperties => ({
@@ -144,6 +161,32 @@ const OrderFilterBar: React.FC<OrderFilterBarProps> = ({ orders, tags, filters, 
 
     return (
         <div style={{ marginBottom: '1rem' }}>
+            {/* Search input */}
+            <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+                <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
+                <input
+                    type="text"
+                    placeholder="Search by order ID, customer, address, tracking number…"
+                    value={filters.search}
+                    onChange={e => onChange({ ...filters, search: e.target.value })}
+                    style={{
+                        width: '100%', paddingLeft: '2.25rem', paddingRight: filters.search ? '2.25rem' : '0.75rem',
+                        paddingTop: '0.55rem', paddingBottom: '0.55rem',
+                        border: '1px solid var(--color-border)', borderRadius: '8px',
+                        fontSize: '0.875rem', color: 'var(--color-text-dark)',
+                        backgroundColor: 'var(--color-white)', outline: 'none', boxSizing: 'border-box'
+                    }}
+                />
+                {filters.search && (
+                    <button
+                        onClick={() => onChange({ ...filters, search: '' })}
+                        style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', padding: 0 }}
+                    >
+                        <X size={14} />
+                    </button>
+                )}
+            </div>
+
             {/* Filter pills row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)', marginRight: '0.15rem' }}>
@@ -235,6 +278,50 @@ const OrderFilterBar: React.FC<OrderFilterBarProps> = ({ orders, tags, filters, 
                     </div>
                 </DropdownPill>
 
+                {/* Payment Status filter */}
+                <DropdownPill label="Payment" activeCount={filters.paymentStatuses.length}>
+                    {paymentStatuses.map(st => (
+                        <div
+                            key={st}
+                            style={checkboxStyle(filters.paymentStatuses.includes(st))}
+                            onClick={() => toggle('paymentStatuses', st)}
+                        >
+                            <input type="checkbox" readOnly checked={filters.paymentStatuses.includes(st)} style={{ cursor: 'pointer' }} />
+                            {st}
+                        </div>
+                    ))}
+                </DropdownPill>
+
+                {/* Total Amount range */}
+                <DropdownPill label="Total $" activeCount={(filters.totalMin ? 1 : 0) + (filters.totalMax ? 1 : 0)}>
+                    <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>MIN ($)</label>
+                            <input
+                                type="number"
+                                min="0"
+                                className="form-input"
+                                placeholder="0.00"
+                                value={filters.totalMin}
+                                onChange={e => onChange({ ...filters, totalMin: e.target.value })}
+                                style={{ width: '100%', fontSize: '0.8rem' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>MAX ($)</label>
+                            <input
+                                type="number"
+                                min="0"
+                                className="form-input"
+                                placeholder="999.99"
+                                value={filters.totalMax}
+                                onChange={e => onChange({ ...filters, totalMax: e.target.value })}
+                                style={{ width: '100%', fontSize: '0.8rem' }}
+                            />
+                        </div>
+                    </div>
+                </DropdownPill>
+
                 {/* Clear all */}
                 {hasAny && (
                     <button
@@ -281,12 +368,29 @@ export default OrderFilterBar;
 // ── helper: apply filters to an orders array ─────────────────────────────────
 export function applyOrderFilters(orders: Order[], filters: OrderFilters): Order[] {
     return orders.filter(order => {
+        // Full-text search across key fields
+        if (filters.search.trim()) {
+            const q = filters.search.toLowerCase().trim();
+            const hit =
+                order.id.toLowerCase().includes(q) ||
+                order.customerName.toLowerCase().includes(q) ||
+                (order.shipToName ?? '').toLowerCase().includes(q) ||
+                (order.shippingAddress ?? '').toLowerCase().includes(q) ||
+                (order.trackingNumber ?? '').toLowerCase().includes(q) ||
+                order.channel.toLowerCase().includes(q) ||
+                (order.storeName ?? '').toLowerCase().includes(q) ||
+                order.fulfillmentStatus.toLowerCase().includes(q) ||
+                (order.paymentStatus ?? '').toLowerCase().includes(q);
+            if (!hit) return false;
+        }
+
         if (filters.tagIds.length > 0) {
             const orderTagIds = (order.tags ?? []).map(t => t.id);
             if (!filters.tagIds.some(id => orderTagIds.includes(id))) return false;
         }
         if (filters.channels.length > 0 && !filters.channels.includes(order.channel)) return false;
         if (filters.statuses.length > 0 && !filters.statuses.includes(order.fulfillmentStatus)) return false;
+        if (filters.paymentStatuses.length > 0 && !filters.paymentStatuses.includes(order.paymentStatus ?? '')) return false;
         if (filters.dateFrom) {
             if (new Date(order.orderDate) < new Date(filters.dateFrom)) return false;
         }
@@ -294,6 +398,12 @@ export function applyOrderFilters(orders: Order[], filters: OrderFilters): Order
             const to = new Date(filters.dateTo);
             to.setHours(23, 59, 59, 999);
             if (new Date(order.orderDate) > to) return false;
+        }
+        if (filters.totalMin !== '' && !isNaN(Number(filters.totalMin))) {
+            if ((order.total ?? 0) < Number(filters.totalMin)) return false;
+        }
+        if (filters.totalMax !== '' && !isNaN(Number(filters.totalMax))) {
+            if ((order.total ?? 0) > Number(filters.totalMax)) return false;
         }
         return true;
     });

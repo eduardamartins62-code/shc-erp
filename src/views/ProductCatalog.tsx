@@ -181,13 +181,18 @@ const ProductCatalog: React.FC = () => {
 
     // Filtering: search + tab + status + category + in-stock
     const filteredProducts = products.filter(p => {
-        // 1. Search across SKU, name, brand
+        // 1. Search across all visible fields
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             const matches =
                 p.sku.toLowerCase().includes(q) ||
                 p.name.toLowerCase().includes(q) ||
-                (p.brand || '').toLowerCase().includes(q);
+                (p.brand || '').toLowerCase().includes(q) ||
+                (p.upc || '').toLowerCase().includes(q) ||
+                (p.category || '').toLowerCase().includes(q) ||
+                p.status.toLowerCase().includes(q) ||
+                p.type.toLowerCase().includes(q) ||
+                typeLabel(p.type).toLowerCase().includes(q);
             if (!matches) return false;
         }
 
@@ -353,7 +358,7 @@ const ProductCatalog: React.FC = () => {
                     <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
                     <input
                         type="text"
-                        placeholder="Search by SKU, name, brand, or category…"
+                        placeholder="Search by SKU, name, brand, category, UPC, type, or status…"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         style={{

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { PurchaseOrder } from '../../types/receiving';
-import { Plus, Search, Loader2, X, Printer, PauseCircle, PlayCircle } from 'lucide-react';
+import { Plus, Search, Loader2, X, Printer, PauseCircle, PlayCircle, ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { SlideOverPanel } from '../ui/SlideOverPanel';
 
 interface ReceivingListProps {
@@ -42,6 +42,24 @@ const ReceivingList: React.FC<ReceivingListProps> = ({
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<Tab>('pending');
+    const [sortKey, setSortKey] = useState<'id' | 'supplier' | 'expectedDate' | 'items' | 'status' | null>(null);
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+    const handleColSort = (key: typeof sortKey) => {
+        if (sortKey === key) {
+            setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDir('asc');
+        }
+    };
+
+    const sortIcon = (key: typeof sortKey) => {
+        if (sortKey !== key) return <ChevronsUpDown size={13} style={{ color: 'rgba(255,255,255,0.35)', flexShrink: 0 }} />;
+        return sortDir === 'asc'
+            ? <ArrowUp size={13} style={{ color: '#fff', flexShrink: 0 }} />
+            : <ArrowDown size={13} style={{ color: '#fff', flexShrink: 0 }} />;
+    };
 
     const pendingPOs = useMemo(() => pos.filter(p => ['pending', 'overdue', 'partial'].includes(p.status)), [pos]);
     const receivedPOs = useMemo(() => pos.filter(p => p.status === 'received'), [pos]);
@@ -50,10 +68,45 @@ const ReceivingList: React.FC<ReceivingListProps> = ({
     const tabPOs = activeTab === 'pending' ? pendingPOs : activeTab === 'received' ? receivedPOs : onHoldPOs;
 
     const filteredPOs = useMemo(() => {
-        if (!searchTerm) return tabPOs;
-        const lower = searchTerm.toLowerCase();
-        return tabPOs.filter(p => p.id.toLowerCase().includes(lower) || p.supplier.toLowerCase().includes(lower));
-    }, [tabPOs, searchTerm]);
+        let result = tabPOs;
+
+        if (searchTerm.trim()) {
+            const lower = searchTerm.toLowerCase().trim();
+            result = result.filter(p =>
+                p.id.toLowerCase().includes(lower) ||
+                p.supplier.toLowerCase().includes(lower) ||
+                p.status.toLowerCase().includes(lower) ||
+                new Date(p.expectedDate).toLocaleDateString().includes(lower) ||
+                p.items.some(item =>
+                    item.sku.toLowerCase().includes(lower) ||
+                    item.name.toLowerCase().includes(lower) ||
+                    (item.unit || '').toLowerCase().includes(lower)
+                )
+            );
+        }
+
+        if (sortKey) {
+            result = [...result].sort((a, b) => {
+                let aVal: string | number;
+                let bVal: string | number;
+                if (sortKey === 'expectedDate') {
+                    aVal = new Date(a.expectedDate).getTime();
+                    bVal = new Date(b.expectedDate).getTime();
+                } else if (sortKey === 'items') {
+                    aVal = a.items.length;
+                    bVal = b.items.length;
+                } else {
+                    aVal = (a[sortKey] as string).toLowerCase();
+                    bVal = (b[sortKey] as string).toLowerCase();
+                }
+                if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        return result;
+    }, [tabPOs, searchTerm, sortKey, sortDir]);
 
     const tabStyle = (tab: Tab) => ({
         background: 'none',
@@ -115,7 +168,7 @@ const ReceivingList: React.FC<ReceivingListProps> = ({
                         <Search size={16} color="var(--color-text-muted)" style={{ position: 'absolute', left: '12px', top: '22px' }} />
                         <input
                             type="text"
-                            placeholder="Search PO or supplier..."
+                            placeholder="Search PO, supplier, item name, SKU…"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="form-control"
@@ -150,11 +203,22 @@ const ReceivingList: React.FC<ReceivingListProps> = ({
                                         />
                                     </th>
                                 )}
-                                <th>PO Number</th>
-                                <th>Supplier</th>
-                                <th>Expected</th>
-                                <th>Items</th>
-                                <th>Status</th>
+                                {(['id', 'supplier', 'expectedDate', 'items', 'status'] as const).map((key, i) => {
+                                    const labels: Record<string, string> = { id: 'PO Number', supplier: 'Supplier', expectedDate: 'Expected', items: 'Items', status: 'Status' };
+                                    return (
+                                        <th
+                                            key={key}
+                                            onClick={() => handleColSort(key)}
+                                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                                            title={sortKey === key ? (sortDir === 'asc' ? 'A → Z (click for Z → A)' : 'Z → A (click to reset)') : 'Click to sort'}
+                                        >
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                {labels[key]}
+                                                {sortIcon(key)}
+                                            </div>
+                                        </th>
+                                    );
+                                })}
                                 <th style={{ textAlign: 'right' }}>Action</th>
                             </tr>
                         </thead>
