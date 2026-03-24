@@ -32,9 +32,10 @@ export default function LoginPage() {
             if (result.error) {
                 setError(result.error);
                 setLoading(false);
-            } else {
-                router.replace('/');
             }
+            // On success: currentUser will be set in AuthContext, the
+            // useEffect above will fire and navigate to '/'.
+            // Keep loading=true so the button stays disabled until navigation.
         } catch (err) {
             setError('An unexpected error occurred. Please try again.');
             setLoading(false);

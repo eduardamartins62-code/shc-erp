@@ -70,11 +70,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     async function signIn(email: string, password: string): Promise<{ error?: string }> {
-        setLoading(true);
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
-            setLoading(false);
             return { error: error.message };
         }
 
@@ -82,13 +80,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const appUser = await loadAppUser(data.user.email);
             if (!appUser) {
                 await supabase.auth.signOut();
-                setLoading(false);
                 return { error: 'Your account is not set up in this system. Please contact your administrator.' };
             }
             setCurrentUser(appUser);
         }
 
-        setLoading(false);
         return {};
     }
 
