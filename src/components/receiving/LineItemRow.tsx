@@ -244,6 +244,9 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
 
     // ── PUT AWAY STEP ───────────────────────────────────────────────────────
     const hasLocation = !!line.locationOverride;
+    const splitTotal = line.locationSplits.reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
+    const remainingQty = parsedQty - splitTotal;
+    const isOverSplit = splitTotal > parsedQty;
 
     const handleAddSplit = () => {
         const newSplit: LocationSplit = { id: `split-${Date.now()}`, location: locations[0] || '', qty: '' };
@@ -264,7 +267,7 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
                 style={{
                     background: 'var(--color-bg-light)',
                     borderBottom: line.locationSplits.length > 0 ? 'none' : '1px solid var(--color-border)',
-                    borderLeft: hasLocation ? '3px solid var(--color-status-good)' : '3px solid var(--color-border)',
+                    borderLeft: isOverSplit ? '3px solid var(--color-status-expired)' : hasLocation ? '3px solid var(--color-status-good)' : '3px solid var(--color-border)',
                     transition: 'background-color 0.15s ease'
                 }}
                 onMouseOver={e => (e.currentTarget.style.backgroundColor = 'var(--color-bg-subtle)')}
@@ -289,9 +292,20 @@ const LineItemRow: React.FC<LineItemRowProps> = ({
 
                 {/* Qty (read-only) */}
                 <td style={{ padding: '10px 10px', verticalAlign: 'middle' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-main)' }}>
-                        {line.receivedQty} <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--color-text-muted)' }}>{line.unit}</span>
-                    </span>
+                    {line.locationSplits.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: 700, color: isOverSplit ? 'var(--color-status-expired)' : 'var(--color-text-main)' }}>
+                                {line.receivedQty} <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--color-text-muted)' }}>{line.unit}</span>
+                            </span>
+                            <span style={{ fontSize: '11px', color: isOverSplit ? 'var(--color-status-expired)' : 'var(--color-text-muted)', fontWeight: isOverSplit ? 700 : 400 }}>
+                                {isOverSplit ? `Over by ${splitTotal - parsedQty}` : `${remainingQty} here`}
+                            </span>
+                        </div>
+                    ) : (
+                        <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-main)' }}>
+                            {line.receivedQty} <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--color-text-muted)' }}>{line.unit}</span>
+                        </span>
+                    )}
                 </td>
 
                 {/* Lot # (read-only) */}

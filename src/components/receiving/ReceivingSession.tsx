@@ -187,7 +187,12 @@ const ReceivingSession: React.FC<ReceivingSessionProps> = ({
         return !isNaN(qty) && qty > 0;
     });
     const hasEmptyLocations = activeLines.some(l => !l.locationOverride);
-    const isStep2Valid = !hasEmptyLocations && !isSubmitting;
+    const hasOverSplits = activeLines.some(l => {
+        const total = parseInt(l.receivedQty) || 0;
+        const splitTotal = l.locationSplits.reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
+        return splitTotal > total;
+    });
+    const isStep2Valid = !hasEmptyLocations && !hasOverSplits && !isSubmitting;
 
     const handleProceedToPutaway = () => {
         if (!isStep1Valid) return;
@@ -522,6 +527,11 @@ const ReceivingSession: React.FC<ReceivingSessionProps> = ({
                     {hasEmptyLocations && (
                         <div style={{ color: 'var(--color-status-expired)', textAlign: 'center', fontSize: '12px', marginTop: '12px', fontWeight: 500 }}>
                             Assign a location to every item to continue
+                        </div>
+                    )}
+                    {hasOverSplits && (
+                        <div style={{ color: 'var(--color-status-expired)', textAlign: 'center', fontSize: '12px', marginTop: '12px', fontWeight: 500 }}>
+                            Split quantities exceed total received qty
                         </div>
                     )}
                 </>

@@ -101,17 +101,48 @@ export const submitReceipt = async (
 
     for (const line of receivableLines) {
         const qty = parseInt(line.receivedQty);
+        const reason = `Receipt ${session.receiptNumber}${session.poId ? ` / PO ${session.poId}` : ''}`;
+        const base = {
+            sku: line.sku,
+            warehouseId: session.warehouseId || 'WH-MAIN',
+            lotNumber: line.lot || undefined,
+            expirationDate: line.expDate || undefined,
+            performedBy: 'Receiving',
+            reason
+        };
+
         try {
-            await api.receiveStock({
-                sku: line.sku,
-                warehouseId: session.warehouseId || 'WH-MAIN',
-                locationCode: line.locationOverride || session.location || '',
-                quantity: qty,
-                lotNumber: line.lot || undefined,
-                expirationDate: line.expDate || undefined,
-                performedBy: 'Receiving',
-                reason: `Receipt ${session.receiptNumber}${session.poId ? ` / PO ${session.poId}` : ''}`
-            });
+            if (line.locationSplits && line.locationSplits.length > 0) {
+                const splitTotal = line.locationSplits.reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
+                const remainingQty = qty - splitTotal;
+
+                // Main location gets whatever is left after splits
+                if (remainingQty > 0) {
+                    await api.receiveStock({
+                        ...base,
+                        locationCode: line.locationOverride || session.location || '',
+                        quantity: remainingQty
+                    });
+                }
+
+                // Each split goes to its own location
+                for (const split of line.locationSplits) {
+                    const splitQty = Number(split.qty);
+                    if (splitQty > 0 && split.location) {
+                        await api.receiveStock({
+                            ...base,
+                            locationCode: split.location,
+                            quantity: splitQty
+                        });
+                    }
+                }
+            } else {
+                await api.receiveStock({
+                    ...base,
+                    locationCode: line.locationOverride || session.location || '',
+                    quantity: qty
+                });
+            }
         } catch (err) {
             console.error(`Failed to receive line ${line.sku}:`, err);
         }
