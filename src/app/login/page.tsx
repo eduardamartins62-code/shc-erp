@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { Warehouse, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
-    const { signIn } = useAuth();
+    const { signIn, currentUser, loading: authLoading } = useAuth();
     const router = useRouter();
 
     const [email, setEmail] = useState('');
@@ -14,6 +14,12 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!authLoading && currentUser) {
+            router.replace('/');
+        }
+    }, [authLoading, currentUser, router]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
