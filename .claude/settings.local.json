@@ -100,7 +100,14 @@
       "Bash(do grep:*)",
       "Bash(done)",
       "Bash(grep -h \"^import\" /Users/eduardapantaleao/ERP/src/views/settings/*.tsx)",
-      "Bash(kill 11567)"
+      "Bash(kill 11567)",
+      "Bash(sed -n '35,55p' src/context/LocationContext.tsx)",
+      "Bash(sed -n '100,130p' src/context/SettingsContext.tsx)",
+      "Bash(sed -n '60,72p' src/views/StockByWarehouse.tsx)",
+      "Bash(sed -n '34,50p' src/views/OrdersDashboard.tsx)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//Users/eduardapantaleao/ERP/**)"
     ]
   }
 }
