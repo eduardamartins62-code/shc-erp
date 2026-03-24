@@ -5,7 +5,7 @@ import StockByWarehouse from '../../../views/StockByWarehouse';
 
 export default function Page() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading…</div>}>
       <StockByWarehouse />
     </Suspense>
   );
