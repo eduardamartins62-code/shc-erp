@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Plus, Search, Edit2 } from 'lucide-react';
 import type { Warehouse } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
 
 export const WarehousesSection: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { can } = usePermissions(currentUser);
+    const canEdit = can('settingsWarehouses', 'edit');
     const { warehouses, addWarehouse, updateWarehouse } = useSettings();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
@@ -99,6 +104,7 @@ export const WarehousesSection: React.FC = () => {
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--color-primary-dark)' }}>Warehouses</h3>
+                {canEdit && (
                 <button
                     onClick={() => handleOpenModal()}
                     style={{
@@ -117,6 +123,7 @@ export const WarehousesSection: React.FC = () => {
                     <Plus size={18} />
                     Add Warehouse
                 </button>
+                )}
             </div>
 
             {/* Filters Row */}

@@ -54,6 +54,17 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
     };
 
+    // Silent refresh — updates orders in the background without triggering the loading spinner.
+    // Use this for follow-up refreshes where orders are already displayed.
+    const refreshOrdersSilent = async () => {
+        try {
+            const data = await ordersApi.getOrders();
+            setOrders(data);
+        } catch {
+            // Silently ignore background refresh errors
+        }
+    };
+
     const createB2BOrder = async (data: B2BOrderFormData) => {
         setLoading(true);
         setError(null);
@@ -70,36 +81,28 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const updateOrderStatus = async (orderId: string, status: OrderStatus, performedBy: string, notes?: string) => {
-        setLoading(true);
         setError(null);
         try {
             await ordersApi.updateOrderStatus(orderId, status, performedBy, notes);
-            await fetchOrders();
+            await refreshOrdersSilent();
         } catch (err) {
             setError(err instanceof Error ? err.message : `Failed to update order status to ${status}`);
             throw err;
-        } finally {
-            setLoading(false);
         }
     };
 
     const allocateOrderInventory = async (orderId: string, performedBy: string) => {
-        setLoading(true);
         setError(null);
         try {
-            // Need to first verify we have the inventory
             await ordersApi.allocateInventory(orderId, performedBy);
-            await fetchOrders();
+            await refreshOrdersSilent();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to allocate inventory');
             throw err;
-        } finally {
-            setLoading(false);
         }
     };
 
     const cancelOrder = async (orderId: string, reason: string, performedBy: string) => {
-        setLoading(true);
         setError(null);
         try {
             const orderToCancel = orders.find(o => o.id === orderId);
@@ -107,26 +110,21 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             if (orderToCancel) {
                 await releaseInventory(orderToCancel.items.map(i => ({ sku: i.sku, quantity: i.quantity })), performedBy);
             }
-            await fetchOrders();
+            await refreshOrdersSilent();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to cancel order');
             throw err;
-        } finally {
-            setLoading(false);
         }
     };
 
     const deleteOrders = async (orderIds: string[]) => {
-        setLoading(true);
         setError(null);
         try {
             await ordersApi.deleteOrders(orderIds);
-            await fetchOrders();
+            await refreshOrdersSilent();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to delete orders');
             throw err;
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -267,7 +265,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
 
         if (markedCount > 0) {
-            await fetchOrders();
+            await refreshOrdersSilent();
         }
 
         return { marked: markedCount, ssShipped: shippedFromSS.length, dbPending: nonShipped.length };
@@ -282,8 +280,10 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 .then(async (newlyMapped) => {
                     if (newlyMapped.length > 0) {
                         await reserveInventory(newlyMapped, 'System: Mapping Status Refresh').catch(() => {});
+                        // Only re-fetch if something actually changed; use silent refresh to avoid
+                        // the loading spinner wiping out the already-displayed order list.
+                        await refreshOrdersSilent();
                     }
-                    await fetchOrders();
                 })
                 .catch(() => {});
         });

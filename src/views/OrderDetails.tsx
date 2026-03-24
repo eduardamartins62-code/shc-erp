@@ -4,6 +4,8 @@ import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useOrders } from '../context/OrderContext';
 import { useTags } from '../context/TagsContext';
+import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import StatusBadge from '../components/StatusBadge';
 import TagChip from '../components/ui/TagChip';
 import TagMultiSelect from '../components/ui/TagMultiSelect';
@@ -16,12 +18,15 @@ import PrintPackingSlipModal from '../components/orders/PrintPackingSlipModal';
 import { useState } from 'react';
 
 const OrderDetails: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { can, levelFor } = usePermissions(currentUser);
     const { id } = useParams<{ id: string }>();
     const navigate = useRouter();
     const { orders, allocateOrderInventory, updateOrderStatus, fetchOrders, loading } = useOrders();
     const { assignTagToOrder, removeTagFromOrder } = useTags();
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showPrintModal, setShowPrintModal] = useState(false);
+    const canEdit = can('orders', 'edit');
 
     const order = orders.find(o => o.id === id);
 
@@ -205,7 +210,11 @@ const OrderDetails: React.FC = () => {
                     <div className="card" style={{ backgroundColor: '#fafafa' }}>
                         <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--color-primary-dark)' }}>Workflow Actions</h3>
                         
-                        {order.fulfillmentStatus === 'Cancelled' ? (
+                        {!canEdit ? (
+                            <div style={{ background: '#f9fafb', border: '1px solid var(--color-border)', borderRadius: '6px', padding: '0.75rem 1rem', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                                You have view-only access. Contact an administrator to process this order.
+                            </div>
+                        ) : order.fulfillmentStatus === 'Cancelled' ? (
                             <div style={{ backgroundColor: 'var(--color-bg-danger)', padding: '1rem', borderRadius: '6px', border: '1px solid var(--color-status-expired)', color: 'var(--color-shc-red)' }}>
                                 <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <CheckCircle size={16} /> Order Cancelled

@@ -4,8 +4,13 @@ import { getPurchaseOrders, getLocations } from '../services/receivingApi';
 import ReceivingList from '../components/receiving/ReceivingList';
 import ReceivingSession from '../components/receiving/ReceivingSession';
 import { CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 const ReceivingPage: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { can, levelFor } = usePermissions(currentUser);
+    const canEdit = can('receiving', 'edit');
     const [view, setView] = useState<'list' | 'session' | 'success'>('list');
     const [mode, setMode] = useState<'po' | 'manual' | 'bulk' | null>(null);
     const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
@@ -113,15 +118,22 @@ const ReceivingPage: React.FC = () => {
         setTimeout(() => window.print(), 10);
     };
 
+    if (levelFor('receiving') === 'none') return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <h2>Access Denied</h2>
+            <p>You don't have permission to view Receiving. Contact your administrator.</p>
+        </div>
+    );
+
     if (view === 'list') {
         return (
             <>
                 <ReceivingList
                     pos={pos}
                     loading={loading}
-                    onStartPO={handleStartPO}
-                    onStartManual={handleStartManual}
-                    onStartBulk={handleStartBulk}
+                    onStartPO={canEdit ? handleStartPO : () => {}}
+                    onStartManual={canEdit ? handleStartManual : () => {}}
+                    onStartBulk={canEdit ? handleStartBulk : () => {}}
                     selectedPOIds={selectedPOIds}
                     setSelectedPOIds={setSelectedPOIds}
                     drawerPO={drawerPO}

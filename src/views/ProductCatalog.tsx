@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useProducts } from '../context/ProductContext';
 import { useInventory } from '../context/InventoryContext';
 import { useSettings } from '../context/SettingsContext';
+import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { Plus, Download, Edit2, Box, ShoppingCart, Share2, XCircle, Search } from 'lucide-react';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { SlideOverPanel } from '../components/ui/SlideOverPanel';
@@ -21,10 +23,13 @@ const typeLabel = (type: string): string => {
 };
 
 const ProductCatalog: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { can, levelFor } = usePermissions(currentUser);
     const { products, calculateSimpleInventory, calculateBundleInventory, updateProduct } = useProducts();
     const { inventory } = useInventory();
     const { selectedWarehouseId } = useSettings();
     const navigate = useRouter();
+    const canEdit = can('products', 'edit');
 
     // Real inventory from Supabase, keyed by SKU, filtered by selected warehouse
     const realInventoryBySku = useMemo(() => {
@@ -297,6 +302,13 @@ const ProductCatalog: React.FC = () => {
         }}>{n}</span>
     );
 
+    if (levelFor('products') === 'none') return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <h2>Access Denied</h2>
+            <p>You don't have permission to view Products. Contact your administrator.</p>
+        </div>
+    );
+
     return (
         <div>
             {/* PAGE HEADER */}
@@ -317,10 +329,12 @@ const ProductCatalog: React.FC = () => {
                         <Download size={16} />
                         Export
                     </button>
-                    <button className="btn-primary" onClick={() => navigate.push('/wms/products/new')}>
-                        <Plus size={16} />
-                        Add Product
-                    </button>
+                    {canEdit && (
+                        <button className="btn-primary" onClick={() => navigate.push('/wms/products/new')}>
+                            <Plus size={16} />
+                            Add Product
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -456,12 +470,14 @@ const ProductCatalog: React.FC = () => {
 
             {/* TABLE */}
             <div className="card" style={{ padding: 0, borderRadius: '0 0 8px 8px', borderTop: 'none' }}>
+                {canEdit && (
                 <BulkActionBar
                     selectedCount={selectedKeys.size}
                     module="products"
                     onClearSelection={() => setSelectedKeys(new Set())}
                     onAction={handleBulkAction}
                 />
+                )}
                 <DataTable
                     columns={columns}
                     data={tableData}
@@ -479,6 +495,7 @@ const ProductCatalog: React.FC = () => {
                 title="Product Details"
                 actions={
                     <>
+                        {canEdit && (
                         <button
                             className="btn-secondary"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
@@ -486,6 +503,7 @@ const ProductCatalog: React.FC = () => {
                         >
                             <Edit2 size={14} /> Edit
                         </button>
+                        )}
                         <button
                             className="btn-primary"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}

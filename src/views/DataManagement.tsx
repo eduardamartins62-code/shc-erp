@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Upload, Download, FileText, Database, Package, ShoppingCart, MapPin, X, AlertCircle, RefreshCw, Layers } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { useProducts } from '../context/ProductContext';
 import { useInventory } from '../context/InventoryContext';
 import { useLocations } from '../context/LocationContext';
@@ -26,6 +28,9 @@ interface ImportJob {
 }
 
 const DataManagement: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { can, levelFor } = usePermissions(currentUser);
+    const canEdit = can('dataManagement', 'edit');
     const [activeTab, setActiveTab] = useState<TabType>('products');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [selectedFileContent, setSelectedFileContent] = useState<string | null>(null);
@@ -331,6 +336,13 @@ const DataManagement: React.FC = () => {
         }
     };
 
+    if (levelFor('dataManagement') === 'none') return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <h2>Access Denied</h2>
+            <p>You don't have permission to view Data Management. Contact your administrator.</p>
+        </div>
+    );
+
     return (
         <div className="data-management-page">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '1rem' }}>
@@ -375,7 +387,7 @@ const DataManagement: React.FC = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
                 {/* Import Card */}
-                <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', opacity: canEdit ? 1 : 0.5, pointerEvents: canEdit ? undefined : 'none' }}>
                     <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
                         <Upload size={32} />
                     </div>

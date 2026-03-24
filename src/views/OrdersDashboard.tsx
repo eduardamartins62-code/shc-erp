@@ -3,10 +3,15 @@ import { useOrders } from '../context/OrderContext';
 import { useRouter } from 'next/navigation';
 import OrderTable from '../components/OrderTable';
 import { Download, Plus, RefreshCw } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 const OrdersDashboard: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { can, levelFor } = usePermissions(currentUser);
     const { orders, loading, error, syncShipStationOrders, syncShippedOrders, lastOrderSyncedAt } = useOrders();
     const router = useRouter();
+    const canEdit = can('orders', 'edit');
     const [syncing, setSyncing] = useState(false);
     const [syncingShipped, setSyncingShipped] = useState(false);
     const [activeTab, setActiveTab] = useState<'Pending' | 'Shipped' | 'Cancelled'>('Pending');
@@ -29,6 +34,13 @@ const OrdersDashboard: React.FC = () => {
     const pendingFulfillment = orders.filter(o =>
         ['Allocated', 'Picking', 'Packed'].includes(o.fulfillmentStatus)
     ).length;
+
+    if (levelFor('orders') === 'none') return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <h2>Access Denied</h2>
+            <p>You don't have permission to view Orders. Contact your administrator.</p>
+        </div>
+    );
 
     return (
         <div style={{ paddingBottom: '2rem' }}>
@@ -98,6 +110,7 @@ const OrdersDashboard: React.FC = () => {
                             </span>
                         )}
                     </div>
+                    {canEdit && (
                     <button
                         className="btn-primary"
                         onClick={() => router.push('/wms/orders/new')}
@@ -105,6 +118,7 @@ const OrdersDashboard: React.FC = () => {
                         <Plus size={18} />
                         Create B2B Order
                     </button>
+                    )}
                 </div>
             </div>
 

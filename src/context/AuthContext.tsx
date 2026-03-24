@@ -45,24 +45,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     useEffect(() => {
-        // Check active session on mount
-        supabase.auth.getSession().then(async ({ data: { session } }) => {
-            if (session?.user?.email) {
-                const appUser = await loadAppUser(session.user.email);
-                setCurrentUser(appUser);
-            }
-            setLoading(false);
-        });
-
-        // Listen for auth state changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session?.user?.email) {
+            if (event === 'SIGNED_OUT') {
+                setCurrentUser(null);
+                setLoading(false);
+            } else if (session?.user?.email) {
                 const appUser = await loadAppUser(session.user.email);
                 setCurrentUser(appUser);
-            } else if (event === 'SIGNED_OUT') {
-                setCurrentUser(null);
+                setLoading(false);
+            } else {
+                setLoading(false);
             }
-            setLoading(false);
         });
 
         return () => subscription.unsubscribe();

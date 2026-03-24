@@ -3,6 +3,8 @@ import { useLocations } from '../context/LocationContext';
 import { useProducts } from '../context/ProductContext';
 import { useInventory } from '../context/InventoryContext';
 import { useSettings } from '../context/SettingsContext';
+import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { Plus, Printer, Edit, CheckSquare, AlertTriangle, AlertCircle, Box, MapPin, CheckCircle, Package, X } from 'lucide-react';
 import LocationFormModal from '../components/locations/LocationFormModal';
 import PrintLabelView from '../components/locations/PrintLabelView';
@@ -22,10 +24,13 @@ const REASON_CODES = [
 ];
 
 const Locations: React.FC = () => {
+    const { currentUser } = useAuth();
+    const { can, levelFor } = usePermissions(currentUser);
     const { locations, loading, updateLocation } = useLocations();
     const { inventoryLocations, products } = useProducts();
     const { inventory, adjustStock } = useInventory();
     const { selectedWarehouseId } = useSettings();
+    const canEdit = can('locations', 'edit');
 
     const filteredLocations = useMemo(() =>
         selectedWarehouseId
@@ -266,6 +271,13 @@ const Locations: React.FC = () => {
         return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading locations…</div>;
     }
 
+    if (levelFor('locations') === 'none') return (
+        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <h2>Access Denied</h2>
+            <p>You don't have permission to view Locations. Contact your administrator.</p>
+        </div>
+    );
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Header */}
@@ -285,6 +297,7 @@ const Locations: React.FC = () => {
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                {canEdit && (
                 <button
                     onClick={handleAddLocation}
                     style={{
@@ -295,6 +308,7 @@ const Locations: React.FC = () => {
                 >
                     <Plus size={18} /> Add Location
                 </button>
+                )}
                 <button
                     onClick={handleBulkPrint}
                     style={{
@@ -367,6 +381,7 @@ const Locations: React.FC = () => {
                 title="Location Details"
                 actions={
                     <>
+                        {canEdit && (
                         <button
                             className="btn-secondary"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
@@ -374,6 +389,7 @@ const Locations: React.FC = () => {
                         >
                             <Edit size={14} /> Edit
                         </button>
+                        )}
                         <button
                             className="btn-secondary"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
@@ -564,14 +580,14 @@ const Locations: React.FC = () => {
                                                         >
                                                             <X size={14} />
                                                         </button>
-                                                    ) : (
+                                                    ) : canEdit ? (
                                                         <button
                                                             onClick={() => openAdjust(itemKey, item.quantityOnHand)}
                                                             style={{ padding: '0.3rem 0.65rem', border: '1px solid var(--color-border)', borderRadius: '5px', background: 'none', cursor: 'pointer', color: 'var(--color-text-dark)', fontSize: '0.75rem', fontWeight: 500, flexShrink: 0, whiteSpace: 'nowrap' }}
                                                         >
                                                             Adjust
                                                         </button>
-                                                    )}
+                                                    ) : null}
                                                 </div>
 
                                                 {/* Inline Adjust Form */}

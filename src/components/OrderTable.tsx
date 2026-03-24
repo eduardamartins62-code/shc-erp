@@ -130,7 +130,9 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders, loading }) => {
         }
     ];
 
-    if (loading) {
+    // Only show the full-page spinner on the very first load (no orders yet).
+    // For subsequent refreshes, keep the existing table visible to avoid flicker.
+    if (loading && orders.length === 0) {
         return (
             <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                 <Clock className="animate-spin" size={24} style={{ margin: '0 auto', marginBottom: '1rem', color: 'var(--color-primary-dark)' }} />
