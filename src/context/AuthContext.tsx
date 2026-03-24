@@ -45,17 +45,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_OUT') {
-                setCurrentUser(null);
-                setLoading(false);
-            } else if (session?.user?.email) {
+        // Restore session on mount/refresh
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
+            if (session?.user?.email) {
                 const appUser = await loadAppUser(session.user.email);
                 setCurrentUser(appUser);
-                setLoading(false);
-            } else {
-                setLoading(false);
             }
+            setLoading(false);
+        });
+
+        // Listen for sign-in / sign-out events only
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' && session?.user?.email) {
+                const appUser = await loadAppUser(session.user.email);
+                if (appUser) setCurrentUser(appUser);
+            } else if (event === 'SIGNED_OUT') {
+                setCurrentUser(null);
+            }
+            // Do NOT call setLoading(false) here — INITIAL_SESSION fires before
+            // getSession() resolves and would clear loading with no user set.
         });
 
         return () => subscription.unsubscribe();
