@@ -7,16 +7,16 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
         }
 
-        // Use shipDateStart (last 60 days) so we catch recently-shipped orders regardless
-        // of when the order was originally created. Paginate through all pages so high-volume
-        // stores (e.g. SHC) don't push lower-volume store orders off page 1.
-        const shipDateStart = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
+        // Use a 14-day window — orders ship within days of being placed, and a shorter
+        // window means fewer pages to paginate, avoiding Vercel serverless timeouts.
+        const shipDateStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split('T')[0]; // YYYY-MM-DD
 
         const allOrders: any[] = [];
         let page = 1;
         let totalPages = 1;
+        const MAX_PAGES = 5; // Safety cap — 5 × 500 = 2,500 shipped orders max per sync
 
         do {
             // sortBy valid values: OrderDate, ModifyDate, CreateDate (ShipDate is not supported)
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
             totalPages = data.pages ?? 1;
             console.log(`[ShipStation Shipped] Page ${page}/${totalPages} — fetched ${pageOrders.length} orders (total so far: ${allOrders.length})`);
             page++;
-        } while (page <= totalPages);
+        } while (page <= totalPages && page <= MAX_PAGES);
 
         return NextResponse.json({ orders: allOrders, total: allOrders.length });
     } catch (error: any) {
