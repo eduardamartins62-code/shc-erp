@@ -45,25 +45,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     useEffect(() => {
-        // Restore session on mount/refresh
-        supabase.auth.getSession().then(async ({ data: { session } }) => {
-            if (session?.user?.email) {
-                const appUser = await loadAppUser(session.user.email);
-                setCurrentUser(appUser);
-            }
-            setLoading(false);
-        });
-
-        // Listen for sign-in / sign-out events only
+        // onAuthStateChange fires INITIAL_SESSION immediately from localStorage
+        // on every page load/refresh — no separate getSession() call needed.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session?.user?.email) {
-                const appUser = await loadAppUser(session.user.email);
-                if (appUser) setCurrentUser(appUser);
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+                if (session?.user?.email) {
+                    const appUser = await loadAppUser(session.user.email);
+                    if (appUser) setCurrentUser(appUser);
+                }
+                // Only clear loading after the initial session check is done
+                if (event === 'INITIAL_SESSION') setLoading(false);
             } else if (event === 'SIGNED_OUT') {
                 setCurrentUser(null);
+                setLoading(false);
             }
-            // Do NOT call setLoading(false) here — INITIAL_SESSION fires before
-            // getSession() resolves and would clear loading with no user set.
         });
 
         return () => subscription.unsubscribe();

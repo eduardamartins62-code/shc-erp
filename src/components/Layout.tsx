@@ -89,10 +89,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         .filter(Boolean)
         .join(' ');
 
-    // While checking auth, show nothing to avoid flash
-    if (loading || !currentUser) {
-        return null;
+    // While checking auth, show a full-screen loader instead of blank
+    if (loading) {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg-light)' }}>
+                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>Loading…</div>
+            </div>
+        );
     }
+
+    if (!currentUser) return null;
 
     // Build initials for avatar
     const initials = currentUser.fullName
