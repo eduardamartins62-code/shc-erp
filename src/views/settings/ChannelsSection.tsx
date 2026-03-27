@@ -8,6 +8,7 @@ import { ConnectStoreModal } from '../../components/integrations/ConnectStoreMod
 import { SetupStoreModal } from '../../components/integrations/SetupStoreModal';
 import { SlideOverPanel } from '../../components/ui/SlideOverPanel';
 import { shipstationApi } from '../../services/shipstationApi';
+import { ebayApi } from '../../services/ebayApi';
 import type { ChannelConfig, ChannelEnum } from '../../types';
 
 export const ChannelsSection: React.FC = () => {
@@ -61,6 +62,49 @@ export const ChannelsSection: React.FC = () => {
         setApiInputKey('');
         setApiInputSecret('');
         setApiAuthError(null);
+    };
+
+    // eBay OAuth Token Modal State
+    const [ebayModalId, setEbayModalId] = useState<string | null>(null);
+    const [ebayTokenInput, setEbayTokenInput] = useState('');
+    const [ebayAuthError, setEbayAuthError] = useState<string | null>(null);
+    const [isConnectingEbay, setIsConnectingEbay] = useState(false);
+
+    const handleConnectEbay = (id: string) => {
+        setEbayModalId(id);
+        setEbayTokenInput('');
+        setEbayAuthError(null);
+    };
+
+    const handleEbayConnectComplete = async () => {
+        if (!ebayModalId) return;
+        if (!ebayTokenInput.trim()) {
+            setEbayAuthError('eBay User Access Token is required.');
+            return;
+        }
+        setIsConnectingEbay(true);
+        setEbayAuthError(null);
+        try {
+            await ebayApi.validateCredentials(ebayTokenInput.trim());
+            await updateChannel(ebayModalId, { oauthToken: ebayTokenInput.trim(), isEnabled: true });
+            if (detailChannel?.id === ebayModalId) {
+                setDetailChannel(prev => prev ? { ...prev, oauthToken: ebayTokenInput.trim(), isEnabled: true } : null);
+            }
+            setEbayModalId(null);
+            setEbayTokenInput('');
+        } catch (error: any) {
+            setEbayAuthError(error.message || 'Failed to validate eBay token. Please check it and try again.');
+        } finally {
+            setIsConnectingEbay(false);
+        }
+    };
+
+    const handleDisconnectEbay = async (id: string) => {
+        if (!confirm('Disconnect eBay? This will stop all inventory syncs.')) return;
+        await updateChannel(id, { oauthToken: '', isEnabled: false });
+        if (detailChannel?.id === id) {
+            setDetailChannel(prev => prev ? { ...prev, oauthToken: '', isEnabled: false } : null);
+        }
     };
 
     const handleOAuthComplete = async () => {
@@ -336,6 +380,46 @@ export const ChannelsSection: React.FC = () => {
                                     </>
                                 )}
 
+                                {detailChannel.channel === 'eBay' && (
+                                    <>
+                                        <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '0.5rem 0' }} />
+                                        <div>
+                                            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary-dark)' }}>eBay Connection</p>
+
+                                            {!detailChannel.oauthToken ? (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'flex-start' }}>
+                                                    <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                                                        Connect your eBay seller account to push stock quantities every 10 minutes.
+                                                        Generate a <strong>User Access Token</strong> from the eBay Developer Portal with the <code>sell.inventory</code> scope.
+                                                    </p>
+                                                    <button
+                                                        className="btn-primary"
+                                                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                                                        onClick={() => handleConnectEbay(detailChannel.id)}
+                                                    >
+                                                        Connect eBay
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'flex-start' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontWeight: 500, fontSize: '0.875rem' }}>
+                                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
+                                                        Connected — auto-sync every 10 min
+                                                    </div>
+                                                    <button
+                                                        className="btn-secondary"
+                                                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: 'var(--color-shc-red)', borderColor: '#fee2e2', backgroundColor: '#fef2f2' }}
+                                                        onClick={() => handleDisconnectEbay(detailChannel.id)}
+                                                    >
+                                                        Disconnect
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '0.5rem 0' }} />
+                                    </>
+                                )}
+
                                 <div>
                                     <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary-dark)' }}>Integration Features</p>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -471,6 +555,17 @@ export const ChannelsSection: React.FC = () => {
                                         } catch (e: any) {
                                             alert(`Sync failed: ${e.message}`);
                                         }
+                                    } else if (detailChannel.channel === 'eBay') {
+                                        if (!detailChannel.oauthToken) {
+                                            alert("Please connect your eBay account before syncing inventory.");
+                                            return;
+                                        }
+                                        try {
+                                            const result = await ebayApi.syncInventory(detailChannel.oauthToken);
+                                            alert(`eBay sync complete — ${result.synced} SKUs updated, ${result.failed} failed.`);
+                                        } catch (e: any) {
+                                            alert(`eBay sync failed: ${e.message}`);
+                                        }
                                     } else {
                                         alert(`Syncing inventory for ${detailChannel.channel} is not implemented.`);
                                     }
@@ -502,6 +597,67 @@ export const ChannelsSection: React.FC = () => {
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                             <button className="btn-secondary" onClick={() => setChannelToDelete(null)}>Cancel</button>
                             <button className="btn-primary" style={{ backgroundColor: 'var(--color-shc-red)', borderColor: 'var(--color-shc-red)', color: '#ffffff' }} onClick={handleConfirmDelete}>Remove Connection</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* eBay OAuth Token Modal */}
+            {ebayModalId && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)', zIndex: 999999,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)'
+                }}>
+                    <div style={{
+                        backgroundColor: '#ffffff', width: '100%', maxWidth: '460px',
+                        borderRadius: '12px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                        border: '1px solid var(--color-border)'
+                    }}>
+                        <div style={{ backgroundColor: '#e53e3e', height: '4px', width: '100%' }}></div>
+                        <div style={{ padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ width: '64px', height: '64px', borderRadius: '16px', backgroundColor: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', border: '1px solid #fee2e2' }}>
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg" alt="eBay" style={{ height: '28px', objectFit: 'contain' }} />
+                            </div>
+                            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.35rem', textAlign: 'center', color: 'var(--color-primary-dark)' }}>Connect to eBay</h3>
+                            <p style={{ margin: '0 0 1.5rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center', lineHeight: 1.6 }}>
+                                Generate a <strong>User Access Token</strong> from the{' '}
+                                <strong>eBay Developer Portal → Get a Token for My Account</strong>{' '}
+                                with the <code style={{ backgroundColor: '#f3f4f6', padding: '0 4px', borderRadius: '3px' }}>sell.inventory</code> scope selected.
+                            </p>
+
+                            {ebayAuthError && (
+                                <div style={{ width: '100%', padding: '0.75rem', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', color: 'var(--color-shc-red)', fontSize: '0.875rem', marginBottom: '1rem', textAlign: 'center' }}>
+                                    {ebayAuthError}
+                                </div>
+                            )}
+
+                            <div style={{ width: '100%', marginBottom: '2rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>User Access Token</label>
+                                <textarea
+                                    value={ebayTokenInput}
+                                    onChange={(e) => setEbayTokenInput(e.target.value)}
+                                    placeholder="Paste your eBay User Access Token here..."
+                                    rows={4}
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: '#f9fafb', outline: 'none', fontSize: '0.8rem', fontFamily: 'monospace', resize: 'vertical' }}
+                                />
+                            </div>
+
+                            <button
+                                className="btn-primary"
+                                style={{ width: '100%', padding: '0.875rem', justifyContent: 'center', backgroundColor: '#e53e3e', borderColor: '#e53e3e', color: 'white', fontSize: '1rem', fontWeight: 600 }}
+                                onClick={handleEbayConnectComplete}
+                                disabled={isConnectingEbay}
+                            >
+                                {isConnectingEbay ? <><RefreshCw size={18} className="spin" style={{ marginRight: '8px' }} /> Validating...</> : 'Authorize eBay Connection'}
+                            </button>
+                            <button
+                                className="btn-secondary"
+                                style={{ width: '100%', padding: '0.75rem', justifyContent: 'center', marginTop: '0.75rem', border: 'none', backgroundColor: 'transparent', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}
+                                onClick={() => { setEbayModalId(null); setEbayAuthError(null); }}
+                            >
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 </div>

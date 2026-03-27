@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { User, Warehouse, ChannelConfig, SystemSettings } from '../types';
 import { api } from '../services/api';
 import { shipstationApi } from '../services/shipstationApi';
+import { ebayApi } from '../services/ebayApi';
 
 interface SettingsContextType {
     users: User[];
@@ -104,7 +105,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         refreshSettings();
     }, []);
 
-    // 15-minute background inventory sync for enabled channels
+    // 10-minute background inventory sync for enabled channels
     useEffect(() => {
         const syncInterval = setInterval(async () => {
             for (const channel of channels) {
@@ -113,14 +114,16 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
                         console.log(`[Background Worker] Syncing inventory for ${channel.channel}...`);
                         if (channel.channel === 'ShipStation' && channel.apiKey && channel.apiSecret) {
                             await shipstationApi.syncInventory(channel.apiKey, channel.apiSecret);
+                        } else if (channel.channel === 'eBay' && channel.oauthToken) {
+                            const result = await ebayApi.syncInventory(channel.oauthToken);
+                            console.log(`[Background Worker] eBay sync complete — ${result.synced} SKUs updated, ${result.failed} failed.`);
                         }
-                        // Add other channels here in the future
                     } catch (err) {
                         console.error(`[Background Worker] Failed to sync inventory for ${channel.channel}:`, err);
                     }
                 }
             }
-        }, 15 * 60 * 1000); // 15 minutes
+        }, 10 * 60 * 1000); // 10 minutes
 
         return () => clearInterval(syncInterval);
     }, [channels]);

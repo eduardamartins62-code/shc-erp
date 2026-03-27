@@ -106,6 +106,7 @@ export interface ChannelConfig {
     notes?: string;
     apiKey?: string;
     apiSecret?: string;
+    oauthToken?: string;
     autoImportOrders?: boolean;
     syncInventory?: boolean;
     syncTracking?: boolean;
