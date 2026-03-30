@@ -77,20 +77,26 @@ export const ChannelsSection: React.FC = () => {
     // Auto-save eBay token when redirected back from the OAuth callback
     useEffect(() => {
         const token = searchParams.get('ebay_token');
+        const refreshToken = searchParams.get('ebay_refresh_token');
+        const tokenExpiresAt = searchParams.get('ebay_token_expires_at');
         const channelId = searchParams.get('ebay_channel_id');
-        const expiresIn = searchParams.get('ebay_expires_in');
         if (!token || !channelId) return;
 
         const save = async () => {
             try {
-                await updateChannel(channelId, { oauthToken: token, isEnabled: true });
-                const hours = Math.floor(Number(expiresIn) / 3600);
-                setEbaySuccessMessage(`eBay connected successfully! Token expires in ~${hours} hours.`);
+                await updateChannel(channelId, {
+                    oauthToken: token,
+                    oauthRefreshToken: refreshToken || undefined,
+                    oauthTokenExpiresAt: tokenExpiresAt || undefined,
+                    isEnabled: true,
+                });
+                setEbaySuccessMessage(`eBay connected successfully! Token auto-refreshes every 2 hours using your refresh token (valid 18 months).`);
                 // Clean URL params without a full navigation
                 const url = new URL(window.location.href);
                 url.searchParams.delete('ebay_token');
+                url.searchParams.delete('ebay_refresh_token');
+                url.searchParams.delete('ebay_token_expires_at');
                 url.searchParams.delete('ebay_channel_id');
-                url.searchParams.delete('ebay_expires_in');
                 window.history.replaceState({}, '', url.toString());
             } catch (err: any) {
                 console.error('[eBay OAuth] Auto-save failed:', err);

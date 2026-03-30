@@ -93,7 +93,26 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
                         if (channel.channel === 'ShipStation' && channel.apiKey && channel.apiSecret) {
                             await shipstationApi.syncInventory(channel.apiKey, channel.apiSecret);
                         } else if (channel.channel === 'eBay' && channel.oauthToken) {
-                            const result = await ebayApi.syncInventory(channel.oauthToken);
+                            // Auto-refresh access token if it expires within 30 minutes
+                            let token = channel.oauthToken;
+                            if (channel.oauthTokenExpiresAt) {
+                                const expiresAt = new Date(channel.oauthTokenExpiresAt).getTime();
+                                const thirtyMinutes = 30 * 60 * 1000;
+                                if (Date.now() + thirtyMinutes >= expiresAt) {
+                                    console.log('[Background Worker] eBay token expiring soon, refreshing...');
+                                    const res = await fetch('/api/ebay/refresh-token', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ channelId: channel.id }),
+                                    });
+                                    if (res.ok) {
+                                        await refreshSettings(); // reload new token from DB
+                                        const updated = channels.find(c => c.id === channel.id);
+                                        token = updated?.oauthToken ?? token;
+                                    }
+                                }
+                            }
+                            const result = await ebayApi.syncInventory(token);
                             console.log(`[Background Worker] eBay sync complete — ${result.synced} SKUs updated, ${result.failed} failed.`);
                         }
                     } catch (err) {

@@ -130,6 +130,8 @@ const mapChannelRow = (row: Record<string, unknown>): ChannelConfig => ({
     apiKey: row.api_key as string | undefined,
     apiSecret: row.api_secret as string | undefined,
     oauthToken: row.oauth_token as string | undefined,
+    oauthRefreshToken: row.oauth_refresh_token as string | undefined,
+    oauthTokenExpiresAt: row.oauth_token_expires_at as string | undefined,
     autoImportOrders: row.auto_import_orders as boolean | undefined,
     syncInventory: row.sync_inventory as boolean | undefined,
     syncTracking: row.sync_tracking as boolean | undefined,
@@ -986,6 +988,8 @@ export const api = {
         if (data.apiKey !== undefined) updates.api_key = data.apiKey;
         if (data.apiSecret !== undefined) updates.api_secret = data.apiSecret;
         if (data.oauthToken !== undefined) updates.oauth_token = data.oauthToken;
+        if (data.oauthRefreshToken !== undefined) updates.oauth_refresh_token = data.oauthRefreshToken;
+        if (data.oauthTokenExpiresAt !== undefined) updates.oauth_token_expires_at = data.oauthTokenExpiresAt;
         if (data.autoImportOrders !== undefined) updates.auto_import_orders = data.autoImportOrders;
         if (data.syncInventory !== undefined) updates.sync_inventory = data.syncInventory;
         if (data.syncTracking !== undefined) updates.sync_tracking = data.syncTracking;

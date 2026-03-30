@@ -107,6 +107,8 @@ export interface ChannelConfig {
     apiKey?: string;
     apiSecret?: string;
     oauthToken?: string;
+    oauthRefreshToken?: string;
+    oauthTokenExpiresAt?: string; // ISO timestamp
     autoImportOrders?: boolean;
     syncInventory?: boolean;
     syncTracking?: boolean;

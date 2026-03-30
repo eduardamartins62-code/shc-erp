@@ -77,12 +77,14 @@ export async function GET(request: Request) {
 
         const tokenData = await tokenResponse.json();
         const accessToken: string = tokenData.access_token;
-        const expiresInHours = Math.floor((tokenData.expires_in ?? 0) / 3600);
+        const refreshToken: string = tokenData.refresh_token ?? '';
+        const expiresIn: number = tokenData.expires_in ?? 7200;
+        const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
         console.log('[eBay Callback] Token exchange successful');
 
-        // Redirect back to channels page with token + channelId so the UI can auto-save it
-        const redirectUrl = `/wms/settings/channels?ebay_token=${encodeURIComponent(accessToken)}&ebay_channel_id=${encodeURIComponent(channelId)}&ebay_expires_in=${tokenData.expires_in ?? 0}`;
+        // Redirect back to channels page with all token data so the UI can auto-save
+        const redirectUrl = `/wms/settings/channels?ebay_token=${encodeURIComponent(accessToken)}&ebay_refresh_token=${encodeURIComponent(refreshToken)}&ebay_token_expires_at=${encodeURIComponent(expiresAt)}&ebay_channel_id=${encodeURIComponent(channelId)}`;
         return NextResponse.redirect(new URL(redirectUrl, request.url));
 
     } catch (err: any) {
