@@ -66,26 +66,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             ]);
             setUsers(usersData);
             setWarehouses(warehousesData);
+            setChannels(channelsData);
             setSystemSettings(systemSettingsData);
-
-            // Fetch channels from localStorage if available, otherwise fallback to API default
-            if (typeof window !== 'undefined') {
-                const savedChannels = localStorage.getItem('shc_channels');
-                if (savedChannels) {
-                    try {
-                        setChannels(JSON.parse(savedChannels));
-                    } catch (e) {
-                        console.error("Failed to parse channels", e);
-                        setChannels(channelsData);
-                    }
-                } else {
-                    setChannels(channelsData);
-                    localStorage.setItem('shc_channels', JSON.stringify(channelsData));
-                }
-            } else {
-                setChannels(channelsData);
-            }
-
         } catch (err: any) {
             setError(err.message || "Failed to load settings data");
         } finally {
@@ -93,12 +75,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     };
 
-    // Helper to persist to localStorage whenever channels change
     const updateChannelsState = (newChannels: ChannelConfig[]) => {
         setChannels(newChannels);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('shc_channels', JSON.stringify(newChannels));
-        }
     };
 
     useEffect(() => {

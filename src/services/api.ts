@@ -119,67 +119,22 @@ const warehouseStore: Warehouse[] = [
     }
 ];
 
-const INITIAL_CHANNELS: ChannelConfig[] = [
-    {
-        id: uuidv4(),
-        channel: 'Amazon',
-        storeName: 'Amazon US Main',
-        isEnabled: true,
-        defaultWarehouseId: 'WH-MAIN',
-        notes: 'FBA and FBM synced'
-    },
-    {
-        id: uuidv4(),
-        channel: 'Shopify',
-        storeName: 'Super Health Center DTC',
-        isEnabled: true,
-        defaultWarehouseId: 'WH-MAIN',
-        notes: 'DTC Site'
-    },
-    {
-        id: uuidv4(),
-        channel: 'Walmart',
-        storeName: 'Walmart Marketplace',
-        isEnabled: false,
-        notes: 'Pending API keys'
-    },
-    {
-        id: uuidv4(),
-        channel: 'ShipStation',
-        storeName: 'ShipStation Primary',
-        isEnabled: false,
-        notes: 'Awaiting configuration',
-        apiKey: '',
-        apiSecret: '',
-        autoImportOrders: true,
-        syncInventory: false,
-        syncTracking: true
-    }
-];
-
-let channelStore: ChannelConfig[] = [];
-if (typeof window !== 'undefined') {
-    const savedChannels = localStorage.getItem('shc_channels');
-    if (savedChannels) {
-        try {
-            channelStore = JSON.parse(savedChannels);
-        } catch (e) {
-            console.error("Failed to parse channels from localStorage", e);
-            channelStore = [...INITIAL_CHANNELS];
-        }
-    } else {
-        channelStore = [...INITIAL_CHANNELS];
-        localStorage.setItem('shc_channels', JSON.stringify(channelStore));
-    }
-} else {
-    channelStore = [...INITIAL_CHANNELS];
-}
-
-const persistChannels = () => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('shc_channels', JSON.stringify(channelStore));
-    }
-};
+// Helper to map a channels DB row (snake_case) to ChannelConfig (camelCase)
+const mapChannelRow = (row: Record<string, unknown>): ChannelConfig => ({
+    id: row.id as string,
+    channel: row.channel as ChannelConfig['channel'],
+    storeName: row.store_name as string,
+    isEnabled: row.is_enabled as boolean,
+    defaultWarehouseId: row.default_warehouse_id as string | undefined,
+    notes: row.notes as string | undefined,
+    apiKey: row.api_key as string | undefined,
+    apiSecret: row.api_secret as string | undefined,
+    oauthToken: row.oauth_token as string | undefined,
+    autoImportOrders: row.auto_import_orders as boolean | undefined,
+    syncInventory: row.sync_inventory as boolean | undefined,
+    syncTracking: row.sync_tracking as boolean | undefined,
+    syncShippedOrders: row.sync_shipped_orders as boolean | undefined,
+});
 
 const systemSettingsStore: SystemSettings = {
     defaultTimeZone: 'America/New_York',
@@ -997,32 +952,52 @@ export const api = {
     },
 
     getChannels: async (): Promise<ChannelConfig[]> => {
-        await delay(300);
-        return [...channelStore];
+        const { data, error } = await supabase.from('channels').select('*').order('created_at', { ascending: true });
+        if (error) throw new Error(error.message);
+        return (data ?? []).map(mapChannelRow);
     },
 
     addChannel: async (data: Omit<ChannelConfig, 'id'>): Promise<ChannelConfig> => {
-        await delay(300);
-        const newChannel = { ...data, id: uuidv4() };
-        channelStore.push(newChannel);
-        persistChannels();
-        return newChannel;
+        const { data: row, error } = await supabase.from('channels').insert([{
+            channel: data.channel,
+            store_name: data.storeName,
+            is_enabled: data.isEnabled,
+            default_warehouse_id: data.defaultWarehouseId ?? null,
+            notes: data.notes ?? null,
+            api_key: data.apiKey ?? null,
+            api_secret: data.apiSecret ?? null,
+            oauth_token: data.oauthToken ?? null,
+            auto_import_orders: data.autoImportOrders ?? false,
+            sync_inventory: data.syncInventory ?? false,
+            sync_tracking: data.syncTracking ?? false,
+            sync_shipped_orders: data.syncShippedOrders ?? false,
+        }]).select().single();
+        if (error) throw new Error(error.message);
+        return mapChannelRow(row);
     },
 
     updateChannel: async (id: string, data: Partial<ChannelConfig>): Promise<ChannelConfig> => {
-        await delay(500);
-        const index = channelStore.findIndex(c => c.id === id);
-        if (index === -1) throw new Error('Channel not found');
-
-        channelStore[index] = { ...channelStore[index], ...data };
-        persistChannels();
-        return channelStore[index];
+        const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (data.channel !== undefined) updates.channel = data.channel;
+        if (data.storeName !== undefined) updates.store_name = data.storeName;
+        if (data.isEnabled !== undefined) updates.is_enabled = data.isEnabled;
+        if (data.defaultWarehouseId !== undefined) updates.default_warehouse_id = data.defaultWarehouseId;
+        if (data.notes !== undefined) updates.notes = data.notes;
+        if (data.apiKey !== undefined) updates.api_key = data.apiKey;
+        if (data.apiSecret !== undefined) updates.api_secret = data.apiSecret;
+        if (data.oauthToken !== undefined) updates.oauth_token = data.oauthToken;
+        if (data.autoImportOrders !== undefined) updates.auto_import_orders = data.autoImportOrders;
+        if (data.syncInventory !== undefined) updates.sync_inventory = data.syncInventory;
+        if (data.syncTracking !== undefined) updates.sync_tracking = data.syncTracking;
+        if (data.syncShippedOrders !== undefined) updates.sync_shipped_orders = data.syncShippedOrders;
+        const { data: row, error } = await supabase.from('channels').update(updates).eq('id', id).select().single();
+        if (error) throw new Error(error.message);
+        return mapChannelRow(row);
     },
 
     deleteChannel: async (id: string): Promise<void> => {
-        await delay(300);
-        channelStore = channelStore.filter(c => c.id !== id);
-        persistChannels();
+        const { error } = await supabase.from('channels').delete().eq('id', id);
+        if (error) throw new Error(error.message);
     },
 
     getSystemSettings: async (): Promise<SystemSettings> => {
