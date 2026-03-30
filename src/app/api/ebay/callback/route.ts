@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 /**
  * GET /api/ebay/callback
@@ -12,6 +13,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
+    const channelId = searchParams.get('state') ?? '';
 
     if (error) {
         return htmlResponse(`
@@ -79,23 +81,9 @@ export async function GET(request: Request) {
 
         console.log('[eBay Callback] Token exchange successful');
 
-        return htmlResponse(`
-            <h2>✅ eBay Connected Successfully!</h2>
-            <p>Your eBay User Access Token is ready. Copy it and paste it into
-               <strong>WMS → Settings → Channels → eBay → Connect</strong>.</p>
-
-            <div id="token-box">${accessToken}</div>
-
-            <button onclick="
-                navigator.clipboard.writeText(document.getElementById('token-box').textContent)
-                    .then(() => { this.textContent = '✓ Copied!'; this.style.background='#16a34a'; })
-            ">Copy Token to Clipboard</button>
-
-            <p class="meta">Expires in approximately <strong>${expiresInHours} hours</strong>.
-            When it expires, re-authorise from Settings → Channels.</p>
-
-            <p><a href="/wms/settings/channels">← Go to Channels Settings</a></p>
-        `);
+        // Redirect back to channels page with token + channelId so the UI can auto-save it
+        const redirectUrl = `/wms/settings/channels?ebay_token=${encodeURIComponent(accessToken)}&ebay_channel_id=${encodeURIComponent(channelId)}&ebay_expires_in=${tokenData.expires_in ?? 0}`;
+        return NextResponse.redirect(new URL(redirectUrl, request.url));
 
     } catch (err: any) {
         console.error('[eBay Callback] Unexpected error:', err);

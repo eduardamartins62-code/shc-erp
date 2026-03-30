@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSettings } from '../../context/SettingsContext';
 import { Globe, Plus, Settings2, Trash2, RefreshCw, PowerOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -69,6 +70,35 @@ export const ChannelsSection: React.FC = () => {
     const [ebayTokenInput, setEbayTokenInput] = useState('');
     const [ebayAuthError, setEbayAuthError] = useState<string | null>(null);
     const [isConnectingEbay, setIsConnectingEbay] = useState(false);
+    const [ebaySuccessMessage, setEbaySuccessMessage] = useState<string | null>(null);
+
+    const searchParams = useSearchParams();
+
+    // Auto-save eBay token when redirected back from the OAuth callback
+    useEffect(() => {
+        const token = searchParams.get('ebay_token');
+        const channelId = searchParams.get('ebay_channel_id');
+        const expiresIn = searchParams.get('ebay_expires_in');
+        if (!token || !channelId) return;
+
+        const save = async () => {
+            try {
+                await updateChannel(channelId, { oauthToken: token, isEnabled: true });
+                const hours = Math.floor(Number(expiresIn) / 3600);
+                setEbaySuccessMessage(`eBay connected successfully! Token expires in ~${hours} hours.`);
+                // Clean URL params without a full navigation
+                const url = new URL(window.location.href);
+                url.searchParams.delete('ebay_token');
+                url.searchParams.delete('ebay_channel_id');
+                url.searchParams.delete('ebay_expires_in');
+                window.history.replaceState({}, '', url.toString());
+            } catch (err: any) {
+                console.error('[eBay OAuth] Auto-save failed:', err);
+            }
+        };
+        save();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleConnectEbay = (id: string) => {
         setEbayModalId(id);
@@ -240,6 +270,16 @@ export const ChannelsSection: React.FC = () => {
             padding: '1.5rem',
             border: '1px solid var(--color-border)'
         }}>
+            {ebaySuccessMessage && (
+                <div style={{
+                    marginBottom: '1rem', padding: '0.75rem 1rem', borderRadius: '8px',
+                    backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d',
+                    fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
+                }}>
+                    ✅ {ebaySuccessMessage}
+                    <button onClick={() => setEbaySuccessMessage(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#15803d', fontSize: '1rem' }}>×</button>
+                </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                 <div>
                     <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -389,16 +429,15 @@ export const ChannelsSection: React.FC = () => {
                                             {!detailChannel.oauthToken ? (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'flex-start' }}>
                                                     <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                                                        Connect your eBay seller account to push stock quantities every 10 minutes.
-                                                        Generate a <strong>User Access Token</strong> from the eBay Developer Portal with the <code>sell.inventory</code> scope.
+                                                        Connect your eBay seller account to push WMS stock quantities every 10 minutes.
                                                     </p>
-                                                    <button
+                                                    <a
+                                                        href={`/api/ebay/authorize?channelId=${detailChannel.id}`}
                                                         className="btn-primary"
-                                                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-                                                        onClick={() => handleConnectEbay(detailChannel.id)}
+                                                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', textDecoration: 'none', display: 'inline-block' }}
                                                     >
-                                                        Connect eBay
-                                                    </button>
+                                                        Authorize with eBay
+                                                    </a>
                                                 </div>
                                             ) : (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'flex-start' }}>
@@ -406,13 +445,22 @@ export const ChannelsSection: React.FC = () => {
                                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
                                                         Connected — auto-sync every 10 min
                                                     </div>
-                                                    <button
-                                                        className="btn-secondary"
-                                                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: 'var(--color-shc-red)', borderColor: '#fee2e2', backgroundColor: '#fef2f2' }}
-                                                        onClick={() => handleDisconnectEbay(detailChannel.id)}
-                                                    >
-                                                        Disconnect
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <a
+                                                            href={`/api/ebay/authorize?channelId=${detailChannel.id}`}
+                                                            className="btn-secondary"
+                                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', textDecoration: 'none', display: 'inline-block' }}
+                                                        >
+                                                            Re-authorize
+                                                        </a>
+                                                        <button
+                                                            className="btn-secondary"
+                                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: 'var(--color-shc-red)', borderColor: '#fee2e2', backgroundColor: '#fef2f2' }}
+                                                            onClick={() => handleDisconnectEbay(detailChannel.id)}
+                                                        >
+                                                            Disconnect
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
