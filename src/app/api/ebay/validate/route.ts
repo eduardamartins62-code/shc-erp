@@ -33,7 +33,12 @@ export async function POST(request: Request) {
         }
 
         if (response.status === 403) {
-            return NextResponse.json({ error: 'eBay token does not have the required sell.inventory scope.' }, { status: 403 });
+            return NextResponse.json({ error: 'eBay token does not have the required sell.inventory scope. Please add https://api.ebay.com/oauth/api_scope/sell.inventory in OAuth Scopes on the eBay Developer Portal, then regenerate the token.' }, { status: 403 });
+        }
+
+        // 400 from the Sell Inventory API almost always means the sell.inventory scope is missing
+        if (response.status === 400) {
+            return NextResponse.json({ error: 'eBay rejected the request (400). This usually means the sell.inventory scope is missing from your token. Go to eBay Developer Portal → Application Keys → OAuth Scopes, add https://api.ebay.com/oauth/api_scope/sell.inventory, then sign in again to generate a new token.' }, { status: 400 });
         }
 
         // 200 or 204 (no items yet) both mean the token is valid
@@ -41,7 +46,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, message: 'eBay credentials validated successfully' });
         }
 
-        return NextResponse.json({ error: `eBay API error: ${response.statusText}` }, { status: response.status });
+        return NextResponse.json({ error: `eBay API error (${response.status}): ${response.statusText}` }, { status: response.status });
 
     } catch (error: any) {
         console.error('[eBay Validate] Error:', error);
