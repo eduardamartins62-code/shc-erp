@@ -533,6 +533,39 @@ export const ChannelsSection: React.FC = () => {
                                             </label>
                                         </div>
 
+                                        {/* Inventory Buffer % — shown only when syncInventory is on */}
+                                        {detailChannel.syncInventory && (
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: '0.5rem', borderLeft: '2px solid var(--color-border)' }}>
+                                                <div>
+                                                    <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>Inventory Buffer</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                                        Withhold this % of stock from the marketplace
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        max={100}
+                                                        step={1}
+                                                        value={detailChannel.inventoryBufferPercent ?? 0}
+                                                        onChange={async (e) => {
+                                                            const val = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                                                            setDetailChannel(prev => prev ? { ...prev, inventoryBufferPercent: val } : null);
+                                                            await updateChannel(detailChannel.id, { inventoryBufferPercent: val });
+                                                        }}
+                                                        style={{
+                                                            width: '64px', padding: '0.35rem 0.5rem', borderRadius: '6px',
+                                                            border: '1px solid var(--color-border)', textAlign: 'center',
+                                                            fontSize: '0.875rem', fontWeight: 600,
+                                                            color: 'var(--color-primary-dark)'
+                                                        }}
+                                                    />
+                                                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>%</span>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Sync Tracking Toggle */}
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <div>
@@ -615,7 +648,7 @@ export const ChannelsSection: React.FC = () => {
                                             return;
                                         }
                                         try {
-                                            const result = await ebayApi.syncInventory(detailChannel.oauthToken);
+                                            const result = await ebayApi.syncInventory(detailChannel.oauthToken, detailChannel.id);
                                             alert(`eBay sync complete — ${result.synced} SKUs updated, ${result.failed} failed.`);
                                         } catch (e: any) {
                                             alert(`eBay sync failed: ${e.message}`);

@@ -112,7 +112,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
                                     }
                                 }
                             }
-                            const result = await ebayApi.syncInventory(token);
+                            const result = await ebayApi.syncInventory(token, channel.id);
                             console.log(`[Background Worker] eBay sync complete — ${result.synced} SKUs updated, ${result.failed} failed.`);
                         }
                     } catch (err) {

@@ -20,9 +20,11 @@ interface InventoryRow {
  * POST /api/ebay/sync-inventory
  *
  * Reads current WMS inventory from Supabase, aggregates available quantity per SKU,
- * then pushes each SKU's quantity to eBay via the Sell Inventory API.
+ * applies the channel's inventory buffer % and per-SKU exclusions, then pushes
+ * each eligible SKU's quantity to eBay via the Sell Inventory API.
  *
  * Auth: Bearer {eBay User OAuth Token} in the Authorization header.
+ * Body: { channelId: string }
  */
 export async function POST(request: Request) {
     try {
@@ -32,7 +34,38 @@ export async function POST(request: Request) {
         }
         const oauthToken = authHeader.slice(7);
 
-        // 1. Fetch inventory from Supabase
+        // Parse channelId from body (optional — falls back to no filtering)
+        const body = await request.json().catch(() => ({}));
+        const channelId: string | undefined = body?.channelId;
+
+        // 1. Fetch channel settings (buffer %) and excluded SKUs in parallel
+        let bufferPercent = 0;
+        const excludedSkus = new Set<string>();
+
+        if (channelId) {
+            const [channelResult, exclusionsResult] = await Promise.all([
+                supabaseAdmin
+                    .from('channels')
+                    .select('inventory_buffer_percent')
+                    .eq('id', channelId)
+                    .single(),
+                supabaseAdmin
+                    .from('product_channel_exclusions')
+                    .select('product_sku')
+                    .eq('channel_id', channelId),
+            ]);
+
+            if (channelResult.data?.inventory_buffer_percent != null) {
+                bufferPercent = Math.max(0, Math.min(100, channelResult.data.inventory_buffer_percent));
+            }
+            if (exclusionsResult.data) {
+                for (const row of exclusionsResult.data) {
+                    excludedSkus.add(row.product_sku);
+                }
+            }
+        }
+
+        // 2. Fetch inventory from Supabase
         const { data: inventoryRows, error: dbError } = await supabaseAdmin
             .from('inventory')
             .select('product_id, quantity_on_hand, quantity_reserved');
@@ -51,16 +84,29 @@ export async function POST(request: Request) {
             });
         }
 
-        // 2. Aggregate available quantity per SKU (sum across all locations/warehouses)
+        // 3. Aggregate available quantity per SKU (sum across all locations/warehouses)
         const skuQtyMap = new Map<string, number>();
         for (const row of inventoryRows as InventoryRow[]) {
             const available = Math.max(0, (row.quantity_on_hand ?? 0) - (row.quantity_reserved ?? 0));
             skuQtyMap.set(row.product_id, (skuQtyMap.get(row.product_id) ?? 0) + available);
         }
 
-        // 3. Push each SKU to eBay Sell Inventory API
+        // 4. Apply exclusions and buffer
+        const multiplier = (100 - bufferPercent) / 100;
+        const eligibleEntries = Array.from(skuQtyMap.entries())
+            .filter(([sku]) => !excludedSkus.has(sku))
+            .map(([sku, qty]) => [sku, Math.floor(qty * multiplier)] as [string, number]);
+
+        if (bufferPercent > 0) {
+            console.log(`[eBay Sync] Buffer ${bufferPercent}% — sending ${multiplier * 100}% of stock`);
+        }
+        if (excludedSkus.size > 0) {
+            console.log(`[eBay Sync] Excluding ${excludedSkus.size} SKU(s) from sync`);
+        }
+
+        // 5. Push each eligible SKU to eBay Sell Inventory API
         const results = await Promise.all(
-            Array.from(skuQtyMap.entries()).map(async ([sku, quantity]) => {
+            eligibleEntries.map(async ([sku, quantity]) => {
                 try {
                     const encodedSku = encodeURIComponent(sku);
                     const ebayResponse = await fetch(
@@ -101,7 +147,7 @@ export async function POST(request: Request) {
         const synced = results.filter(r => r.success).length;
         const failed = results.filter(r => !r.success).length;
 
-        console.log(`[eBay Sync] Complete — ${synced} synced, ${failed} failed`);
+        console.log(`[eBay Sync] Complete — ${synced} synced, ${failed} failed (${excludedSkus.size} excluded, ${bufferPercent}% buffer)`);
 
         return NextResponse.json({
             synced,

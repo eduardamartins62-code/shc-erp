@@ -136,6 +136,7 @@ const mapChannelRow = (row: Record<string, unknown>): ChannelConfig => ({
     syncInventory: row.sync_inventory as boolean | undefined,
     syncTracking: row.sync_tracking as boolean | undefined,
     syncShippedOrders: row.sync_shipped_orders as boolean | undefined,
+    inventoryBufferPercent: row.inventory_buffer_percent as number | undefined,
 });
 
 const systemSettingsStore: SystemSettings = {
@@ -994,6 +995,7 @@ export const api = {
         if (data.syncInventory !== undefined) updates.sync_inventory = data.syncInventory;
         if (data.syncTracking !== undefined) updates.sync_tracking = data.syncTracking;
         if (data.syncShippedOrders !== undefined) updates.sync_shipped_orders = data.syncShippedOrders;
+        if (data.inventoryBufferPercent !== undefined) updates.inventory_buffer_percent = data.inventoryBufferPercent;
         const { data: row, error } = await supabase.from('channels').update(updates).eq('id', id).select().single();
         if (error) throw new Error(error.message);
         return mapChannelRow(row);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useProducts } from '../context/ProductContext';
 import { useInventory } from '../context/InventoryContext';
@@ -35,13 +35,30 @@ const ProductDetail: React.FC = () => {
         updateProduct
     } = useProducts();
     const { inventory } = useInventory();
-    const { warehouses } = useSettings();
+    const { warehouses, channels } = useSettings();
 
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
+    // Channel exclusions: set of channelIds that are excluded (disabled) for this product
+    const [excludedChannelIds, setExcludedChannelIds] = useState<Set<string>>(new Set());
+    const [channelTogglingId, setChannelTogglingId] = useState<string | null>(null);
+
     const product = id ? getProduct(id) : undefined;
+
+    // Load exclusions when the Channels tab is opened
+    useEffect(() => {
+        if (activeTab !== 'channels' || !product) return;
+        fetch(`/api/product-channel-exclusions?sku=${encodeURIComponent(product.sku)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.excludedChannelIds) {
+                    setExcludedChannelIds(new Set(data.excludedChannelIds));
+                }
+            })
+            .catch(console.error);
+    }, [activeTab, product?.sku]);
 
     // Synchronize tab changes to URL
     const handleTabChange = (tab: string) => {
@@ -421,6 +438,13 @@ const ProductDetail: React.FC = () => {
                         Relationships
                     </button>
                 )}
+                <button
+                    className={`tab-btn ${activeTab === 'channels' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('channels')}
+                    style={{ background: 'none', border: 'none', padding: '0.75rem 0', fontWeight: activeTab === 'channels' ? 600 : 500, color: activeTab === 'channels' ? 'var(--color-primary)' : 'var(--color-text-muted)', borderBottom: activeTab === 'channels' ? '2px solid var(--color-primary)' : '2px solid transparent', cursor: 'pointer', fontSize: '1rem' }}
+                >
+                    Channels
+                </button>
             </div>
 
             {/* TAB CONTENT PANELS */}
@@ -528,6 +552,16 @@ const ProductDetail: React.FC = () => {
                         })()}
                     </div>
                 )}
+                {activeTab === 'channels' && (
+                    <ChannelsTab
+                        sku={product.sku}
+                        channels={channels}
+                        excludedChannelIds={excludedChannelIds}
+                        setExcludedChannelIds={setExcludedChannelIds}
+                        channelTogglingId={channelTogglingId}
+                        setChannelTogglingId={setChannelTogglingId}
+                    />
+                )}
             </div>
 
             {/* MODALS */}
@@ -547,3 +581,149 @@ const ProductDetail: React.FC = () => {
 };
 
 export default ProductDetail;
+
+// ─── Channels Tab ─────────────────────────────────────────────────────────────
+
+interface ChannelsTabProps {
+    sku: string;
+    channels: import('../types').ChannelConfig[];
+    excludedChannelIds: Set<string>;
+    setExcludedChannelIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+    channelTogglingId: string | null;
+    setChannelTogglingId: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
+const ChannelsTab: React.FC<ChannelsTabProps> = ({
+    sku,
+    channels,
+    excludedChannelIds,
+    setExcludedChannelIds,
+    channelTogglingId,
+    setChannelTogglingId,
+}) => {
+    // Only show channels that have inventory sync enabled
+    const syncChannels = channels.filter(c => c.isEnabled && c.syncInventory);
+
+    const handleToggle = async (channelId: string, currentlyEnabled: boolean) => {
+        setChannelTogglingId(channelId);
+        try {
+            if (currentlyEnabled) {
+                // Disable: add exclusion
+                await fetch('/api/product-channel-exclusions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sku, channelId }),
+                });
+                setExcludedChannelIds(prev => { const s = new Set(prev); s.add(channelId); return s; });
+            } else {
+                // Enable: remove exclusion
+                await fetch('/api/product-channel-exclusions', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sku, channelId }),
+                });
+                setExcludedChannelIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(channelId);
+                    return next;
+                });
+            }
+        } catch (err) {
+            console.error('[Channels Tab] Toggle failed:', err);
+        } finally {
+            setChannelTogglingId(null);
+        }
+    };
+
+    return (
+        <div className="card" style={{ padding: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.25rem 0' }}>Channel Inventory Sync</h2>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', margin: '0 0 1.5rem 0' }}>
+                Control which marketplaces receive stock updates for <strong>{sku}</strong>.
+                Only channels with "Sync Inventory" enabled appear here.
+            </p>
+
+            {syncChannels.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                    <p style={{ margin: 0 }}>No channels have inventory sync enabled.</p>
+                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem' }}>
+                        Go to <strong>Settings → Channels</strong> and enable "Sync Inventory" on a connected channel.
+                    </p>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {syncChannels.map(channel => {
+                        const isEnabled = !excludedChannelIds.has(channel.id);
+                        const isToggling = channelTogglingId === channel.id;
+                        const bufferPct = channel.inventoryBufferPercent ?? 0;
+                        return (
+                            <div key={channel.id} style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '1rem 1.25rem', borderRadius: '8px',
+                                border: `1px solid ${isEnabled ? 'var(--color-border)' : '#fee2e2'}`,
+                                backgroundColor: isEnabled ? 'var(--color-bg-light)' : '#fef9f9',
+                                opacity: isToggling ? 0.6 : 1,
+                                transition: 'all 0.2s',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{
+                                        width: '36px', height: '36px', borderRadius: '8px',
+                                        backgroundColor: isEnabled ? '#f0fdf4' : '#fef2f2',
+                                        border: `1px solid ${isEnabled ? '#bbf7d0' : '#fecaca'}`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '14px', fontWeight: 700, color: isEnabled ? '#15803d' : '#b91c1c',
+                                    }}>
+                                        {channel.channel.substring(0, 2)}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-primary-dark)' }}>
+                                            {channel.storeName || channel.channel}
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                            {channel.channel}
+                                            {bufferPct > 0 && (
+                                                <span style={{ marginLeft: '0.5rem', color: '#d97706', fontWeight: 500 }}>
+                                                    · {bufferPct}% buffer applied
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ fontSize: '0.75rem', color: isEnabled ? '#15803d' : '#b91c1c', fontWeight: 500 }}>
+                                        {isEnabled ? 'Syncing' : 'Excluded'}
+                                    </span>
+                                    <label
+                                        style={{ display: 'flex', alignItems: 'center', cursor: isToggling ? 'not-allowed' : 'pointer' }}
+                                        title={isEnabled ? 'Click to exclude this SKU from syncing' : 'Click to include this SKU in syncing'}
+                                    >
+                                        <div style={{
+                                            position: 'relative', width: '36px', height: '20px',
+                                            backgroundColor: isEnabled ? 'var(--color-shc-red)' : '#e5e7eb',
+                                            borderRadius: '999px', transition: 'background-color 0.2s',
+                                        }}>
+                                            <div style={{
+                                                position: 'absolute', top: '2px',
+                                                left: isEnabled ? '18px' : '2px',
+                                                width: '16px', height: '16px',
+                                                backgroundColor: 'white', borderRadius: '50%',
+                                                transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                                            }} />
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            style={{ display: 'none' }}
+                                            checked={isEnabled}
+                                            disabled={isToggling}
+                                            onChange={() => handleToggle(channel.id, isEnabled)}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};

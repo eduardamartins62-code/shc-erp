@@ -46,9 +46,10 @@ export const ebayApi = {
 
     /**
      * Pushes aggregated WMS inventory quantities to eBay via the backend proxy.
-     * Quantities are summed per SKU across all warehouse locations.
+     * Quantities are summed per SKU across all warehouse locations, then the
+     * channel's buffer % and per-SKU exclusions are applied server-side.
      */
-    syncInventory: async (oauthToken: string): Promise<EbaySyncSummary> => {
+    syncInventory: async (oauthToken: string, channelId: string): Promise<EbaySyncSummary> => {
         if (!oauthToken) throw new Error('Missing eBay OAuth token.');
 
         const response = await fetch('/api/ebay/sync-inventory', {
@@ -56,7 +57,8 @@ export const ebayApi = {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${oauthToken}`
-            }
+            },
+            body: JSON.stringify({ channelId })
         });
 
         if (!response.ok) {

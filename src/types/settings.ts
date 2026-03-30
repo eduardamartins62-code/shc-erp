@@ -113,6 +113,7 @@ export interface ChannelConfig {
     syncInventory?: boolean;
     syncTracking?: boolean;
     syncShippedOrders?: boolean;
+    inventoryBufferPercent?: number; // 0–100: % of stock withheld from marketplace
 }
 
 export interface SystemSettings {
