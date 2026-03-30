@@ -6,6 +6,10 @@ const supabaseAdmin = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const EBAY_BASE = process.env.EBAY_USE_SANDBOX === 'true'
+    ? 'https://api.sandbox.ebay.com'
+    : 'https://api.ebay.com';
+
 interface InventoryRow {
     product_id: string;
     quantity_on_hand: number;
@@ -60,7 +64,7 @@ export async function POST(request: Request) {
                 try {
                     const encodedSku = encodeURIComponent(sku);
                     const ebayResponse = await fetch(
-                        `https://api.ebay.com/sell/inventory/v1/inventory_item/${encodedSku}`,
+                        `${EBAY_BASE}/sell/inventory/v1/inventory_item/${encodedSku}`,
                         {
                             method: 'PUT',
                             headers: {

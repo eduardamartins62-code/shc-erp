@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+const EBAY_BASE = process.env.EBAY_USE_SANDBOX === 'true'
+    ? 'https://api.sandbox.ebay.com'
+    : 'https://api.ebay.com';
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
@@ -11,7 +15,7 @@ export async function POST(request: Request) {
 
         // Call the eBay Sell Inventory API to verify the token is valid
         const response = await fetch(
-            'https://api.ebay.com/sell/inventory/v1/inventory_item?limit=1',
+            `${EBAY_BASE}/sell/inventory/v1/inventory_item?limit=1`,
             {
                 method: 'GET',
                 headers: {
