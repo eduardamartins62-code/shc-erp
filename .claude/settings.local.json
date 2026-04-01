@@ -189,7 +189,28 @@
       "Bash(curl -s -X POST https://the-caddy-production.up.railway.app/api/events -H \"Content-Type: application/json\" -d '{\"\"\"\"name\"\"\"\":\"\"\"\"Test\"\"\"\"}')",
       "Bash(head -20 grep -n \"eventsApi\\\\|createEvent\" /Users/eduardapantaleao/the-caddy/apps/mobile/app/event/create.tsx)",
       "Bash(wc -l /Users/eduardapantaleao/the-caddy/apps/mobile/app/\\\\\\(tabs\\\\\\)/create.tsx)",
-      "Bash(sed -n '1,15p' /Users/eduardapantaleao/the-caddy/apps/mobile/app/\\\\\\(tabs\\\\\\)/create.tsx)"
+      "Bash(sed -n '1,15p' /Users/eduardapantaleao/the-caddy/apps/mobile/app/\\\\\\(tabs\\\\\\)/create.tsx)",
+      "Bash(curl -s -X POST https://the-caddy-production.up.railway.app/api/auth/request-otp -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"eduardamartins62@gmail.com\"\"}')",
+      "Bash(railway logs:*)",
+      "Bash(curl -s \"https://the-caddy-production.up.railway.app/api/courses/search?q=Augusta\")",
+      "Bash(python3 -c \"import sys,json; p=json.load\\(sys.stdin\\); deps={**p.get\\(''''dependencies'''',{}\\), **p.get\\(''''devDependencies'''',{}\\)}; [print\\(k,v\\) for k,v in deps.items\\(\\) if any\\(x in k for x in [''''font'''',''''blur'''',''''reanimated'''',''''image'''',''''confetti'''',''''view-shot'''',''''web-browser'''']\\)]\")",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(find /Users/eduardapantaleao/the-caddy/apps/mobile/node_modules/react-native-svg -name *.d.ts)",
+      "Bash(find /Users/eduardapantaleao/the-caddy/apps/mobile/node_modules -name *.d.ts -path */react-native-svg/*)",
+      "Bash(grep -rn color? /Users/eduardapantaleao/the-caddy/apps/mobile/node_modules/react-native-svg/lib/typescript/elements/Svg.d.ts)",
+      "Bash(find /Users/eduardapantaleao/the-caddy/apps/mobile/node_modules/lucide-react-native -name *.d.ts)",
+      "Bash(find /Users/eduardapantaleao/the-caddy/node_modules/react-native-svg -name *.d.ts)",
+      "Bash(ls /Users/eduardapantaleao/the-caddy/apps/mobile/*.d.ts)",
+      "Bash(grep -n \"statusBadgeColors\" /Users/eduardapantaleao/the-caddy/apps/mobile/app/event/[id].tsx)",
+      "Bash(grep -n \"import\" app/round/[id].tsx)",
+      "Bash(cat \"/Users/eduardapantaleao/the-caddy/apps/mobile/app/\\(tabs\\)/_layout.tsx\")",
+      "Bash(python3 -c \"import sys,json; b=json.load\\(sys.stdin\\)[0]; print\\(b[''''status''''], b.get\\(''''artifacts'''',{}\\).get\\(''''buildUrl'''',''''building...''''\\)\\)\")",
+      "Bash(cat \"/Users/eduardapantaleao/the-caddy/apps/mobile/app/\\(tabs\\)/create.tsx\")",
+      "Bash(python3 -c \"import sys,json; b=json.load\\(sys.stdin\\)[0]; print\\(b[''''status''''], b.get\\(''''artifacts'''',{}\\).get\\(''''buildUrl'''',''''no url yet''''\\)\\)\")",
+      "Bash(wc -l /Users/eduardapantaleao/the-caddy/apps/api/src/routes/*.ts /Users/eduardapantaleao/the-caddy/apps/api/prisma/schema.prisma)",
+      "Bash(npx tsc:*)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(ls \"/Users/eduardapantaleao/the-caddy/apps/mobile/app/\\(tabs\\)/\")"
     ]
   }
 }

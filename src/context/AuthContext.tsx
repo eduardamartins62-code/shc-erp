@@ -45,6 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     useEffect(() => {
+        // Safety net: if INITIAL_SESSION never fires (e.g. rare race conditions),
+        // stop loading after 5 s so the user sees the login page instead of
+        // being stuck on an infinite spinner.
+        const safetyTimer = setTimeout(() => setLoading(false), 5000);
+
         // onAuthStateChange fires INITIAL_SESSION immediately from localStorage
         // on every page load/refresh — no separate getSession() call needed.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -54,14 +59,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     if (appUser) setCurrentUser(appUser);
                 }
                 // Only clear loading after the initial session check is done
-                if (event === 'INITIAL_SESSION') setLoading(false);
+                if (event === 'INITIAL_SESSION') {
+                    clearTimeout(safetyTimer);
+                    setLoading(false);
+                }
             } else if (event === 'SIGNED_OUT') {
                 setCurrentUser(null);
+                clearTimeout(safetyTimer);
                 setLoading(false);
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            clearTimeout(safetyTimer);
+            subscription.unsubscribe();
+        };
     }, []);
 
     async function signIn(email: string, password: string): Promise<{ error?: string }> {
