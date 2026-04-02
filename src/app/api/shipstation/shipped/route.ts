@@ -1,4 +1,10 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: Request) {
     try {
@@ -7,20 +13,36 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
         }
 
-        // Use a 14-day window — orders ship within days of being placed, and a shorter
-        // window means fewer pages to paginate, avoiding Vercel serverless timeouts.
-        const shipDateStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+        // Look back to the earliest order import date so we catch ALL orders
+        // that shipped outside the old 14-day window.
+        // We read the oldest non-shipped order date from DB so we don't fetch
+        // more from ShipStation than we actually need.
+        const { data: oldestRow } = await supabaseAdmin
+            .from('orders')
+            .select('order_date')
+            .not('fulfillment_status', 'in', '("Shipped","Cancelled")')
+            .order('order_date', { ascending: true })
+            .limit(1)
+            .single();
+
+        // Default to Jan 1 2026 (original import start). If no pending orders remain,
+        // fall back to 30 days to still catch any recent shipments.
+        const fallbackDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
             .toISOString()
-            .split('T')[0]; // YYYY-MM-DD
+            .split('T')[0];
+
+        const shipDateStart = oldestRow?.order_date
+            ? oldestRow.order_date.split('T')[0]
+            : fallbackDate;
+
+        console.log(`[ShipStation Shipped] Looking back to ${shipDateStart} for shipped orders`);
 
         const allOrders: any[] = [];
         let page = 1;
         let totalPages = 1;
-        const MAX_PAGES = 5; // Safety cap — 5 × 500 = 2,500 shipped orders max per sync
+        const MAX_PAGES = 20; // 20 × 500 = 10,000 shipped orders max
 
         do {
-            // sortBy valid values: OrderDate, ModifyDate, CreateDate (ShipDate is not supported)
-            // ModifyDate DESC ensures recently-shipped orders (status change) surface first
             const url = `https://ssapi.shipstation.com/orders?orderStatus=shipped&shipDateStart=${shipDateStart}&pageSize=500&page=${page}&sortBy=ModifyDate&sortDir=DESC`;
             const response = await fetch(url, {
                 method: 'GET',
