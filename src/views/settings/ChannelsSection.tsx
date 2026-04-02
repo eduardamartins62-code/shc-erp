@@ -72,6 +72,35 @@ export const ChannelsSection: React.FC = () => {
     const [isConnectingEbay, setIsConnectingEbay] = useState(false);
     const [ebaySuccessMessage, setEbaySuccessMessage] = useState<string | null>(null);
 
+    // eBay listing migration state
+    const [isMigrating, setIsMigrating] = useState(false);
+    const [migrationResult, setMigrationResult] = useState<{ migrated: number; alreadyMigrated: number; failed: number; total: number } | null>(null);
+
+    const handleMigrateListings = async (channel: typeof detailChannel) => {
+        if (!channel?.oauthToken) return;
+        if (!confirm(`This will link all ${channel.storeName || 'eBay'} Seller Hub listings to the Inventory API so stock quantities can be synced. This is safe to run and can be repeated. Continue?`)) return;
+
+        setIsMigrating(true);
+        setMigrationResult(null);
+        try {
+            const res = await fetch('/api/ebay/migrate-listings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${channel.oauthToken}`,
+                },
+                body: JSON.stringify({ channelId: channel.id }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Migration failed');
+            setMigrationResult(data);
+        } catch (err: any) {
+            alert(`Migration failed: ${err.message}`);
+        } finally {
+            setIsMigrating(false);
+        }
+    };
+
     const searchParams = useSearchParams();
 
     // Auto-save eBay token when redirected back from the OAuth callback
@@ -451,7 +480,7 @@ export const ChannelsSection: React.FC = () => {
                                                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
                                                         Connected — auto-sync every 10 min
                                                     </div>
-                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                         <a
                                                             href={`/api/ebay/authorize?channelId=${detailChannel.id}`}
                                                             className="btn-secondary"
@@ -466,6 +495,51 @@ export const ChannelsSection: React.FC = () => {
                                                         >
                                                             Disconnect
                                                         </button>
+                                                    </div>
+
+                                                    {/* One-time listing migration */}
+                                                    <div style={{
+                                                        width: '100%', padding: '0.75rem', borderRadius: '8px',
+                                                        backgroundColor: migrationResult ? '#f0fdf4' : '#fffbeb',
+                                                        border: `1px solid ${migrationResult ? '#bbf7d0' : '#fde68a'}`,
+                                                    }}>
+                                                        {!migrationResult ? (
+                                                            <>
+                                                                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', fontWeight: 600, color: '#92400e' }}>
+                                                                    ⚠️ Inventory not updating on eBay?
+                                                                </p>
+                                                                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.75rem', color: '#78350f', lineHeight: 1.4 }}>
+                                                                    Listings created in Seller Hub must be migrated once to the Inventory API before quantities can sync. This is safe and reversible.
+                                                                </p>
+                                                                <button
+                                                                    className="btn-secondary"
+                                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 600 }}
+                                                                    onClick={() => handleMigrateListings(detailChannel)}
+                                                                    disabled={isMigrating}
+                                                                >
+                                                                    {isMigrating ? (
+                                                                        <><RefreshCw size={14} className="spin" style={{ marginRight: '5px' }} /> Migrating listings...</>
+                                                                    ) : (
+                                                                        'Migrate Listings → Enable Sync'
+                                                                    )}
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <div style={{ fontSize: '0.8rem', color: '#15803d' }}>
+                                                                <p style={{ margin: '0 0 0.25rem 0', fontWeight: 600 }}>✅ Migration complete!</p>
+                                                                <p style={{ margin: 0 }}>
+                                                                    {migrationResult.migrated + migrationResult.alreadyMigrated} of {migrationResult.total} listings linked.
+                                                                    {migrationResult.failed > 0 && ` (${migrationResult.failed} failed)`}
+                                                                    {' '}Inventory will now update on the next sync.
+                                                                </p>
+                                                                <button
+                                                                    style={{ marginTop: '0.5rem', background: 'none', border: 'none', color: '#15803d', cursor: 'pointer', fontSize: '0.75rem', padding: 0, textDecoration: 'underline' }}
+                                                                    onClick={() => { setMigrationResult(null); handleMigrateListings(detailChannel); }}
+                                                                >
+                                                                    Re-run migration
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
