@@ -9,32 +9,43 @@ const supabase = createClient(
 /**
  * POST /api/recalculate-reservations
  *
- * Recalculates quantity_reserved for every inventory row from scratch
- * by summing quantities from actual open (non-Shipped, non-Cancelled) orders.
- *
- * This is the ground-truth approach — no dependency on historical sync events.
- * Safe to run any time.
+ * Resets quantity_reserved for every inventory row to exactly what
+ * real open (non-Shipped, non-Cancelled) orders require.
+ * Safe and idempotent — can be run any time.
  */
 export async function POST() {
     try {
-        // 1. Sum quantities for every SKU across all open orders
-        const { data: pendingItems, error: ordersError } = await supabase
-            .from('order_items')
-            .select('sku, quantity, orders!inner(fulfillment_status)')
-            .not('orders.fulfillment_status', 'in', '("Shipped","Cancelled")');
+        // 1. Get all pending order IDs first (avoids unreliable joined-table filters)
+        const { data: openOrders, error: ordersError } = await supabase
+            .from('orders')
+            .select('id')
+            .not('fulfillment_status', 'in', '("Shipped","Cancelled")');
 
         if (ordersError) {
             return NextResponse.json({ error: ordersError.message }, { status: 500 });
         }
 
-        // Build SKU → total reserved map
+        const openOrderIds = (openOrders ?? []).map(o => o.id);
+
+        // 2. Build SKU → total reserved map from open order items
         const reservedBySku = new Map<string, number>();
-        for (const item of pendingItems ?? []) {
-            const prev = reservedBySku.get(item.sku) ?? 0;
-            reservedBySku.set(item.sku, prev + (item.quantity ?? 0));
+
+        if (openOrderIds.length > 0) {
+            const { data: items, error: itemsError } = await supabase
+                .from('order_items')
+                .select('sku, quantity')
+                .in('order_id', openOrderIds);
+
+            if (itemsError) {
+                return NextResponse.json({ error: itemsError.message }, { status: 500 });
+            }
+
+            for (const item of items ?? []) {
+                reservedBySku.set(item.sku, (reservedBySku.get(item.sku) ?? 0) + (item.quantity ?? 0));
+            }
         }
 
-        // 2. Fetch all inventory rows
+        // 3. Fetch all inventory rows
         const { data: allInventory, error: invError } = await supabase
             .from('inventory')
             .select('id, product_id, quantity_on_hand, quantity_reserved');
@@ -43,9 +54,7 @@ export async function POST() {
             return NextResponse.json({ error: invError.message }, { status: 500 });
         }
 
-        // 3. Distribute reserved quantities across lots per SKU (same FEFO ordering
-        //    the reservation logic uses — earliest expiry gets reserved first)
-        // Group lots by SKU
+        // 4. Group lots by SKU and sort FEFO (earliest expiry first)
         const lotsBySku = new Map<string, typeof allInventory>();
         for (const lot of allInventory ?? []) {
             const arr = lotsBySku.get(lot.product_id) ?? [];
@@ -56,24 +65,24 @@ export async function POST() {
         let updated = 0;
         let cleared = 0;
 
-        // Process every SKU that appears in inventory
         for (const [sku, lots] of Array.from(lotsBySku.entries())) {
             let remaining = reservedBySku.get(sku) ?? 0;
 
-            // Sort lots by expiration_date ascending (FEFO) — nulls last
-            lots.sort((a: any, b: any) => {
+            // Sort FEFO — reserve from earliest-expiring lots first
+            const sorted = [...lots].sort((a: any, b: any) => {
                 if (!a.expiration_date && !b.expiration_date) return 0;
                 if (!a.expiration_date) return 1;
                 if (!b.expiration_date) return -1;
                 return new Date(a.expiration_date).getTime() - new Date(b.expiration_date).getTime();
             });
 
-            for (const lot of lots) {
+            for (const lot of sorted) {
+                // Reserve up to what this lot can cover, never more than on_hand
                 const correctReserved = Math.min(remaining, Math.max(0, lot.quantity_on_hand));
                 remaining = Math.max(0, remaining - correctReserved);
 
                 if (lot.quantity_reserved !== correctReserved) {
-                    await supabase
+                    const { error } = await supabase
                         .from('inventory')
                         .update({
                             quantity_reserved: correctReserved,
@@ -82,19 +91,20 @@ export async function POST() {
                         })
                         .eq('id', lot.id);
 
-                    correctReserved === 0 ? cleared++ : updated++;
+                    if (!error) {
+                        correctReserved === 0 ? cleared++ : updated++;
+                    }
                 }
             }
         }
 
-        const skusWithReservations = reservedBySku.size;
-        console.log(`[Recalculate Reservations] Done — ${updated} rows updated, ${cleared} rows cleared to 0`);
+        console.log(`[Recalculate Reservations] ${updated} rows updated, ${cleared} rows cleared`);
 
         return NextResponse.json({
-            message: `Done. ${updated + cleared} inventory row(s) corrected (${cleared} cleared to 0). ${skusWithReservations} SKU(s) have active open orders.`,
+            message: `${cleared} stale reservation(s) cleared, ${updated} row(s) set to correct values. ${reservedBySku.size} SKU(s) have active open orders.`,
             updated,
             cleared,
-            skusWithOpenOrders: skusWithReservations,
+            skusWithOpenOrders: reservedBySku.size,
         });
 
     } catch (err: any) {
