@@ -138,17 +138,42 @@ const ProductCatalog: React.FC = () => {
         { key: 'brand', label: 'Brand', type: 'text', filterable: false, render: (val) => val || '—' },
         { key: 'category', label: 'Category', type: 'text', filterable: false, render: (val) => val || '—' },
         {
-            key: '_inventory',
-            label: selectedWarehouseId ? 'Warehouse Stock' : 'Total Inventory',
+            key: '_onHand',
+            label: 'On Hand',
+            type: 'number-range',
+            filterable: false,
+            render: (val: any) => {
+                if (val === null || val === undefined) return <span style={{ color: 'var(--color-text-muted)' }}>—</span>;
+                return <span style={{ fontWeight: 500 }}>{(val as number).toLocaleString()}</span>;
+            }
+        },
+        {
+            key: '_reserved',
+            label: 'Reserved',
+            type: 'number-range',
+            filterable: false,
+            render: (val: any) => {
+                if (val === null || val === undefined) return <span style={{ color: 'var(--color-text-muted)' }}>—</span>;
+                const n = val as number;
+                return (
+                    <span style={{ fontWeight: 500, color: n > 0 ? '#d97706' : 'var(--color-text-muted)' }}>
+                        {n > 0 ? n.toLocaleString() : '0'}
+                    </span>
+                );
+            }
+        },
+        {
+            key: '_available',
+            label: selectedWarehouseId ? 'Available (WH)' : 'Available',
             type: 'number-range',
             filterable: false,
             render: (val: any, row: Product) => {
-                const totalInventory = val as number ?? 0;
-                const isLowStock = typeof row.reorderPoint === 'number' && totalInventory <= row.reorderPoint;
+                const n = (val as number) ?? 0;
+                const isLowStock = typeof row.reorderPoint === 'number' && n <= row.reorderPoint;
                 return (
-                    <span style={{ fontWeight: 600, color: isLowStock ? 'var(--color-status-low)' : 'inherit', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {totalInventory.toLocaleString()}
-                        {isLowStock && <span style={{ color: 'var(--color-status-low)', fontSize: '0.8rem' }} title="Low Stock">⚠</span>}
+                    <span style={{ fontWeight: 700, color: isLowStock ? 'var(--color-status-low)' : '#15803d', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {n.toLocaleString()}
+                        {isLowStock && <span style={{ fontSize: '0.8rem' }} title="Low Stock">⚠</span>}
                     </span>
                 );
             }
@@ -225,11 +250,18 @@ const ProductCatalog: React.FC = () => {
         return true;
     });
 
-    // Enrich filtered products with computed _inventory so DataTable can sort by it
-    const tableData = filteredProducts.map(p => ({
-        ...p,
-        _inventory: getProductQty(p.sku, p.id, p.type),
-    }));
+    // Enrich filtered products with computed inventory fields so DataTable can sort by them
+    const tableData = filteredProducts.map(p => {
+        const isBundle = p.type === 'bundle' || p.type === 'alias';
+        const inv = realInventoryBySku.get(p.sku);
+        return {
+            ...p,
+            _inventory:  isBundle ? calculateBundleInventory(p.id) : (inv?.qtyAvailable ?? calculateSimpleInventory(p.id).qtyAvailable),
+            _onHand:     isBundle ? null : (inv?.qtyOnHand ?? null),
+            _reserved:   isBundle ? null : (inv?.qtyReserved ?? null),
+            _available:  isBundle ? calculateBundleInventory(p.id) : (inv?.qtyAvailable ?? calculateSimpleInventory(p.id).qtyAvailable),
+        };
+    });
 
     const downloadCSV = (rows: string[][], filename: string) => {
         const content = rows
