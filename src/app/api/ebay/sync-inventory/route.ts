@@ -10,69 +10,173 @@ const EBAY_BASE = process.env.EBAY_USE_SANDBOX === 'true'
     ? 'https://api.sandbox.ebay.com'
     : 'https://api.ebay.com';
 
+const TRADING_URL = process.env.EBAY_USE_SANDBOX === 'true'
+    ? 'https://api.sandbox.ebay.com/ws/api.dll'
+    : 'https://api.ebay.com/ws/api.dll';
+
 interface InventoryRow {
     product_id: string;
     quantity_on_hand: number;
     quantity_reserved: number;
 }
 
-interface EbayOffer {
-    offerId: string;
-    sku: string;
-    status: string;
-    listing?: { listingId: string };
+/**
+ * Fetches all active fixed-price listings via the Trading API (GetMyeBaySelling),
+ * returning a map of Custom Label (SKU) → eBay Item ID.
+ *
+ * This works for ALL listings regardless of how they were created — Seller Hub,
+ * API, bulk upload, etc.
+ */
+async function fetchSkuToItemIdMap(oauthToken: string): Promise<Map<string, string>> {
+    const skuToItemId = new Map<string, string>();
+    let page = 1;
+    let totalPages = 1;
+
+    do {
+        const xml = `<?xml version="1.0" encoding="utf-8"?>
+<GetMyeBaySellingRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <ActiveList>
+    <Include>true</Include>
+    <ListingType>FixedPriceItem</ListingType>
+    <Pagination>
+      <EntriesPerPage>200</EntriesPerPage>
+      <PageNumber>${page}</PageNumber>
+    </Pagination>
+  </ActiveList>
+  <OutputSelector>ActiveList.ItemArray.Item.ItemID</OutputSelector>
+  <OutputSelector>ActiveList.ItemArray.Item.SKU</OutputSelector>
+  <OutputSelector>ActiveList.PaginationResult.TotalNumberOfPages</OutputSelector>
+  <ErrorLanguage>en_US</ErrorLanguage>
+  <WarningLevel>High</WarningLevel>
+  <Version>967</Version>
+</GetMyeBaySellingRequest>`;
+
+        const res = await fetch(TRADING_URL, {
+            method: 'POST',
+            headers: {
+                'X-EBAY-API-SITEID': '0',
+                'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+                'X-EBAY-API-CALL-NAME': 'GetMyeBaySelling',
+                'X-EBAY-API-IAF-TOKEN': oauthToken,
+                'Content-Type': 'text/xml',
+            },
+            body: xml,
+        });
+
+        if (!res.ok) {
+            console.warn(`[eBay Sync] Trading API HTTP ${res.status}`);
+            break;
+        }
+
+        const text = await res.text();
+
+        if (text.includes('<Ack>Failure</Ack>')) {
+            const errMatch = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/);
+            console.warn('[eBay Sync] Trading API error:', errMatch?.[1] ?? 'unknown');
+            break;
+        }
+
+        // Parse total pages
+        const pagesMatch = text.match(/<TotalNumberOfPages>(\d+)<\/TotalNumberOfPages>/);
+        if (pagesMatch) totalPages = parseInt(pagesMatch[1], 10);
+
+        // Extract each <Item> block to get ItemID + SKU (Custom Label)
+        const itemBlocks = text.match(/<Item>([\s\S]*?)<\/Item>/g) ?? [];
+        for (const block of itemBlocks) {
+            const idMatch = block.match(/<ItemID>(\d+)<\/ItemID>/);
+            const skuMatch = block.match(/<SKU>(.*?)<\/SKU>/);
+            if (idMatch && skuMatch) {
+                skuToItemId.set(skuMatch[1].trim(), idMatch[1]);
+            }
+        }
+
+        page++;
+    } while (page <= totalPages);
+
+    return skuToItemId;
 }
 
 /**
- * Fetches all published offers for the seller, paginating through all results.
- * Returns a map of SKU → offerId[] (a SKU can have multiple offers/marketplaces).
+ * Updates quantities for up to 4 listings per call via the Trading API
+ * (ReviseInventoryStatus). This works for ALL Seller Hub listings regardless
+ * of whether they've been migrated to the Inventory API.
  */
-async function fetchAllOffers(oauthToken: string): Promise<Map<string, string[]>> {
-    const skuToOfferIds = new Map<string, string[]>();
-    let offset = 0;
-    const limit = 200;
+async function reviseInventoryStatus(
+    oauthToken: string,
+    items: Array<{ itemId: string; sku: string; quantity: number }>
+): Promise<Map<string, { success: boolean; error?: string }>> {
+    const results = new Map<string, { success: boolean; error?: string }>();
+    const BATCH = 4; // eBay Trading API limit per ReviseInventoryStatus call
 
-    while (true) {
-        const url = `${EBAY_BASE}/sell/inventory/v1/offer?limit=${limit}&offset=${offset}`;
-        const res = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${oauthToken}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
-        });
+    for (let i = 0; i < items.length; i += BATCH) {
+        const batch = items.slice(i, i + BATCH);
 
-        if (!res.ok) break; // no offers or token can't list them — fall through gracefully
+        const inventoryStatusXml = batch
+            .map(item => `
+  <InventoryStatus>
+    <ItemID>${item.itemId}</ItemID>
+    <Quantity>${item.quantity}</Quantity>
+  </InventoryStatus>`)
+            .join('');
 
-        const data = await res.json();
-        const offers: EbayOffer[] = data.offers ?? [];
+        const xml = `<?xml version="1.0" encoding="utf-8"?>
+<ReviseInventoryStatusRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  ${inventoryStatusXml}
+  <ErrorLanguage>en_US</ErrorLanguage>
+  <WarningLevel>High</WarningLevel>
+  <Version>967</Version>
+</ReviseInventoryStatusRequest>`;
 
-        for (const offer of offers) {
-            if (!offer.sku || offer.status !== 'PUBLISHED') continue;
-            const existing = skuToOfferIds.get(offer.sku) ?? [];
-            existing.push(offer.offerId);
-            skuToOfferIds.set(offer.sku, existing);
+        try {
+            const res = await fetch(TRADING_URL, {
+                method: 'POST',
+                headers: {
+                    'X-EBAY-API-SITEID': '0',
+                    'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
+                    'X-EBAY-API-CALL-NAME': 'ReviseInventoryStatus',
+                    'X-EBAY-API-IAF-TOKEN': oauthToken,
+                    'Content-Type': 'text/xml',
+                },
+                body: xml,
+            });
+
+            const text = await res.text();
+            const isSuccess = text.includes('<Ack>Success</Ack>') || text.includes('<Ack>Warning</Ack>');
+
+            if (isSuccess) {
+                for (const item of batch) results.set(item.sku, { success: true });
+            } else {
+                const errMatch = text.match(/<ShortMessage>(.*?)<\/ShortMessage>/);
+                const errMsg = errMatch?.[1] ?? `HTTP ${res.status}`;
+                // Check per-item errors
+                for (const item of batch) {
+                    results.set(item.sku, { success: false, error: errMsg });
+                }
+            }
+        } catch (err: any) {
+            for (const item of batch) {
+                results.set(item.sku, { success: false, error: err.message });
+            }
         }
-
-        if (offers.length < limit) break; // last page
-        offset += limit;
     }
 
-    return skuToOfferIds;
+    return results;
 }
 
 /**
  * POST /api/ebay/sync-inventory
  *
- * 1. Reads WMS inventory from Supabase, aggregates available qty per SKU.
- * 2. Applies the channel's inventory buffer % and per-SKU exclusions.
- * 3. Fetches all published eBay offers (to get offer IDs per SKU).
- * 4. For SKUs that have published offers → uses bulk_update_price_quantity
- *    so both the inventory item record AND the live listing quantity update.
- * 5. For SKUs without offers (inventory-item-only, no live listing) → falls
- *    back to a plain PUT inventory_item so the record is at least current.
+ * Flow:
+ * 1. Read WMS inventory from Supabase, aggregate available qty per SKU.
+ * 2. Apply channel buffer % and per-SKU exclusions.
+ * 3. Fetch all eBay active listings via Trading API → build SKU → ItemID map.
+ * 4. For SKUs that have a matching eBay ItemID → call ReviseInventoryStatus
+ *    (Trading API) which updates the live listing quantity directly. Works for
+ *    ALL listings regardless of how they were created.
+ * 5. For SKUs with no eBay listing match → still PUT the inventory_item record
+ *    so it's ready when a listing is created.
  *
- * Auth: Bearer {eBay User OAuth Token} in the Authorization header.
+ * Auth: Bearer {eBay User OAuth Token} in Authorization header.
  * Body: { channelId?: string }
  */
 export async function POST(request: Request) {
@@ -111,7 +215,7 @@ export async function POST(request: Request) {
             }
         }
 
-        // 2. Fetch WMS inventory
+        // 2. Fetch WMS inventory from Supabase
         const { data: inventoryRows, error: dbError } = await supabaseAdmin
             .from('inventory')
             .select('product_id, quantity_on_hand, quantity_reserved');
@@ -124,7 +228,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ synced: 0, failed: 0, skipped: 0, results: [], syncedAt: new Date().toISOString() });
         }
 
-        // 3. Aggregate available quantity per SKU across all locations/warehouses
+        // 3. Aggregate available qty per SKU across all locations
         const skuQtyMap = new Map<string, number>();
         for (const row of inventoryRows as InventoryRow[]) {
             const available = Math.max(0, (row.quantity_on_hand ?? 0) - (row.quantity_reserved ?? 0));
@@ -141,86 +245,41 @@ export async function POST(request: Request) {
             return NextResponse.json({ synced: 0, failed: 0, skipped: excludedSkus.size, results: [], syncedAt: new Date().toISOString() });
         }
 
-        // 5. Fetch all published eBay offers so we can update live listings
-        const skuToOfferIds = await fetchAllOffers(oauthToken);
-        console.log(`[eBay Sync] Found ${skuToOfferIds.size} SKUs with published offers on eBay`);
+        // 5. Fetch all eBay listings via Trading API → SKU (Custom Label) → ItemID map
+        console.log('[eBay Sync] Fetching active listings from Trading API...');
+        const skuToItemId = await fetchSkuToItemIdMap(oauthToken);
+        console.log(`[eBay Sync] ${skuToItemId.size} eBay listings with Custom Labels found`);
 
-        // 6. Split into two groups: SKUs with live offers vs inventory-item-only
-        const withOffers: Array<[string, number, string[]]> = [];
-        const withoutOffers: Array<[string, number]> = [];
+        // 6. Split: listings we can update via Trading API vs inventory-record-only
+        const toRevise: Array<{ itemId: string; sku: string; quantity: number }> = [];
+        const noListingMatch: Array<[string, number]> = [];
 
         for (const [sku, quantity] of eligibleEntries) {
-            const offerIds = skuToOfferIds.get(sku);
-            if (offerIds && offerIds.length > 0) {
-                withOffers.push([sku, quantity, offerIds]);
+            const itemId = skuToItemId.get(sku);
+            if (itemId) {
+                toRevise.push({ itemId, sku, quantity });
             } else {
-                withoutOffers.push([sku, quantity]);
+                noListingMatch.push([sku, quantity]);
             }
         }
+
+        console.log(`[eBay Sync] ${toRevise.length} SKUs matched to eBay listings, ${noListingMatch.length} unmatched`);
 
         const results: Array<{ sku: string; quantity: number; success: boolean; method: string; error?: string }> = [];
 
-        // 7a. Bulk-update SKUs that have live offers (updates BOTH inventory item AND listing)
-        if (withOffers.length > 0) {
-            // eBay bulk_update_price_quantity accepts up to 25 per call
-            const BATCH = 25;
-            for (let i = 0; i < withOffers.length; i += BATCH) {
-                const batch = withOffers.slice(i, i + BATCH);
-                const requestPayload = {
-                    requests: batch.map(([sku, quantity, offerIds]) => ({
-                        sku,
-                        shipToLocationAvailability: { quantity },
-                        offers: offerIds.map(offerId => ({ offerId, availableQuantity: quantity })),
-                    })),
-                };
-
-                try {
-                    const bulkRes = await fetch(
-                        `${EBAY_BASE}/sell/inventory/v1/bulk_update_price_quantity`,
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${oauthToken}`,
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                            },
-                            body: JSON.stringify(requestPayload),
-                        }
-                    );
-
-                    const bulkData = await bulkRes.json().catch(() => ({}));
-                    const responses = bulkData.responses ?? [];
-
-                    for (const entry of responses) {
-                        const success = entry.statusCode === 200 || entry.statusCode === 204 || !entry.errors?.length;
-                        const errMsg = entry.errors?.[0]?.message;
-                        results.push({
-                            sku: entry.sku,
-                            quantity: (withOffers.find(e => e[0] === entry.sku)?.[1]) ?? 0,
-                            success,
-                            method: 'bulk_offer',
-                            ...(errMsg ? { error: errMsg } : {}),
-                        });
-                    }
-
-                    // If bulk response didn't return per-SKU responses, mark all as success if HTTP was ok
-                    if (responses.length === 0 && bulkRes.ok) {
-                        for (const [sku, quantity] of batch) {
-                            results.push({ sku, quantity, success: true, method: 'bulk_offer' });
-                        }
-                    }
-                } catch (err: any) {
-                    for (const [sku, quantity] of batch) {
-                        results.push({ sku, quantity, success: false, method: 'bulk_offer', error: err.message });
-                    }
-                }
+        // 7a. Update live listing quantities via Trading API ReviseInventoryStatus
+        if (toRevise.length > 0) {
+            const reviseResults = await reviseInventoryStatus(oauthToken, toRevise);
+            for (const { sku, quantity } of toRevise) {
+                const r = reviseResults.get(sku) ?? { success: false, error: 'No response' };
+                results.push({ sku, quantity, success: r.success, method: 'trading_api', ...(r.error ? { error: r.error } : {}) });
             }
         }
 
-        // 7b. For SKUs without offers, fall back to PUT inventory_item
-        //     (updates the catalog record so it's ready when an offer is created)
+        // 7b. For WMS SKUs with no matching eBay listing, PUT the inventory_item
+        //     record so it's ready when a listing is eventually created.
         await Promise.all(
-            withoutOffers.map(async ([sku, quantity]) => {
+            noListingMatch.map(async ([sku, quantity]) => {
                 try {
                     const res = await fetch(
                         `${EBAY_BASE}/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`,
@@ -230,7 +289,6 @@ export async function POST(request: Request) {
                                 'Authorization': `Bearer ${oauthToken}`,
                                 'Content-Language': 'en-US',
                                 'Content-Type': 'application/json',
-                                'Accept': 'application/json',
                             },
                             body: JSON.stringify({
                                 availability: { shipToLocationAvailability: { quantity } },
@@ -238,8 +296,7 @@ export async function POST(request: Request) {
                         }
                     );
                     const success = res.ok || res.status === 204;
-                    const errMsg = success ? undefined : (await res.json().catch(() => ({}))).errors?.[0]?.message || res.statusText;
-                    results.push({ sku, quantity, success, method: 'inventory_item_only', ...(errMsg ? { error: errMsg } : {}) });
+                    results.push({ sku, quantity, success, method: 'inventory_item_only' });
                 } catch (err: any) {
                     results.push({ sku, quantity, success: false, method: 'inventory_item_only', error: err.message });
                 }
@@ -248,15 +305,15 @@ export async function POST(request: Request) {
 
         const synced = results.filter(r => r.success).length;
         const failed = results.filter(r => !r.success).length;
-        const liveListingsUpdated = results.filter(r => r.success && r.method === 'bulk_offer').length;
+        const liveListingsUpdated = results.filter(r => r.success && r.method === 'trading_api').length;
 
-        console.log(`[eBay Sync] Complete — ${synced} synced (${liveListingsUpdated} live listings updated), ${failed} failed, ${excludedSkus.size} excluded, ${bufferPercent}% buffer`);
+        console.log(`[eBay Sync] Complete — ${liveListingsUpdated} live listings updated, ${synced} total synced, ${failed} failed`);
 
         return NextResponse.json({
             synced,
             failed,
             liveListingsUpdated,
-            noOfferCount: withoutOffers.length,
+            noListingMatch: noListingMatch.length,
             results,
             syncedAt: new Date().toISOString(),
         });
