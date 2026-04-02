@@ -656,6 +656,18 @@ export const ChannelsSection: React.FC = () => {
                             </div>
                         </div>
 
+                        {detailChannel.channel === 'ShipStation' && detailChannel.isEnabled && (
+                            <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', borderRadius: '8px', backgroundColor: '#fffbeb', border: '1px solid #fde68a' }}>
+                                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', fontWeight: 600, color: '#92400e' }}>
+                                    Stale Reservations?
+                                </p>
+                                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.75rem', color: '#78350f', lineHeight: 1.4 }}>
+                                    If shipped orders still show as Reserved in the product catalog, run this to clear them and correct inventory numbers.
+                                </p>
+                                <FixReservationsButton />
+                            </div>
+                        )}
+
                         <div style={{ marginTop: 'auto', paddingTop: '2rem', display: 'flex', gap: '1rem' }}>
                             <button
                                 className="btn-primary"
@@ -855,5 +867,52 @@ export const ChannelsSection: React.FC = () => {
                 </div>
             )}
         </div>
+    );
+};
+
+// ─── Fix Reservations Button ─────────────────────────────────────────────────
+
+const FixReservationsButton: React.FC = () => {
+    const [running, setRunning] = React.useState(false);
+    const [result, setResult] = React.useState<{ fixed: number; skipped: number; message: string } | null>(null);
+
+    const handleFix = async () => {
+        setRunning(true);
+        setResult(null);
+        try {
+            const res = await fetch('/api/fix-reserved-inventory', { method: 'POST' });
+            const data = await res.json();
+            setResult(data);
+        } catch {
+            setResult({ fixed: 0, skipped: 0, message: 'Request failed — check the console.' });
+        } finally {
+            setRunning(false);
+        }
+    };
+
+    if (result) {
+        return (
+            <div style={{ fontSize: '0.8rem', color: '#15803d' }}>
+                <p style={{ margin: '0 0 0.25rem 0', fontWeight: 600 }}>✅ {result.fixed} order(s) fixed, {result.skipped} already clean.</p>
+                <p style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>{result.message}</p>
+                <button
+                    style={{ background: 'none', border: 'none', color: '#92400e', cursor: 'pointer', fontSize: '0.75rem', padding: 0, textDecoration: 'underline' }}
+                    onClick={() => setResult(null)}
+                >
+                    Run again
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <button
+            className="btn-secondary"
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 600 }}
+            onClick={handleFix}
+            disabled={running}
+        >
+            {running ? <><RefreshCw size={14} className="spin" style={{ marginRight: '5px' }} /> Fixing...</> : 'Fix Reserved Inventory'}
+        </button>
     );
 };
