@@ -268,10 +268,6 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             await refreshOrdersSilent();
         }
 
-        // Recalculate reserved quantities from actual open orders — corrects any stale
-        // reservations from shipped/cancelled orders regardless of when they shipped.
-        // Fire-and-forget so it never blocks the sync result.
-        fetch('/api/recalculate-reservations', { method: 'POST' }).catch(() => {});
 
         return { marked: markedCount, ssShipped: shippedFromSS.length, dbPending: nonShipped.length };
     };
