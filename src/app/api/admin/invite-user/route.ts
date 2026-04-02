@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
     const { error } = await adminClient.auth.admin.inviteUserByEmail(email, {
         data: { full_name: name ?? '' },
-        redirectTo: redirectTo ?? `${supabaseUrl.replace('.supabase.co', '')}/reset-password`,
+        redirectTo: redirectTo ?? `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://localhost:3000'}/reset-password`,
     });
 
     if (error) {
