@@ -274,15 +274,13 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     useEffect(() => {
         fetchOrders().then(() => {
-            // Fix any Unmapped items whose SKU is now in the product catalog.
-            // If any were newly mapped, reserve their inventory — this handles the case
-            // where orders were imported before the product existed in the catalog.
+            // Update mapping status labels (Mapped/Unmapped) for any order items
+            // whose SKU has since been added to the product catalog.
+            // Does NOT reserve inventory — reservations only happen for brand-new
+            // orders coming in through the live sync.
             ordersApi.refreshMappingStatus()
                 .then(async (newlyMapped) => {
                     if (newlyMapped.length > 0) {
-                        await reserveInventory(newlyMapped, 'System: Mapping Status Refresh').catch(() => {});
-                        // Only re-fetch if something actually changed; use silent refresh to avoid
-                        // the loading spinner wiping out the already-displayed order list.
                         await refreshOrdersSilent();
                     }
                 })

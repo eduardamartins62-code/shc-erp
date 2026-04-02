@@ -7,29 +7,25 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
         }
 
-        // Only fetch orders created on or after Jan 1 2026
-        const dateFrom = '2026-01-01';
+        // Only fetch orders created in the last 7 days.
+        // This ensures only new/recent orders are ever pulled — historical orders
+        // already in the DB are ignored (deduplicated by order ID anyway).
+        const dateFrom = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0];
 
-        // Fetch awaiting_shipment AND shipped orders in parallel
-        const [awaitingRes, shippedRes] = await Promise.all([
-            fetch(`https://ssapi.shipstation.com/orders?orderStatus=awaiting_shipment&createDateStart=${dateFrom}&pageSize=500&sortBy=OrderDate&sortDir=DESC`, {
-                headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' }
-            }),
-            fetch(`https://ssapi.shipstation.com/orders?orderStatus=shipped&createDateStart=${dateFrom}&pageSize=500&sortBy=OrderDate&sortDir=DESC`, {
-                headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' }
-            })
-        ]);
+        // Only fetch awaiting_shipment — these are the new orders that need to be imported.
+        // Shipped orders in this window are handled separately by the shipped sync.
+        const response = await fetch(
+            `https://ssapi.shipstation.com/orders?orderStatus=awaiting_shipment&createDateStart=${dateFrom}&pageSize=500&sortBy=OrderDate&sortDir=DESC`,
+            { headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' } }
+        );
 
-        const awaitingData = awaitingRes.ok ? await awaitingRes.json() : { orders: [] };
-        const shippedData = shippedRes.ok ? await shippedRes.json() : { orders: [] };
+        const data = response.ok ? await response.json() : { orders: [] };
+        const orders = data.orders || [];
 
-        const allOrders = [
-            ...(awaitingData.orders || []),
-            ...(shippedData.orders || [])
-        ];
-
-        console.log(`[ShipStation] Fetched ${awaitingData.orders?.length || 0} awaiting + ${shippedData.orders?.length || 0} shipped orders (since ${dateFrom})`);
-        return NextResponse.json({ orders: allOrders, total: allOrders.length });
+        console.log(`[ShipStation] Fetched ${orders.length} awaiting_shipment orders (last 7 days since ${dateFrom})`);
+        return NextResponse.json({ orders, total: orders.length });
 
     } catch (error: any) {
         console.error('ShipStation Orders Error:', error);
