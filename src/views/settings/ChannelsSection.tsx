@@ -659,12 +659,12 @@ export const ChannelsSection: React.FC = () => {
                         {detailChannel.channel === 'ShipStation' && detailChannel.isEnabled && (
                             <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', borderRadius: '8px', backgroundColor: '#fffbeb', border: '1px solid #fde68a' }}>
                                 <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', fontWeight: 600, color: '#92400e' }}>
-                                    Stale Reservations?
+                                    Reserved quantity looks wrong?
                                 </p>
                                 <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.75rem', color: '#78350f', lineHeight: 1.4 }}>
-                                    If shipped orders still show as Reserved in the product catalog, run this to clear them and correct inventory numbers.
+                                    Recalculates reserved stock from scratch using only actual open orders — clears any stale reservations from shipped or cancelled orders.
                                 </p>
-                                <FixReservationsButton />
+                                <RecalculateReservationsButton />
                             </div>
                         )}
 
@@ -870,21 +870,21 @@ export const ChannelsSection: React.FC = () => {
     );
 };
 
-// ─── Fix Reservations Button ─────────────────────────────────────────────────
+// ─── Recalculate Reservations Button ─────────────────────────────────────────
 
-const FixReservationsButton: React.FC = () => {
+const RecalculateReservationsButton: React.FC = () => {
     const [running, setRunning] = React.useState(false);
-    const [result, setResult] = React.useState<{ fixed: number; skipped: number; message: string } | null>(null);
+    const [result, setResult] = React.useState<{ message: string; updated: number; cleared: number } | null>(null);
 
-    const handleFix = async () => {
+    const handleRun = async () => {
         setRunning(true);
         setResult(null);
         try {
-            const res = await fetch('/api/fix-reserved-inventory', { method: 'POST' });
+            const res = await fetch('/api/recalculate-reservations', { method: 'POST' });
             const data = await res.json();
             setResult(data);
         } catch {
-            setResult({ fixed: 0, skipped: 0, message: 'Request failed — check the console.' });
+            setResult({ message: 'Request failed — check the console.', updated: 0, cleared: 0 });
         } finally {
             setRunning(false);
         }
@@ -893,8 +893,8 @@ const FixReservationsButton: React.FC = () => {
     if (result) {
         return (
             <div style={{ fontSize: '0.8rem', color: '#15803d' }}>
-                <p style={{ margin: '0 0 0.25rem 0', fontWeight: 600 }}>✅ {result.fixed} order(s) fixed, {result.skipped} already clean.</p>
-                <p style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>{result.message}</p>
+                <p style={{ margin: '0 0 0.25rem 0', fontWeight: 600 }}>✅ {result.cleared} stale reservation(s) cleared, {result.updated} updated.</p>
+                <p style={{ margin: '0 0 0.5rem 0', color: '#374151', lineHeight: 1.4 }}>{result.message}</p>
                 <button
                     style={{ background: 'none', border: 'none', color: '#92400e', cursor: 'pointer', fontSize: '0.75rem', padding: 0, textDecoration: 'underline' }}
                     onClick={() => setResult(null)}
@@ -909,10 +909,13 @@ const FixReservationsButton: React.FC = () => {
         <button
             className="btn-secondary"
             style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 600 }}
-            onClick={handleFix}
+            onClick={handleRun}
             disabled={running}
         >
-            {running ? <><RefreshCw size={14} className="spin" style={{ marginRight: '5px' }} /> Fixing...</> : 'Fix Reserved Inventory'}
+            {running
+                ? <><RefreshCw size={14} className="spin" style={{ marginRight: '5px' }} /> Recalculating...</>
+                : 'Recalculate Reserved Inventory'
+            }
         </button>
     );
 };

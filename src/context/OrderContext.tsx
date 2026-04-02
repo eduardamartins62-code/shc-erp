@@ -268,10 +268,10 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             await refreshOrdersSilent();
         }
 
-        // Safety sweep: any DB order already marked Shipped that still has reserved
-        // inventory (e.g. shipped >14 days ago, outside the SS window) gets cleaned up.
-        // This is a fire-and-forget background call — we don't block on its result.
-        fetch('/api/fix-reserved-inventory', { method: 'POST' }).catch(() => {});
+        // Recalculate reserved quantities from actual open orders — corrects any stale
+        // reservations from shipped/cancelled orders regardless of when they shipped.
+        // Fire-and-forget so it never blocks the sync result.
+        fetch('/api/recalculate-reservations', { method: 'POST' }).catch(() => {});
 
         return { marked: markedCount, ssShipped: shippedFromSS.length, dbPending: nonShipped.length };
     };
